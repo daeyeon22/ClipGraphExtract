@@ -51,6 +51,15 @@ set_graph_extract_save_file_name_cmd(const char* file)
   graphExt->setSaveFileName(file);
 }
 
+void
+set_graph_extract_save_file_prefix_cmd(const char* prefix)
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->setSaveFilePrefix(prefix);
+}
+
+
+
 void 
 graph_extract_init_cmd()
 {
@@ -65,6 +74,27 @@ graph_extract_cmd(int lx, int ly, int ux, int uy)
 {
   ClipGraphExtractor* graphExt = getClipGraphExtractor();
   graphExt->extract(lx, ly, ux, uy);
+}
+
+void
+bin_graph_extract_cmd(int num_rows) 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->extractBinGraph(num_rows);
+}
+
+void
+bin_graph_labeling_cmd(const char* inv_rpt_file) 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->labelingBinGraph(inv_rpt_file);
+}
+
+void
+save_bin_graph_file_cmd()
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveBinGraph();
 }
 
 

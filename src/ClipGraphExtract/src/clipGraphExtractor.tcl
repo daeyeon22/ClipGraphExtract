@@ -5,6 +5,12 @@ sta::define_cmd_args "graph_extract" {
   [-out_file fileName]
 }
 
+sta::define_cmd_args "bin_graph_extract" {
+  [-out_file fileName]\
+  [-num_rows numRows]
+}
+
+
 proc graph_extract { args } {
   sta::parse_key_args "graph_extract" args \
     keys {-graph_model -edge_weight_model -out_file} flags {}
@@ -40,3 +46,48 @@ proc graph_extract { args } {
     graph_extract_clear_cmd
   }
 }
+
+
+proc bin_graph_extract { args } {
+    sta::parse_key_args "bin_graph_extract" args \
+        keys { -num_rows } flags {}
+
+    
+   
+
+    if { ![info exists keys(-num_rows)] } {
+    } else {
+        set num_rows $keys(-num_rows)
+        graph_extract_init_cmd 
+        bin_graph_extract_cmd $num_rows
+    }
+
+
+}
+
+proc bin_graph_labeling { args } {
+    sta::parse_key_args "bin_graph_labeling" args \
+        keys { -drc_rpt_file } flags {}
+
+    
+    if { ![info exists keys(-drc_rpt_file)] } {
+
+    } else {
+        set drc_rpt_file $keys(-drc_rpt_file)
+        bin_graph_labeling_cmd $drc_rpt_file
+    }
+}
+
+proc save_bin_graph_file { args } {
+    sta::parse_key_args "save_bin_graph_file" args \
+        keys { -prefix } flags {}
+
+    if { ![info exists keys(-prefix)] } {
+    
+    } else {
+        set prefix $keys(-prefix)
+        set_graph_extract_save_file_prefix_cmd $prefix
+    }
+    save_bin_graph_file_cmd
+}
+

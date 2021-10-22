@@ -21,6 +21,13 @@
 #include <boost/geometry/index/rtree.hpp>
 
 #include "instGraph.h"
+#include "binGraph.h"
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <regex>
+#include <fstream>
+
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
@@ -32,6 +39,8 @@ typedef bg::model::box<point> box;
 typedef std::pair<box, odb::dbInst*> value;
 typedef bgi::rtree< value, bgi::quadratic<6> > RTree;
 
+using namespace odb;
+using namespace std;
 using std::vector;
 using std::string;
 using std::cout;
@@ -39,6 +48,8 @@ using std::endl;
 using std::make_pair;
 using std::pair;
 using std::set;
+
+
 
 namespace ClipGraphExtract {
 
@@ -58,6 +69,12 @@ ClipGraphExtractor::clear() {
   if( rTree_ ) {
     delete (RTree*) rTree_;
   }
+
+  if( binGraph_ ) {
+    delete (bingraph::Graph*) binGraph_;
+  }
+
+  binGraph_ = nullptr;
   rTree_ = nullptr;
   graphModel_ = Star;
   edgeWeightModel_ = A;
@@ -66,9 +83,10 @@ ClipGraphExtractor::clear() {
 
 void 
 ClipGraphExtractor::init() {  
-  using namespace odb;
-  rTree_ = (void*) (new RTree);
-  RTree* rTree = (RTree*)rTree_;
+    using namespace odb;
+    rTree_ = (void*) (new RTree);
+    binGraph_ = (void*) (new bingraph::Graph); 
+    RTree* rTree = (RTree*)rTree_;
 
   // DB Query to fill in RTree
 	dbBlock* block = db_->getChip()->getBlock();
@@ -109,6 +127,159 @@ ClipGraphExtractor::extract(int lx, int ly, int ux, int uy) {
   cout << "Done!" << endl;
 }
 
+// added by dykim
+void
+ClipGraphExtractor::extractBinGraph(int numRows) {
+
+    cout << "Extract bin graph" << endl;
+    //bingraph::Graph binGraph;
+    RTree* rTree = (RTree*)rTree_;
+    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;
+    dbChip* chip = db_->getChip();
+    dbBlock* block = chip->getBlock();
+
+    int xMin = block->getBBox()->xMin();
+    int xMax = block->getBBox()->xMax();
+    int yMin = block->getBBox()->yMin();
+    int yMax = block->getBBox()->yMax();
+
+
+    dbSite* site = block->getRows().begin()->getSite();
+    uint blockWidth = block->getBBox()->getDX();
+    uint blockHeight = block->getBBox()->getDY();
+    uint siteHeight = site->getHeight();
+    uint siteWidth = site->getWidth();
+
+
+    int unitSize = numRows * siteHeight;
+
+    cout << xMin << " " << yMin << " " << xMax << " " << yMax << endl;
+    cout << "unit size : " << unitSize << endl;
+
+    
+    int numVertices = std::ceil( 1.0* blockWidth / unitSize ) * std::ceil( 1.0*blockHeight / unitSize );
+
+
+    
+    for(int lx=xMin; lx <= xMax-unitSize; lx+=unitSize) {
+        for(int ly=yMin; ly <= yMax-unitSize; ly+=unitSize) {
+
+            int ux = lx + unitSize;
+            int uy = ly + unitSize;
+
+            //cout << "(" << lx << " " << ly << ")" << endl;
+
+            box queryBox( point(lx, ly), point(ux, uy) );
+            vector<value> foundInsts;
+
+            rTree->query(bgi::intersects(queryBox), std::back_inserter(foundInsts));
+
+            vector<odb::dbInst*> insts;
+
+            for(value& val : foundInsts) {
+                insts.push_back(val.second);
+            }
+
+            binGraph->addVertex(lx, ly, ux, uy, insts);        
+        }
+    }
+
+    binGraph->initEdges();
+    //binGraph->saveFile(fileName_.c_str());
+
+    cout << "Done" << endl;
+}
+
+vector<string> splitAsTokens(string str, string delim){
+    vector<string> _tokens;
+    size_t start, end=0;
+    while(end < str.size()){
+        start = end;
+        while(start < str.size() && (delim.find(str[start]) != string::npos)){
+            start++;
+        }
+        end = start;
+        while(end < str.size() && (delim.find(str[end]) == string::npos)){
+            end++;
+        }
+        if(end-start != 0){
+            _tokens.push_back(string(str, start, end-start));
+        }
+    }
+    return _tokens;
+}
+
+
+void
+ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
+
+
+    typedef std::pair<box, int> marker;
+    bgi::rtree<marker, bgi::quadratic<6>> drcRtree;
+    //RTree* drcMarkerRtree = new RTree;
+
+    ifstream inFile(invRoutingReport);
+ 
+    const std::regex r1("Bounds[ \t\r\n\v\f]:[ \t\r\n\v\f]");
+    string line;
+
+	dbBlock* block = db_->getChip()->getBlock();
+    int dbUnitMicron = block->getDbUnitsPerMicron();
+
+
+    while(getline(inFile, line)) {
+        std::smatch match;
+        if(regex_search(line, match, r1)) {
+            //cout << line << endl;
+            string tail = match.suffix();
+            //cout << tail << endl;
+            
+            string delim = " (),";
+            vector<string> tokens = splitAsTokens(tail, delim);
+            //for(auto& token : tokens)
+            //    cout << token << endl;
+            if(tokens.size() != 4) {
+            
+            }
+
+            int lx = dbUnitMicron * atof(tokens[0].c_str());
+            int ly = dbUnitMicron * atof(tokens[1].c_str());
+            int ux = dbUnitMicron * atof(tokens[2].c_str());
+            int uy = dbUnitMicron * atof(tokens[3].c_str());
+    
+            cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
+            box b (point(lx, ly), point(ux, uy));
+            drcRtree.insert( make_pair(b, 1) );
+        }
+    }
+
+    bingraph::Graph* binGraph = (bingraph::Graph*)binGraph_;
+    for(bingraph::Vertex* vert : binGraph->getVertices()) {
+        int lx = vert->getLx();
+        int ux = vert->getUx();
+        int ly = vert->getLy();
+        int uy = vert->getUy();
+
+        vector<marker> foundMarkers;
+        box queryBox( point(lx, ly), point(ux, uy) );
+        drcRtree.query(bgi::intersects(queryBox), std::back_inserter(foundMarkers));
+
+
+        int label = foundMarkers.size() > 0 ? 1 : 0;
+        vert->setLabel(label);
+    }
+}
+
+
+void
+ClipGraphExtractor::saveBinGraph() {
+    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;   
+    binGraph->saveFile(prefix_.c_str());
+}
+
+
+
+
 void
 ClipGraphExtractor::setDb(odb::dbDatabase* db) {
   db_ = db;
@@ -135,6 +306,12 @@ ClipGraphExtractor::setSaveFileName(const char* fileName) {
 }
 
 void
+ClipGraphExtractor::setSaveFilePrefix(const char* prefix) {
+    prefix_ = prefix;
+}
+
+
+void
 ClipGraphExtractor::setEdgeWeightModel( const char* edgeWeightModel ) {
   if( strcmp(edgeWeightModel, "a") == 0 ) {
     edgeWeightModel_ = A;
@@ -156,5 +333,9 @@ ClipGraphExtractor::setEdgeWeightModel( const char* edgeWeightModel ) {
     exit(1);
   }
 }
+
+
+
+
 
 }
