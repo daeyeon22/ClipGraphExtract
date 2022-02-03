@@ -1,1 +1,12 @@
 build
+src/ClipGraphExtract/test/*.py
+src/ClipGraphExtract/test/*.x
+src/ClipGraphExtract/test/*.y
+src/ClipGraphExtract/test/*.edge_index
+src/ClipGraphExtract/test/*.rpt
+src/ClipGraphExtract/test/test_place.tcl
+src/ClipGraphExtract/test/test_route.tcl
+src/ClipGraphExtract/test/place_results/
+src/ClipGraphExtract/test/route_results/
+src/ClipGraphExtract/test/route_def/
+
