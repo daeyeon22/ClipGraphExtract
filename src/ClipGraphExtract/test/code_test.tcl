@@ -1,5 +1,5 @@
-read_lef "./tcbn65gplus_8lmT2.lef"
-read_def "./ex_place.def"
+read_lef "NangateOpenCellLibrary.lef"
+read_def "ex_route.def"
 
 
 #read_liberty NangateOpenCellLibrary_typical.lib

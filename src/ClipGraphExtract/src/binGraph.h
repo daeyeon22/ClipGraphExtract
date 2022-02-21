@@ -64,9 +64,11 @@ struct pin_value{
 
 struct drc_value{
     std::string type_;
-
-	std::string from_;
-	std::string to_;
+	std::string detailed_;
+	std::string toNet_;
+	std::string fromNet_;
+	std::string cell_;
+	int layer_;
 
     int lx_, ly_; // minimum boundary point
     int ux_, uy_; // maximum boundary point

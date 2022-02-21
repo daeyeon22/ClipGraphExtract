@@ -407,35 +407,98 @@ ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
 
     ifstream inFile(invRoutingReport);
  
-    const std::regex r1("Bounds[ \t\r\n\v\f]:[ \t\r\n\v\f]");
+    const std::regex colon(":");
     string line;
 
 	dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
 
+	int lineNum = 0;
+
+	string type = "0";
+	string detailed = "0";
+	string toNet = "0";
+	string fromNet = "0";
+	string cell = "0";
+	int layer = 0;
+
     while(getline(inFile, line)) {
+		lineNum++;
+		if(lineNum < 10) continue;
+
         std::smatch match;
-        if(regex_search(line, match, r1)) {
+        if(regex_search(line, match, colon)) {
+			string head = match.prefix();
             string tail = match.suffix();
             
-            string delim = " (),";
-            vector<string> tokens = splitAsTokens(tail, delim);
-            if(tokens.size() != 4) {
-            
-            }
+			if(head != "Bounds "){
+				if(head == "  Total Violations ") continue;
 
-            int lx = dbUnitMicron * atof(tokens[0].c_str());
-            int ly = dbUnitMicron * atof(tokens[1].c_str());
-            int ux = dbUnitMicron * atof(tokens[2].c_str());
-            int uy = dbUnitMicron * atof(tokens[3].c_str());
-    
-            //cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
-            box b (point(lx, ly), point(ux, uy));
-			drc_value d;
+				type = head;
+
+				string delim = "()";
+				vector<string> tokens = splitAsTokens(tail, delim);
+				ZASSERT(tokens.size() == 4);
+				
+				for(int i = 0; i < tokens.size(); i++)
+					tokens[i] = tokens[i].substr(1, tokens[i].size()-2);
+
+				detailed = tokens[1];
+				layer = atoi(tokens[3].substr(1).c_str());
+				
+				delim = "&";
+				tokens = splitAsTokens(tokens[2], delim);
+				ZASSERT(tokens.size() < 3);
+
+				if(tokens[0].substr(0, 19) == "Regular Wire of Net")
+					toNet = tokens[0].substr(20, tokens[0].size()-21);
+				
+				else if(tokens[0].substr(0, 11) == "Pin of Cell")
+					cell = tokens[0].substr(12, tokens[0].size()-12);
+
+				else cout << "outlier: " << line << endl;
+
+				if(tokens.size() > 1){
+					tokens[1] = tokens[1].substr(1, tokens[1].size()-2);
+					if(tokens[1].substr(0, 19) == "Regular Wire of Net")
+						fromNet = tokens[1].substr(20, tokens[1].size()-20);
+				}
+			}
+
+			else{
+				string delim = " (),";
+				vector<string> tokens = splitAsTokens(tail, delim);
+				if(tokens.size() != 4) {
+				
+				}
+
+				int lx = dbUnitMicron * atof(tokens[0].c_str());
+				int ly = dbUnitMicron * atof(tokens[1].c_str());
+				int ux = dbUnitMicron * atof(tokens[2].c_str());
+				int uy = dbUnitMicron * atof(tokens[3].c_str());
 		
-			d.setBox((int)lx, (int)ly, (int)ux, (int)uy);
-            drc_rTree->insert( make_pair(b, d) );
-        }
+				cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << cell << " " << layer << " ";
+				cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
+				box b (point(lx, ly), point(ux, uy));
+				drc_value d;
+				d.type_ = type;
+				d.detailed_ = detailed;
+				d.toNet_ = toNet;
+				d.fromNet_ = fromNet;
+				d.cell_ = cell;
+				d.layer_ = layer;
+
+				d.setBox((int)lx, (int)ly, (int)ux, (int)uy);
+				drc_rTree->insert( make_pair(b, d) );
+				
+				type = "0";
+				detailed = "0";
+				toNet = "0";
+				fromNet = "0";
+				cell = "0";
+				layer = 0;
+        	}
+		}
     }
 
     bingraph::Graph* binGraph = (bingraph::Graph*)binGraph_;
