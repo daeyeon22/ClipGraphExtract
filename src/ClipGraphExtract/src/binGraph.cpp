@@ -67,8 +67,6 @@ namespace bingraph {
 using namespace odb;
 using namespace std;
 
-Vertex::Vertex(int id, int lx, int ly, int ux, int uy, vector<dbInst*> insts) :
-    id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), insts_(insts) {
 Vertex::Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer, 
         vector<dbInst*> insts, vector<wire_value> wireValues,
         vector<via_value> viaValues, vector<pin_value> pinValues) :
@@ -421,7 +419,6 @@ double Vertex::getStdOfPins(char type) const {
     return sqrt(variance);
 }
 
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
 double Vertex::getAvgInEdges() const {
     if (insts_.size() == 0)
         return 0;
@@ -510,26 +507,9 @@ vector<Vertex*> Graph::getVertices() {
 }
 
 
-void 
-Graph::addVertex( int lx, int ly, int ux, int uy, vector<dbInst*> insts ) {
-    //cout << "start addvertex" << endl;
 
-    Vertex vert(vertices_.size(), lx, ly, ux, uy, insts);
-    //for( dbInst* inst : insts ) {
-    //    vert.addInst(inst);
-    //}
 
-    vertices_.push_back(vert);
-   // vertices_.push_back( Vertex(vertices_.size(), lx, ly, ux, uy) );
-    
-    //Vertex* vertex = &vertices_.back();
-    //for( dbInst* inst : insts ) {
-    //    vertex->addInst(inst);
-    //    inst2vertex_[inst] = vertex;
-    //}
-
-    //cout << "end addvertex" << endl;
-}
+void
 Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<dbInst*> insts,
                 vector<wire_value> wireValues,

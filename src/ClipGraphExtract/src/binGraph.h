@@ -91,7 +91,7 @@ class Edge;
 // vertex is equal to dbInst
 class Vertex {
   public:
-    Vertex(int id, int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
+    //Vertex(int id, int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
     Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer,  
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
@@ -108,7 +108,6 @@ class Vertex {
     std::vector<pin_value> getPinValues();
     std::vector<drc_value> getDrcValues();
 
-    void addInst(odb::dbInst* inst);
     void addWireValue(wire_value wireValue);
     void addViaValue(via_value viaValue);
     void addPinValue(pin_value pinValue);
@@ -152,9 +151,6 @@ private:
     std::vector<via_value> viaValues_;
     std::vector<pin_value> pinValues_;
     std::vector<drc_value> drcValues_;
-    std::vector<Edge*> inEdges_;
-    std::vector<Edge*> outEdges_;
-    int lx_, ly_, ux_, uy_;
     int maxLayer_;
     int id_;
     int label_;
