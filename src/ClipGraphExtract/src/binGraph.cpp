@@ -1,6 +1,7 @@
 #include "math.h"
 #include "opendb/db.h"
 #include "binGraph.h"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
@@ -8,7 +9,7 @@
 #include <iostream>
 
 void wire_value::setBox(int fx, int fy, int tx, int ty){
-    from_x_ = fx;
+	from_x_ = fx;
     from_y_ = fy;
     to_x_ = tx;
     to_y_ = ty;
@@ -172,7 +173,34 @@ double Vertex::getUtilization() const {
     return 1.0* overlaps / totalArea;
 }
 
+void Vertex::getNets() {
+	for(wire_value wireValue : wireValues_){
+		nets_.insert(wireValue.net_);
+
+		if((wireValue.lx_ < lx_) || (wireValue.ly_ < ly_) || (wireValue.ux_ > ux_) || (wireValue.uy_ > uy_))
+			globalNets_.insert(wireValue.net_);
+	}
+
+	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
+	
+	cout << "total" << endl;
+	for(auto net : nets_) cout << net->getName() << " ";
+	cout << endl;
+
+	cout << "global" << endl;
+	for(auto net : globalNets_) cout << net->getName() << " ";
+	cout << endl;
+
+	cout << "local" << endl;
+	for(auto net : localNets_) cout << net->getName() << " ";
+	cout << endl;
+
+	
+}
+
+
 double Vertex::getRoutingCongestion(char type) const {
+	
 	unsigned int boxLength = ux_-lx_; // Box is a square.
 
 	unordered_map<char, double> layerDemands;	
@@ -180,7 +208,6 @@ double Vertex::getRoutingCongestion(char type) const {
 	unordered_map<unsigned int, bool> tf;
 	
 	char type_;
-
 
 	// Wire distinction
 	for(wire_value wireValue : wireValues_){
@@ -595,7 +622,7 @@ float Edge::getWeight() const {
 
 void
 Graph::saveFile(const char* prefix) {
-    ofstream nodeAttr;
+	ofstream nodeAttr;
     ofstream nodeLabel;
     ofstream edgeIndex;
     string attrFileName = string(prefix) + ".x";
@@ -607,7 +634,9 @@ Graph::saveFile(const char* prefix) {
 
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
-
+		
+		vert.getNets();
+		
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
                  << vert.getWireCongestion('T') << "," 

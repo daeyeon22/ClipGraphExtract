@@ -171,7 +171,7 @@ ClipGraphExtractor::init() {
             w.pitches_ = layerPitches;
             via_value v;
             while(decoder.peek() != dbWireDecoder::END_DECODE){
-                unsigned int  layerNum;
+                unsigned int layerNum;
                 unsigned int layerWidth;
                 unsigned int layerSpacing;
 
@@ -477,8 +477,8 @@ ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
 				int ux = dbUnitMicron * atof(tokens[2].c_str());
 				int uy = dbUnitMicron * atof(tokens[3].c_str());
 		
-				cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << cell << " " << layer << " ";
-				cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
+				//cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << cell << " " << layer << " ";
+				//cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
 				box b (point(lx, ly), point(ux, uy));
 				drc_value d;
 				d.type_ = type;

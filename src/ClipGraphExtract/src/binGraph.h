@@ -103,13 +103,12 @@ class Vertex {
     std::vector<odb::dbInst*> getInsts();
     std::vector<Edge*>  getInEdges();
     std::vector<Edge*>  getOutEdges();
-
-    void addInst(odb::dbInst* inst);
     std::vector<wire_value> getWireValues();
     std::vector<via_value> getViaValues();
     std::vector<pin_value> getPinValues();
     std::vector<drc_value> getDrcValues();
 
+    void addInst(odb::dbInst* inst);
     void addWireValue(wire_value wireValue);
     void addViaValue(via_value viaValue);
     void addPinValue(pin_value pinValue);
@@ -119,6 +118,7 @@ class Vertex {
 
     void setLabel(int label);
     int getLabel();
+	void getNets();
     
     // for node feature (.x)
     double getUtilization() const;
@@ -150,6 +150,9 @@ private:
     std::vector<Edge*> outEdges_;
     int lx_, ly_, ux_, uy_;
     std::vector<wire_value> wireValues_;
+    std::set<odb::dbNet*> nets_;
+    std::set<odb::dbNet*> localNets_;
+    std::set<odb::dbNet*> globalNets_;
     std::vector<via_value> viaValues_;
     std::vector<pin_value> pinValues_;
     std::vector<drc_value> drcValues_;
