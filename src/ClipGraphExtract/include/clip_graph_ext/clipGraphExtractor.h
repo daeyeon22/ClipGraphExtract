@@ -36,6 +36,7 @@ class ClipGraphExtractor {
     void setEdgeWeightModel(const char* edgeWeightModel);
 
     void extractBinGraph(int numRows);
+    void extractBinGraph(int numRows, int maxLayer);
     void labelingBinGraph(const char* invRoutingReport);
     void saveBinGraph();
 
@@ -48,6 +49,11 @@ class ClipGraphExtractor {
     odb::dbDatabase* db_;
     sta::dbSta* sta_;
     void* rTree_;
+    void* inst_rTree_;
+    void* wire_rTree_;
+    void* via_rTree_;
+    void* pin_rTree_;
+    void* drc_rTree_;
     
     GraphModel graphModel_;
     EdgeWeightModel edgeWeightModel_;

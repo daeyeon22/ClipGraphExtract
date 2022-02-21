@@ -77,10 +77,11 @@ graph_extract_cmd(int lx, int ly, int ux, int uy)
 }
 
 void
-bin_graph_extract_cmd(int num_rows) 
+
+bin_graph_extract_cmd(int num_rows, int max_layer) 
 {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->extractBinGraph(num_rows);
+    graphExt->extractBinGraph(num_rows, max_layer);
 }
 
 void

@@ -50,18 +50,28 @@ proc graph_extract { args } {
 
 proc bin_graph_extract { args } {
     sta::parse_key_args "bin_graph_extract" args \
-        keys { -num_rows } flags {}
+        keys { -num_rows -max_layer } flags {}
 
     
    
 
-    if { ![info exists keys(-num_rows)] } {
+
+    if { ![info exists keys(-num_rows)]} {
+        puts "ERROR: -num_rows must be used"
+        return
     } else {
         set num_rows $keys(-num_rows)
-        graph_extract_init_cmd 
-        bin_graph_extract_cmd $num_rows
     }
 
+    if { ![info exists keys(-max_layer)] } {
+        puts "ERROR: -max_layer must be used"
+        return
+    } else {
+        set max_layer $keys(-max_layer)
+    }
+
+    graph_extract_init_cmd 
+    bin_graph_extract_cmd $num_rows $max_layer
 
 }
 
@@ -71,10 +81,11 @@ proc bin_graph_labeling { args } {
 
     
     if { ![info exists keys(-drc_rpt_file)] } {
-
-    } else {
+	} else {
         set drc_rpt_file $keys(-drc_rpt_file)
-        bin_graph_labeling_cmd $drc_rpt_file
+		if {[file exists $drc_rpt_file]} {
+        	bin_graph_labeling_cmd $drc_rpt_file
+		}
     }
 }
 
