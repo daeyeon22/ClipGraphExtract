@@ -26,10 +26,8 @@
 #include <regex>
 #include <fstream>
 
-<<<<<<< HEAD
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
-=======
 
 typedef bgi::rtree< std::pair<box, inst_value>, 
                     bgi::quadratic<6> > inst_RTree;
@@ -39,7 +37,6 @@ typedef bgi::rtree< std::pair<box, wire_value>,
 
 typedef bgi::rtree< std::pair<box, via_value>, 
                     bgi::quadratic<6> > via_RTree;
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
 
 typedef bgi::rtree< std::pair<box, pin_value>, 
                     bgi::quadratic<6> > pin_RTree;
@@ -47,10 +44,6 @@ typedef bgi::rtree< std::pair<box, pin_value>,
 typedef bgi::rtree< std::pair<box, drc_value>,
 					bgi::quadratic<6> > drc_RTree;
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
 using namespace odb;
 using namespace std;
 using std::vector;
@@ -89,8 +82,6 @@ ClipGraphExtractor::clear() {
     delete (via_RTree*) via_rTree_;
   }
 
-<<<<<<< HEAD
-=======
   if( pin_rTree_ ) {
     delete (pin_RTree*) pin_rTree_;
   }
@@ -99,21 +90,17 @@ ClipGraphExtractor::clear() {
     delete (pin_RTree*) drc_rTree_;
   }
 
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
   if( binGraph_ ) {
     delete (bingraph::Graph*) binGraph_;
   }
 
   binGraph_ = nullptr;
-<<<<<<< HEAD
   rTree_ = nullptr;
-=======
   inst_rTree_ = nullptr;
   wire_rTree_ = nullptr;
   via_rTree_ = nullptr;
   pin_rTree_ = nullptr;
   drc_rTree_ = nullptr;
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
   graphModel_ = Star;
   edgeWeightModel_ = A;
   fileName_ = "";
@@ -122,11 +109,7 @@ ClipGraphExtractor::clear() {
 void 
 ClipGraphExtractor::init() {  
     using namespace odb;
-<<<<<<< HEAD
-    rTree_ = (void*) (new RTree);
-    binGraph_ = (void*) (new bingraph::Graph); 
-    RTree* rTree = (RTree*)rTree_;
-=======
+
     inst_rTree_ = (void*) (new inst_RTree);
     wire_rTree_ = (void*) (new wire_RTree);
     via_rTree_ = (void*) (new via_RTree);
@@ -152,7 +135,6 @@ ClipGraphExtractor::init() {
             layerPitches[layerNum] = layerWidth + layerSpacing;
         }
     }
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
 
     // DB Query to fill in inst_RTree
 	dbBlock* block = db_->getChip()->getBlock();
