@@ -102,3 +102,11 @@ proc save_bin_graph_file { args } {
     save_bin_graph_file_cmd
 }
 
+
+proc analyze_congestion { } {
+    
+    analyze_congestion_cmd
+
+
+}
+

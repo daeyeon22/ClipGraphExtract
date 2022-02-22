@@ -8,6 +8,10 @@
 
 #include <iostream>
 
+
+#include "CImg.h"
+
+
 void wire_value::setBox(int fx, int fy, int tx, int ty){
 	from_x_ = fx;
     from_y_ = fy;
@@ -519,7 +523,10 @@ set<dbInst*> getSinks(dbInst* inst) {
 }
 
 Graph::Graph() {
-
+    lx_ = INT_MAX;
+    ly_ = INT_MAX;
+    ux_ = INT_MIN;
+    uy_ = INT_MIN;
 }
 
 Graph::~Graph() {
@@ -533,15 +540,19 @@ vector<Vertex*> Graph::getVertices() {
     return vertices;
 }
 
-
-
-
 void
 Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<dbInst*> insts,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
                 vector<pin_value> pinValues) {
+
+
+    // get boundary
+    lx_ = min(lx, lx_);
+    ly_ = min(ly, ly_);
+    ux_ = max(ux, ux_);
+    uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
                 insts, wireValues, viaValues, pinValues);
@@ -691,6 +702,49 @@ Graph::saveFile(const char* prefix) {
     }
     edgeIndex.close();
 }
+
+
+
+void
+Graph::showCongestion() {
+    using namespace cimg_library;
+
+    float opacity = 1.0;
+
+    dbBlock* block = db_->getChip()->getBlock();
+    int dbUnitMicron = block->getDbUnitsPerMicron();
+    int imgWidth = getWidth() / dbUnitMicron;
+    int imgHeight = getHeight() / dbUnitMicron;
+
+    CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
+
+    for(auto& gcell : vertices_) {
+        int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
+        int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
+        int y1 = (gcell.getLy() - ly_) / dbUnitMicron;
+        int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
+
+
+        double cong = gcell.getRoutingCongestion('T');
+        cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
+
+        int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
+
+        char denColor[3] = {(char)color, (char)color, (char)color};
+        img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
+    }
+
+    img.display("Congestion map", false);
+    //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
+
+
+
+
+    
+
+}
+
+
 
 };
 

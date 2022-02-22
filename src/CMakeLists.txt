@@ -21,6 +21,8 @@ set(RESIZER_HOME ${PROJECT_SOURCE_DIR}/src/resizer)
 set(CLIP_GRAPHEXT_HOME ${PROJECT_SOURCE_DIR}/src/ClipGraphExtract)
 set(OPENROAD_TCL_INIT ${CMAKE_CURRENT_BINARY_DIR}/OpenRoadTclInitVar.cc)
 
+
+
 set(OPENROAD_SOURCE
   OpenRoad.cc
   Error.cc
@@ -116,8 +118,9 @@ swig_link_libraries(opendb_swig
   PUBLIC
   opendb
 )
-
 ################################################################
+
+#g##############################################################
 
 set(OPENROAD_SWIG_FILE OpenRoad.i)
 
@@ -204,6 +207,8 @@ add_subdirectory(dbSta)
 add_subdirectory(resizer)
 add_subdirectory(flute3)
 add_subdirectory(ClipGraphExtract)
+#add_subdirectory(CImg)
+
 
 ################################################################
 

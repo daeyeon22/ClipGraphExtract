@@ -40,6 +40,9 @@ class ClipGraphExtractor {
     void labelingBinGraph(const char* invRoutingReport);
     void saveBinGraph();
 
+    void showCongestionMap();
+
+
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
 
