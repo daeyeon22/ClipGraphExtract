@@ -15,6 +15,7 @@ bin_graph_extract -num_rows 5
 bin_graph_labeling -drc_rpt_file routing.drc.rpt
 save_bin_graph_file -prefix bin_graph
 
+analyze_congestion
 
 
 puts "star model end"

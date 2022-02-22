@@ -30,6 +30,17 @@ using ClipGraphExtract::EdgeWeightModel;
 
 %inline %{
 
+
+void
+analyze_congestion_cmd() 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->showCongestionMap();
+
+}
+
+
+
 void
 set_graph_model_cmd(const char* model) 
 {

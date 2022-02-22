@@ -7,6 +7,10 @@
 
 #include <iostream>
 
+
+#include "CImg.h"
+
+
 void wire_value::setBox(int fx, int fy, int tx, int ty){
     from_x_ = fx;
     from_y_ = fy;
@@ -492,7 +496,10 @@ set<dbInst*> getSinks(dbInst* inst) {
 }
 
 Graph::Graph() {
-
+    lx_ = INT_MAX;
+    ly_ = INT_MAX;
+    ux_ = INT_MIN;
+    uy_ = INT_MIN;
 }
 
 Graph::~Graph() {
@@ -506,15 +513,19 @@ vector<Vertex*> Graph::getVertices() {
     return vertices;
 }
 
-
-
-
 void
 Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<dbInst*> insts,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
                 vector<pin_value> pinValues) {
+
+
+    // get boundary
+    lx_ = min(lx, lx_);
+    ly_ = min(ly, ly_);
+    ux_ = max(ux, ux_);
+    uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
                 insts, wireValues, viaValues, pinValues);
@@ -662,6 +673,40 @@ Graph::saveFile(const char* prefix) {
     }
     edgeIndex.close();
 }
+
+
+
+void
+Graph::showCongestion() {
+    using namespace cimg_library;
+
+    float opacity = 1.0;
+
+    CImg<unsigned char> img(getWidth(), getHeight(), 1, 3, 255);
+
+    for(auto& gcell : vertices_) {
+        int x1 = gcell.getLx();
+        int x2 = gcell.getUx();
+        int y1 = gcell.getLy();
+        int y2 = gcell.getUy();
+
+        int color = gcell.getRoutingCongestion('T') > 1.0 ? 255 : 0;
+
+        char denColor[3] = {(char)color, (char)color, (char)color};
+        img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
+    }
+
+    img.display("Congestion map", false);
+    //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
+
+
+
+
+    
+
+}
+
+
 
 };
 

@@ -204,9 +204,13 @@ class Graph {
 
     void initEdges();
     void saveFile(const char* prefix);
-    
-  
+    int getWidth() { return ux_ - lx_; }
+    int getHeight() { return uy_ - ly_; }
+    void showCongestion();  
   private:
+
+    int lx_, ly_, ux_, uy_;
+
     odb::dbDatabase* db_;
     std::vector<Vertex> vertices_;
     std::vector<Edge> edges_;

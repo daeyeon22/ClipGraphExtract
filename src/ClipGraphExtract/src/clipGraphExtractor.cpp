@@ -18,6 +18,9 @@
 #include "db_sta/dbSta.hh"
 #include "db_sta/dbNetwork.hh"
 
+
+
+#include "CImg.h"
 #include "instGraph.h"
 #include "binGraph.h"
 #include <iostream>
@@ -467,6 +470,15 @@ ClipGraphExtractor::saveBinGraph() {
     binGraph->saveFile(prefix_.c_str());
 }
 
+void
+ClipGraphExtractor::showCongestionMap() {
+    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;   
+    binGraph->showCongestion();
+
+    
+
+
+}
 
 
 
