@@ -10,7 +10,8 @@ option(USE_CIMG_LIB "Use CImg drawing library for image drawing" ON)
 
 if( USE_CIMG_LIB )
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Dcimg_use_jpeg=1 -D_GLIBCXX_USE_CXX11_ABI=0")
-  set(CIMG_HOME ${CLIP_GRAPHEXT_HOME}/module/CImg)
+    #set(CIMG_HOME ${CLIP_GRAPHEXT_HOME}/module/CImg)
+  set(CIMG_HOME ${PROJECT_SOURCE_DIR}/src/CImg)
   add_definitions(-DENABLE_CIMG_LIB=1)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
@@ -63,7 +64,7 @@ target_include_directories( ClipGraphExtractor
   ${OPENDB_HOME}/include
   ${DBSTA_HOME}/include
   ${OPENSTA_HOME}/include
-
+  ${CIMG_HOME}
   ${Boost_INCLUDE_DIR}
  )
 
