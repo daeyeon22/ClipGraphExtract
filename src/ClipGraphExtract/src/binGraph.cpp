@@ -182,7 +182,8 @@ void Vertex::getNets() {
 	}
 
 	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
-	
+
+// Debugging
 	cout << "total" << endl;
 	for(auto net : nets_) cout << net->getName() << " ";
 	cout << endl;
@@ -194,8 +195,7 @@ void Vertex::getNets() {
 	cout << "local" << endl;
 	for(auto net : localNets_) cout << net->getName() << " ";
 	cout << endl;
-
-	
+//
 }
 
 
