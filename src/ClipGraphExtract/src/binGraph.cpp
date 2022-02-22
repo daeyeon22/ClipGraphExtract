@@ -682,23 +682,34 @@ Graph::showCongestion() {
 
     float opacity = 1.0;
 
-    CImg<unsigned char> img(getWidth(), getHeight(), 1, 3, 255);
+cout << "0" << endl;
+
+    dbBlock* block = db_->getChip()->getBlock();
+    int dbUnitMicron = block->getDbUnitsPerMicron();
+cout << "0-1" << endl;
+    int imgWidth = getWidth() / dbUnitMicron;
+    int imgHeight = getHeight() / dbUnitMicron;
+
+cout << "1" << endl;
+    CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
 
     for(auto& gcell : vertices_) {
-        int x1 = gcell.getLx();
-        int x2 = gcell.getUx();
-        int y1 = gcell.getLy();
-        int y2 = gcell.getUy();
+        int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
+        int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
+        int y1 = (gcell.getLy() - ly_) / dbUnitMicron;
+        int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
 
-        int color = gcell.getRoutingCongestion('T') > 1.0 ? 255 : 0;
+        int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
 
         char denColor[3] = {(char)color, (char)color, (char)color};
         img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
     }
 
+cout << "2" << endl;
     img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
 
+cout << "3" << endl;
 
 
 

@@ -119,7 +119,7 @@ ClipGraphExtractor::init() {
     drc_rTree_ = (void*) (new drc_RTree);
     
     binGraph_ = (void*) (new bingraph::Graph); 
-    
+ 
 	inst_RTree* inst_rTree = (inst_RTree*) inst_rTree_;
     wire_RTree* wire_rTree = (wire_RTree*) wire_rTree_;
     via_RTree* via_rTree = (via_RTree*) via_rTree_;
@@ -282,6 +282,7 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
     pin_RTree* pin_rTree = (pin_RTree*) pin_rTree_;
     
     bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;
+    binGraph->setDb(db_);
     dbTech* tech = db_->getTech();
     dbChip* chip = db_->getChip();
     dbBlock* block = chip->getBlock();
@@ -308,6 +309,13 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
     int numVertices = std::ceil( 1.0* blockWidth / unitSize ) * std::ceil( 1.0*blockHeight / unitSize );
    
     int blockNum = 0;
+
+    //int numCols = ceil(1.0*(xMax-xMin)/unitSize);
+    //int numRows = ceil(1.0*(yMax-yMin)/unitSize);
+
+
+    //binGraph->setMaxColumns(numCols);
+    //binGraph->setMaxRows(numRows);
 
     for(int lx=xMin; lx <= xMax-unitSize; lx+=unitSize) {
         for(int ly=yMin; ly <= yMax-unitSize; ly+=unitSize) {

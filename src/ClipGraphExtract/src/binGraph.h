@@ -195,6 +195,7 @@ class Graph {
     std::vector<Vertex*> getVertices();
     std::vector<Edge*> getEdges();
 
+    void setDb(odb::dbDatabase* db) { db_ = db; }
     void addVertex(int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
     void addVertex(int lx, int ly, int ux, int uy, int maxLayer, 
             std::vector<odb::dbInst*> insts, 
@@ -207,6 +208,7 @@ class Graph {
     int getWidth() { return ux_ - lx_; }
     int getHeight() { return uy_ - ly_; }
     void showCongestion();  
+
   private:
 
     int lx_, ly_, ux_, uy_;
