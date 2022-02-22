@@ -62,6 +62,22 @@ struct pin_value{
     void setBox(int x, int y);
 };
 
+struct rudy_value{
+    odb::dbNet* net_;
+	std::vector<int> xs_;
+	std::vector<int> ys_;
+	int degree_;
+	double value_;
+	int wireWidth_;
+
+	int lx_, ly_; // minimum boundary point
+    int ux_, uy_; // maximum boundary point
+
+	box box_;
+    void setBox(int lx, int ly, int ux, int uy);
+    void setValue(int length);
+};
+
 struct drc_value{
     std::string type_;
 	std::string detailed_;
@@ -77,7 +93,6 @@ struct drc_value{
 
     void setBox(int lx, int ly, int ux, int uy);
 };
-
 
 namespace odb {
   class dbInst;
@@ -98,7 +113,8 @@ class Vertex {
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
-            std::vector<pin_value> pinValues);
+            std::vector<pin_value> pinValues,
+            std::vector<rudy_value> rudyValues);
 
     std::vector<odb::dbInst*> getInsts();
     std::vector<Edge*>  getInEdges();
@@ -106,19 +122,22 @@ class Vertex {
     std::vector<wire_value> getWireValues();
     std::vector<via_value> getViaValues();
     std::vector<pin_value> getPinValues();
+    std::vector<rudy_value> getRudyValues();
     std::vector<drc_value> getDrcValues();
 
     void addInst(odb::dbInst* inst);
     void addWireValue(wire_value wireValue);
     void addViaValue(via_value viaValue);
     void addPinValue(pin_value pinValue);
+    void addRudyValue(rudy_value rudyValue);
     void addDrcValue(drc_value drcValue);
     void addInEdge(Edge* edge);
     void addOutEdge(Edge* edge);
 
     void setLabel(int label);
     int getLabel();
-	void getNets();
+	void setNets();
+	void updateCongRUDY();
     
     // for node feature (.x)
     double getUtilization() const;
@@ -136,12 +155,8 @@ class Vertex {
     double getAvgOutEdges() const;
     double getSequentialRatio() const;
 	
-	// 
 	double getCongRUDY() const;
 	double getCongGR() const;
-
-
-
 
     int getId() const;
     int getLx() const;
@@ -161,6 +176,7 @@ private:
     std::set<odb::dbNet*> globalNets_;
     std::vector<via_value> viaValues_;
     std::vector<pin_value> pinValues_;
+    std::vector<rudy_value> rudyValues_;
     std::vector<drc_value> drcValues_;
     int maxLayer_;
     int id_;
@@ -214,9 +230,9 @@ class Graph {
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
-            std::vector<pin_value> pinValues);
+            std::vector<pin_value> pinValues,
+            std::vector<rudy_value> rudyValues);
 
-	void updateCongRUDY();
 	void updateCongGR();
 
     void initEdges();

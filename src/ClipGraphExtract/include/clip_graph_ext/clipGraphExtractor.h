@@ -56,6 +56,7 @@ class ClipGraphExtractor {
     void* wire_rTree_;
     void* via_rTree_;
     void* pin_rTree_;
+    void* rudy_rTree_;
     void* drc_rTree_;
     
     GraphModel graphModel_;

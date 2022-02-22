@@ -57,6 +57,23 @@ void pin_value::setBox(int x, int y){
     box_ = b;
 }
 
+void rudy_value::setBox(int lx, int ly, int ux, int uy){
+    lx_ = lx;
+    ly_ = ly;
+    ux_ = ux;
+    uy_ = uy;
+
+    box b(point(lx_, ly_), 
+           point(ux_, uy_));
+    box_ = b;
+}
+
+void rudy_value::setValue(int length){
+    double boxArea = (ux_ - lx_) * (uy_ - ly_);
+	double wireArea = length * wireWidth_;
+	value_ = wireArea / boxArea;
+}
+
 void drc_value::setBox(int lx, int ly, int ux, int uy){
     lx_ = lx;
     ly_ = ly;
@@ -75,9 +92,9 @@ using namespace std;
 
 Vertex::Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer, 
         vector<dbInst*> insts, vector<wire_value> wireValues,
-        vector<via_value> viaValues, vector<pin_value> pinValues) :
+        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues) :
     id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), maxLayer_(maxLayer), insts_(insts), 
-    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues) {
+    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues) {
     label_ = 0;
 }
 
@@ -96,6 +113,10 @@ vector<via_value> Vertex::getViaValues() {
 
 vector<pin_value> Vertex::getPinValues() {
     return pinValues_;
+}
+
+vector<rudy_value> Vertex::getRudyValues() {
+    return rudyValues_;
 }
 
 vector<drc_value> Vertex::getDrcValues() {
@@ -129,6 +150,11 @@ Vertex::addViaValue(via_value viaValue) {
 void
 Vertex::addPinValue(pin_value pinValue) {
     pinValues_.push_back(pinValue);
+}
+
+void
+Vertex::addRudyValue(rudy_value rudyValue) {
+    rudyValues_.push_back(rudyValue);
 }
 
 void
@@ -178,7 +204,8 @@ double Vertex::getUtilization() const {
     return 1.0* overlaps / totalArea;
 }
 
-void Vertex::getNets() {
+
+void Vertex::setNets() {
 	for(wire_value wireValue : wireValues_){
 		nets_.insert(wireValue.net_);
 
@@ -188,7 +215,7 @@ void Vertex::getNets() {
 
 	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
 
-// Debugging
+/* Debugging
 	cout << "total" << endl;
 	for(auto net : nets_) cout << net->getName() << " ";
 	cout << endl;
@@ -200,7 +227,54 @@ void Vertex::getNets() {
 	cout << "local" << endl;
 	for(auto net : localNets_) cout << net->getName() << " ";
 	cout << endl;
-//
+*/
+}
+
+
+void
+Vertex::updateCongRUDY() {
+	for(rudy_value rudyValue : rudyValues_){
+		if(rudyValue.degree_ < 2) continue;
+		// flute initialization
+		Flute::readLUT();
+
+		//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
+
+		//int d=0;
+		//int x[100], y[100];
+		Flute::Tree flutetree;
+		//int flutewl;
+		
+		int* xs = rudyValue.xs_.data();
+		int* ys = rudyValue.ys_.data();
+
+		// pin x y coordinate 
+		// store into x[], y[]
+		// d = degree (#terminals)
+
+		//x[0] = 1;
+		//y[0] = 1;
+
+		//x[1] = 3;
+		//y[1] = 5;
+
+		//x[2] = 2;
+		//y[2] = 7;
+
+		//d=3;
+
+		cout << rudyValue.net_->getName() << endl;
+		//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
+		//cout << endl;
+		flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
+		printf("FLUTE wirelength = %d\n", flutetree.length);
+
+		//Flute::printtree(flutetree);
+		//Flute::plottree(flutetree);
+
+		//flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
+		//printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
+	}
 }
 
 
@@ -546,7 +620,8 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<dbInst*> insts,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
-                vector<pin_value> pinValues) {
+                vector<pin_value> pinValues,
+                vector<rudy_value> rudyValues) {
 
 
     // get boundary
@@ -556,7 +631,7 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
     uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
-                insts, wireValues, viaValues, pinValues);
+                insts, wireValues, viaValues, pinValues, rudyValues);
 
     vertices_.push_back(vert);
 }
@@ -647,8 +722,8 @@ Graph::saveFile(const char* prefix) {
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
 		
-		vert.getNets();
-		
+		vert.updateCongRUDY();
+		vert.setNets();	
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
                  << vert.getWireCongestion('T') << "," 
@@ -706,47 +781,7 @@ Graph::saveFile(const char* prefix) {
 }
 
 
-void 
-Graph::updateCongRUDY() {
 
-	// flute initialization
-	Flute::readLUT();
-
-	//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
-
-	int d=0;
-	int x[100], y[100];
-	Flute::Tree flutetree;
-	int flutewl;
-
-	// pin x y coordinate 
-	// store into x[], y[]
-	// d = degree (#terminals)
-
-	x[0] = 1;
-	y[0] = 1;
-
-	x[1] = 3;
-	y[1] = 5;
-
-	x[2] = 2;
-	y[2] = 7;
-
-	d=3;
-
-    flutetree = Flute::flute(d, x, y, FLUTE_ACCURACY);
-    printf("FLUTE wirelength = %d\n", flutetree.length);
-
-	Flute::printtree(flutetree);
-	Flute::plottree(flutetree);
-
-    flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
-    printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
-
-	
-	//for(dbNet* net : nets_) {
-	//}
-}
 
 void
 Graph::updateCongGR() {
@@ -779,7 +814,7 @@ Graph::showCongestion() {
 
 
         double cong = gcell.getRoutingCongestion('T');
-        cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
+        //cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
 
         int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
 
@@ -791,11 +826,6 @@ Graph::showCongestion() {
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
 
 
-
-	updateCongRUDY();
-
-
-    
 
 }
 

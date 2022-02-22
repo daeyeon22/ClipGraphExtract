@@ -47,6 +47,10 @@ typedef bgi::rtree< std::pair<box, pin_value>,
 typedef bgi::rtree< std::pair<box, drc_value>,
 					bgi::quadratic<6> > drc_RTree;
 
+typedef bgi::rtree< std::pair<box, rudy_value>,
+					bgi::quadratic<6> > rudy_RTree;
+
+
 using namespace odb;
 using namespace std;
 using std::vector;
@@ -63,7 +67,7 @@ namespace ClipGraphExtract {
 
 ClipGraphExtractor::ClipGraphExtractor() : db_(nullptr), sta_(nullptr),
     inst_rTree_(nullptr), wire_rTree_(nullptr), via_rTree_(nullptr), pin_rTree_(nullptr),
-	drc_rTree_(nullptr), graphModel_(Star), edgeWeightModel_(A), fileName_("") {};
+	drc_rTree_(nullptr), rudy_rTree_(nullptr),graphModel_(Star), edgeWeightModel_(A), fileName_("") {};
 
 ClipGraphExtractor::~ClipGraphExtractor() {
   clear(); 
@@ -89,6 +93,10 @@ ClipGraphExtractor::clear() {
     delete (pin_RTree*) pin_rTree_;
   }
 
+  if( rudy_rTree_ ) {
+    delete (rudy_RTree*) rudy_rTree_;
+  }
+
   if( drc_rTree_ ) {
     delete (pin_RTree*) drc_rTree_;
   }
@@ -103,11 +111,14 @@ ClipGraphExtractor::clear() {
   wire_rTree_ = nullptr;
   via_rTree_ = nullptr;
   pin_rTree_ = nullptr;
+  rudy_rTree_ = nullptr;
   drc_rTree_ = nullptr;
   graphModel_ = Star;
   edgeWeightModel_ = A;
   fileName_ = "";
 }
+
+
 
 void 
 ClipGraphExtractor::init() {  
@@ -116,6 +127,7 @@ ClipGraphExtractor::init() {
     wire_rTree_ = (void*) (new wire_RTree);
     via_rTree_ = (void*) (new via_RTree);
     pin_rTree_ = (void*) (new pin_RTree);
+    rudy_rTree_ = (void*) (new rudy_RTree);
     drc_rTree_ = (void*) (new drc_RTree);
     
     binGraph_ = (void*) (new bingraph::Graph); 
@@ -124,6 +136,7 @@ ClipGraphExtractor::init() {
     wire_RTree* wire_rTree = (wire_RTree*) wire_rTree_;
     via_RTree* via_rTree = (via_RTree*) via_rTree_;
     pin_RTree* pin_rTree = (pin_RTree*) pin_rTree_;
+    rudy_RTree* rudy_rTree = (rudy_RTree*) rudy_rTree_;
     drc_RTree* drc_rTree = (drc_RTree*) drc_rTree_;
 
     unordered_map<unsigned int, int> layerPitches;
@@ -148,20 +161,58 @@ ClipGraphExtractor::init() {
         inst_rTree->insert( make_pair(b, temp) );
     }
     
-    // DB Query to fill in pin_RTree
-    dbSet<dbITerm> iterms = block->getITerms();
-    for(dbITerm* iterm : iterms){
-        int x, y;
-        pin_value p;
+    // DB Query to fill in pin_RTree and rudy_RTree
+	dbSet<dbNet> nets = block->getNets();
 
-        iterm->getAvgXY(&x, &y);
-        p.name_ = iterm->getMTerm()->getMaster()->getName()+"/"+iterm->getMTerm()->getName();
-        p.setBox(x, y);
-        pin_rTree->insert( make_pair(p.box_, p) );
-    }
+	for(auto net : nets){
+		rudy_value r;
+
+		dbSet<dbITerm> iterms = net->getITerms();
+		int degree = 0;
+		vector<int> xs;
+		vector<int> ys;
+		int lx, ly, ux, uy;
+
+		for(dbITerm* iterm : iterms){
+			int x, y;
+			iterm->getAvgXY(&x, &y);
+			xs.push_back(x);
+			ys.push_back(y);
+
+			if(degree == 0){
+				lx = x;
+				ly = y;
+				ux = x;
+				uy = y;
+			}
+			else{
+				if(x < lx) lx = x;
+				if(ux < x) ux = x;
+				if(y < ly) ly = y;
+				if(uy < y) uy = y;
+			}
+			
+			pin_value p;
+			p.name_ = iterm->getMTerm()->getMaster()->getName()+"/"+iterm->getMTerm()->getName();
+			p.setBox(x, y);
+			pin_rTree->insert( make_pair(p.box_, p) );
+			degree++;
+		}
+	
+		if(iterms.size() != 0){
+			r.net_ = net;
+			r.xs_ = xs;
+			r.ys_ = ys;
+			r.degree_ = degree;
+			r.setBox(lx, ly, ux, uy);
+			rudy_rTree->insert( make_pair(r.box_, r) );
+			//cout << net->getName() << " " << endl;
+			//for(int i = 0; i < degree; i++) cout << r.xs_[i] << " " << r.ys_[i] << endl;
+			//cout << "degree: " << degree << " " << lx << " " << ly << " " << ux << " " << uy << endl;
+		}
+	}
 
     // DB Query to fill in wire_RTree and via_RTree
-    dbSet<dbNet> nets = block->getNets();
     for ( dbNet* net : nets ){ // net
         dbWire* wire = net->getWire();
 
@@ -272,7 +323,6 @@ ClipGraphExtractor::extract(int lx, int ly, int ux, int uy) {
 
 // added by dykim
 void
-
 ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
 
     cout << "Extract bin graph" << endl;
@@ -280,6 +330,7 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
     wire_RTree* wire_rTree = (wire_RTree*) wire_rTree_;
     via_RTree* via_rTree = (via_RTree*) via_rTree_;
     pin_RTree* pin_rTree = (pin_RTree*) pin_rTree_;
+    rudy_RTree* rudy_rTree = (rudy_RTree*) rudy_rTree_;
     
     bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;
     binGraph->setDb(db_);
@@ -292,30 +343,20 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
     int yMin = block->getBBox()->yMin();
     int yMax = block->getBBox()->yMax();
 
-
     dbSite* site = block->getRows().begin()->getSite();
     uint blockWidth = block->getBBox()->getDX();
     uint blockHeight = block->getBBox()->getDY();
     uint siteHeight = site->getHeight();
     uint siteWidth = site->getWidth();
 
-
     int unitSize = numRows * siteHeight;
 
-    cout << xMin << " " << yMin << " " << xMax << " " << yMax << endl;
-    cout << "unit size : " << unitSize << endl;
+    //cout << xMin << " " << yMin << " " << xMax << " " << yMax << endl;
+    //cout << "unit size : " << unitSize << endl;
 
-    
     int numVertices = std::ceil( 1.0* blockWidth / unitSize ) * std::ceil( 1.0*blockHeight / unitSize );
    
     int blockNum = 0;
-
-    //int numCols = ceil(1.0*(xMax-xMin)/unitSize);
-    //int numRows = ceil(1.0*(yMax-yMin)/unitSize);
-
-
-    //binGraph->setMaxColumns(numCols);
-    //binGraph->setMaxRows(numRows);
 
     for(int lx=xMin; lx <= xMax-unitSize; lx+=unitSize) {
         for(int ly=yMin; ly <= yMax-unitSize; ly+=unitSize) {
@@ -333,6 +374,7 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
             vector< pair<box, wire_value> > foundWires;
             vector< pair<box, via_value> > foundVias;
             vector< pair<box, pin_value> > foundPins;
+            vector< pair<box, rudy_value> > foundRudys;
 
             inst_rTree->query(bgi::intersects(queryBox), 
                     std::back_inserter(foundInsts));
@@ -346,10 +388,14 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
             pin_rTree->query(bgi::intersects(queryBox), 
                     std::back_inserter(foundPins));
 
+			rudy_rTree->query(bgi::intersects(queryBox), 
+                    std::back_inserter(foundRudys));
+
             vector<odb::dbInst*> insts;
             vector<wire_value> wireValues;
             vector<via_value> viaValues;
             vector<pin_value> pinValues;
+            vector<rudy_value> rudyValues;
 
             for(pair<box, inst_value>& val : foundInsts) {
                 insts.push_back(val.second.inst_);
@@ -381,9 +427,18 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
                 //                << val.second.y_/2000.0 << endl;
             
             }
+			
+			 for(pair<box, rudy_value>& val : foundRudys){
+                rudyValues.push_back(val.second);
+				//cout << "rudy: " << val.second.net_->getName() << "\t" 
+                //                 << val.second.lx_/2000.0 << " " 
+                //                 << val.second.ly_/2000.0 << " " 
+                //                 << val.second.ux_/2000.0 << " " 
+                //                 << val.second.uy_/2000.0 << endl;
+            }
 
             binGraph->addVertex(lx, ly, ux, uy, maxLayer, insts, 
-                    wireValues, viaValues, pinValues);        
+                    wireValues, viaValues, pinValues, rudyValues);        
         }
     }
 
@@ -545,10 +600,6 @@ void
 ClipGraphExtractor::showCongestionMap() {
     bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;   
     binGraph->showCongestion();
-
-    
-
-
 }
 
 
