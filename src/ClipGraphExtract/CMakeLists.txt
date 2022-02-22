@@ -64,6 +64,7 @@ target_include_directories( ClipGraphExtractor
   ${OPENDB_HOME}/include
   ${DBSTA_HOME}/include
   ${OPENSTA_HOME}/include
+  ${FLUTE_HOME}
   ${CIMG_HOME}
   ${Boost_INCLUDE_DIR}
  )

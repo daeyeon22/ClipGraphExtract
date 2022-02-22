@@ -135,6 +135,12 @@ class Vertex {
     double getAvgInEdges() const;
     double getAvgOutEdges() const;
     double getSequentialRatio() const;
+	
+	// 
+	double getCongRUDY() const;
+	double getCongGR() const;
+
+
 
 
     int getId() const;
@@ -160,6 +166,8 @@ private:
     int id_;
     int label_;
 
+	int congRudy_;
+	int congGr_;
 };
 
 // edge is inst1-inst2 connections
@@ -207,6 +215,9 @@ class Graph {
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
             std::vector<pin_value> pinValues);
+
+	void updateCongRUDY();
+	void updateCongGR();
 
     void initEdges();
     void saveFile(const char* prefix);

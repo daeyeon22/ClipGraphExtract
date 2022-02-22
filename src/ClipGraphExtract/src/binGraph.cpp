@@ -10,6 +10,7 @@
 
 
 #include "CImg.h"
+#include "flute.h"
 
 
 void wire_value::setBox(int fx, int fy, int tx, int ty){
@@ -705,6 +706,57 @@ Graph::saveFile(const char* prefix) {
 }
 
 
+void 
+Graph::updateCongRUDY() {
+
+	// flute initialization
+	Flute::readLUT();
+
+	//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
+
+	int d=0;
+	int x[100], y[100];
+	Flute::Tree flutetree;
+	int flutewl;
+
+	// pin x y coordinate 
+	// store into x[], y[]
+	// d = degree (#terminals)
+
+	x[0] = 1;
+	y[0] = 1;
+
+	x[1] = 3;
+	y[1] = 5;
+
+	x[2] = 2;
+	y[2] = 7;
+
+	d=3;
+
+    flutetree = Flute::flute(d, x, y, FLUTE_ACCURACY);
+    printf("FLUTE wirelength = %d\n", flutetree.length);
+
+	Flute::printtree(flutetree);
+	Flute::plottree(flutetree);
+
+    flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
+    printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
+
+	
+	//for(dbNet* net : nets_) {
+	//}
+}
+
+void
+Graph::updateCongGR() {
+
+
+
+}
+
+
+
 
 void
 Graph::showCongestion() {
@@ -735,10 +787,12 @@ Graph::showCongestion() {
         img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
     }
 
-    img.display("Congestion map", false);
+    //img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
 
 
+
+	updateCongRUDY();
 
 
     
