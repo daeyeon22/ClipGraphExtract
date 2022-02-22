@@ -692,6 +692,7 @@ Graph::saveFile(const char* prefix) {
     nodeLabel.close();
     edgeIndex.open(edgeIndexFileName, std::ios_base::out);
 
+	//
     for(auto& edge : edges_) {
         Vertex* from = edge.getFrom();
         Vertex* to = edge.getTo();
