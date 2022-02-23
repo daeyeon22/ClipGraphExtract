@@ -56,10 +56,10 @@ void pin_value::setBox(int x, int y){
 }
 
 void rudy_value::setBox(int lx, int ly, int ux, int uy){
-    lx_ = lx;
-    ly_ = ly;
-    ux_ = ux;
-    uy_ = uy;
+    lx_ = lx-(wireWidth_/2);
+    ly_ = ly-(wireWidth_/2);
+    ux_ = ux+(wireWidth_/2);
+    uy_ = uy+(wireWidth_/2);
 
     box b(point(lx_, ly_), 
            point(ux_, uy_));
