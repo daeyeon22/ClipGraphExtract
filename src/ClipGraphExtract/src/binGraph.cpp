@@ -10,8 +10,6 @@
 
 
 #include "CImg.h"
-#include "flute.h"
-
 
 void wire_value::setBox(int fx, int fy, int tx, int ty){
 	from_x_ = fx;
@@ -69,9 +67,9 @@ void rudy_value::setBox(int lx, int ly, int ux, int uy){
 }
 
 void rudy_value::setValue(int length){
-    double boxArea = (ux_ - lx_) * (uy_ - ly_);
-	double wireArea = length * wireWidth_;
-	value_ = wireArea / boxArea;
+    double boxArea = ((ux_ - lx_)/1000.0) * ((uy_ - ly_)/1000.0);
+	double wireArea = (length/1000.0) * (wireWidth_/1000.0);
+	value_ = (double) wireArea / boxArea;
 }
 
 void drc_value::setBox(int lx, int ly, int ux, int uy){
@@ -228,53 +226,6 @@ void Vertex::setNets() {
 	for(auto net : localNets_) cout << net->getName() << " ";
 	cout << endl;
 */
-}
-
-
-void
-Vertex::updateCongRUDY() {
-	for(rudy_value rudyValue : rudyValues_){
-		if(rudyValue.degree_ < 2) continue;
-		// flute initialization
-		Flute::readLUT();
-
-		//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
-
-		//int d=0;
-		//int x[100], y[100];
-		Flute::Tree flutetree;
-		//int flutewl;
-		
-		int* xs = rudyValue.xs_.data();
-		int* ys = rudyValue.ys_.data();
-
-		// pin x y coordinate 
-		// store into x[], y[]
-		// d = degree (#terminals)
-
-		//x[0] = 1;
-		//y[0] = 1;
-
-		//x[1] = 3;
-		//y[1] = 5;
-
-		//x[2] = 2;
-		//y[2] = 7;
-
-		//d=3;
-
-		cout << rudyValue.net_->getName() << endl;
-		//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
-		//cout << endl;
-		flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
-		printf("FLUTE wirelength = %d\n", flutetree.length);
-
-		//Flute::printtree(flutetree);
-		//Flute::plottree(flutetree);
-
-		//flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
-		//printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
-	}
 }
 
 
@@ -722,7 +673,6 @@ Graph::saveFile(const char* prefix) {
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
 		
-		vert.updateCongRUDY();
 		vert.setNets();	
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
