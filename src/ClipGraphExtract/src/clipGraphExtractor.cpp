@@ -122,10 +122,6 @@ ClipGraphExtractor::clear() {
 void 
 ClipGraphExtractor::init() {  
     using namespace odb;
-<<<<<<< HEAD
-
-=======
->>>>>>> a5fbd0189d4335979277659fce375233ab8c81c8
     inst_rTree_ = (void*) (new inst_RTree);
     wire_rTree_ = (void*) (new wire_RTree);
     via_rTree_ = (void*) (new via_RTree);
