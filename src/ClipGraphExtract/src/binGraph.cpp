@@ -243,10 +243,10 @@ Vertex::updateCongRUDY() {
 		//int d=0;
 		//int x[100], y[100];
 		Flute::Tree flutetree;
-		//int flutewl;
-		
 		int* xs = rudyValue.xs_.data();
 		int* ys = rudyValue.ys_.data();
+		cout << rudyValue.net_->getName() << endl;
+		flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
 
 		// pin x y coordinate 
 		// store into x[], y[]
@@ -263,10 +263,8 @@ Vertex::updateCongRUDY() {
 
 		//d=3;
 
-		cout << rudyValue.net_->getName() << endl;
 		//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
 		//cout << endl;
-		flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
 		printf("FLUTE wirelength = %d\n", flutetree.length);
 
 		//Flute::printtree(flutetree);
@@ -791,13 +789,17 @@ Graph::updateCongGR() {
 }
 
 
-
+using namespace cimg_library;
+static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
+                           green[] = {0, 255, 0}, blue[] = {120, 200, 255},
+                           darkblue[] = {69, 66, 244},
+                           purple[] = {255, 100, 255}, black[] = {0, 0, 0},
+                           red[] = {255, 0, 0};
 
 void
 Graph::showCongestion() {
-    using namespace cimg_library;
 
-    float opacity = 1.0;
+    float opacity = 0.5;
 
     dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
@@ -806,28 +808,73 @@ Graph::showCongestion() {
 
     CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
 
-    for(auto& gcell : vertices_) {
-        int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
-        int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
-        int y1 = (gcell.getLy() - ly_) / dbUnitMicron;
-        int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
-
-
-        double cong = gcell.getRoutingCongestion('T');
-        //cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
-
-        int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
-
-        char denColor[3] = {(char)color, (char)color, (char)color};
-        img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
+    for(int i=0; i < vertices_.size(); i++) {
+        Vertex* gcell = &vertices_[i];
+        drawGcell(&img, gcell);
+ 
     }
 
-    //img.display("Congestion map", false);
+    img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
 
-
-
 }
+
+
+
+void resize(int &x, int &y, int offsetX, int offsetY, int unit) {
+    x = (x - offsetX) / unit;
+    y = (y - offsetY) / unit;
+}
+
+
+
+void Graph::drawGcell(CImg<unsigned char> *img, Vertex *gcell) {
+    int dbUnitMicron = db_->getChip()->getBlock()->getDbUnitsPerMicron();
+    int offsetX = lx_;
+    int offsetY = ly_;
+
+    //int x1 = (gcell->getLx() - offsetX) / dbUnitMicron;
+    //int y1 = (gcell->getLy() - offsetY) / dbUnitMicron;
+    //int x2 = (gcell->getUx() - offsetX) / dbUnitMicron;
+    //int y2 = (gcell->getUy() - offsetY) / dbUnitMicron;
+
+    
+    for(rudy_value& rudyValue : gcell->getRudyValues()) {
+
+		Flute::Tree tree;
+		int* xs = rudyValue.xs_.data();
+		int* ys = rudyValue.ys_.data();
+		tree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
+       
+
+        for(int i=0; i < 2* tree.deg - 2; i++) {
+
+            int n= tree.branch[i].n;
+            int x1 = tree.branch[i].x;
+            int y1 = tree.branch[i].y;
+            int x2 = tree.branch[n].x;
+            int y2 = tree.branch[n].y;
+
+            resize(x1, y1, offsetX, offsetY, dbUnitMicron);
+            resize(x2, y2, offsetX, offsetY, dbUnitMicron);
+            img->draw_line(x1, y1, x2, y2, black);
+        }
+    }
+    
+    int x1 = gcell->getLx();
+    int x2 = gcell->getUx();
+    int y1 = gcell->getLy();
+    int y2 = gcell->getUy();
+    resize(x1, y1, offsetX, offsetY, dbUnitMicron);
+    resize(x2, y2, offsetX, offsetY, dbUnitMicron);
+
+
+    float opacity = gcell->getRoutingCongestion('T') - 0.7;
+    opacity = min(opacity, (float)0.0);
+    opacity = max(opacity, (float)1.0);
+    img->draw_rectangle(x1, y1, x2, y2, red, opacity);
+}
+
 
 
 

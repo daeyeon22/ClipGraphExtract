@@ -11,6 +11,12 @@
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
+namespace cimg_library {
+    template<typename T1>
+    class CImg;
+}
+
+
 // for easier coding with boost
 typedef bg::model::point<int, 2, bg::cs::cartesian> point;
 typedef bg::model::box<point> box;
@@ -163,7 +169,7 @@ class Vertex {
     int getLy() const;
     int getUx() const;
     int getUy() const;
-    
+
 
 private:
     std::vector<odb::dbInst*> insts_;
@@ -215,7 +221,6 @@ struct pair_hash{
         return h1 ^ h2;
     }
 };
-
 class Graph {
   public:
     Graph();
@@ -240,7 +245,8 @@ class Graph {
     int getWidth() { return ux_ - lx_; }
     int getHeight() { return uy_ - ly_; }
     void showCongestion();  
-
+    
+    void drawGcell(cimg_library::CImg<unsigned char> *img, Vertex* gcell);
   private:
 
     int lx_, ly_, ux_, uy_;

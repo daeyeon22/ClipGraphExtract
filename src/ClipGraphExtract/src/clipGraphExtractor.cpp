@@ -173,11 +173,18 @@ ClipGraphExtractor::init() {
 		int lx, ly, ux, uy;
 
 		for(dbITerm* iterm : iterms){
-			int x, y;
+			
+            int x, y;
 			iterm->getAvgXY(&x, &y);
-			xs.push_back(x);
-			ys.push_back(y);
 
+            if(iterm->isOutputSignal()) {
+                xs.insert(xs.begin(), x);
+                ys.insert(ys.begin(), y);
+            } else {
+                xs.push_back(x);
+                ys.push_back(y);
+            }
+            
 			if(degree == 0){
 				lx = x;
 				ly = y;
