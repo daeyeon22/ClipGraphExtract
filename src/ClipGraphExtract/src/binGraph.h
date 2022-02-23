@@ -143,7 +143,6 @@ class Vertex {
     void setLabel(int label);
     int getLabel();
 	void setNets();
-	void updateCongRUDY();
     
     // for node feature (.x)
     double getUtilization() const;
@@ -167,7 +166,7 @@ class Vertex {
     int getId() const;
     int getLx() const;
     int getLy() const;
-    int getUx() const;
+	int getUx() const;
     int getUy() const;
 
 

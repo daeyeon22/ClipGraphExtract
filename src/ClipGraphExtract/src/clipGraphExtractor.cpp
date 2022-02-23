@@ -19,8 +19,8 @@
 #include "db_sta/dbNetwork.hh"
 
 
-
 #include "CImg.h"
+#include "flute.h"
 #include "instGraph.h"
 #include "binGraph.h"
 #include <iostream>
@@ -211,6 +211,10 @@ ClipGraphExtractor::init() {
 			r.ys_ = ys;
 			r.degree_ = degree;
 			r.setBox(lx, ly, ux, uy);
+			r.wireWidth_ = 200;
+			r.value_ = 0; // initialize
+			updateCongRUDY(r);
+			cout << r.net_->getName() << " " << r.value_ << endl;
 			rudy_rTree->insert( make_pair(r.box_, r) );
 			//cout << net->getName() << " " << endl;
 			//for(int i = 0; i < degree; i++) cout << r.xs_[i] << " " << r.ys_[i] << endl;
@@ -226,7 +230,7 @@ ClipGraphExtractor::init() {
             dbWireDecoder decoder;
             decoder.begin(wire);
             
-            vector< pair<int, int> > point;
+            vector< pair<int, int > > point;
             wire_value w;
             w.pitches_ = layerPitches;
             via_value v;
@@ -297,6 +301,52 @@ ClipGraphExtractor::init() {
             }
         }
     }
+}
+
+
+void
+ClipGraphExtractor::updateCongRUDY(rudy_value& rudyValue) {
+	if(rudyValue.degree_ < 2) return;
+	// flute initialization
+	Flute::readLUT();
+
+	//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
+
+	//int d=0;
+	//int x[100], y[100];
+	Flute::Tree flutetree;
+	//int flutewl;
+	
+	int* xs = rudyValue.xs_.data();
+	int* ys = rudyValue.ys_.data();
+
+	// pin x y coordinate 
+	// store into x[], y[]
+	// d = degree (#terminals)
+
+	//x[0] = 1;
+	//y[0] = 1;
+
+	//x[1] = 3;
+	//y[1] = 5;
+
+	//x[2] = 2;
+	//y[2] = 7;
+
+	//d=3;
+
+	//cout << rudyValue.net_->getName() << endl;
+	//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
+	flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
+	//printf("FLUTE wirelength = %d\n", flutetree.length);
+	//cout << endl;
+	rudyValue.setValue(flutetree.length);
+	
+	//Flute::printtree(flutetree);
+	//Flute::plottree(flutetree);
+
+	//flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
+	//printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
 }
 
 void

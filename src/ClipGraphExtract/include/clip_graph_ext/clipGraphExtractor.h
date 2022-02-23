@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+struct rudy_value; // This struct is already described in ../src/bingraph.h
+
 namespace odb {
 class dbDatabase;
 class dbInst;
@@ -28,6 +30,7 @@ class ClipGraphExtractor {
     void setSta(sta::dbSta* sta);
     void init();
     void clear();
+	void updateCongRUDY(rudy_value& rudyValue);
     void extract(int lx, int ly, int ux, int uy);
     void setSaveFileName (const char* fileName);
     void setSaveFilePrefix(const char* prefix);
