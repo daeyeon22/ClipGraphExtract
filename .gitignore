@@ -1,4 +1,5 @@
 build
+src/ClipGraphExtract/test/**
 src/ClipGraphExtract/test/*.py
 src/ClipGraphExtract/test/*.x
 src/ClipGraphExtract/test/*.y
@@ -9,8 +10,4 @@ src/ClipGraphExtract/test/test_route.tcl
 src/ClipGraphExtract/test/place_results/
 src/ClipGraphExtract/test/route_results/
 src/ClipGraphExtract/test/route_def/
-*.x
-*.edge_index
-*.edge_ettr
-*.y
 
