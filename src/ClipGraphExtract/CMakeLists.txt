@@ -4,6 +4,19 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+
+
+option(USE_CIMG_LIB "Use CImg drawing library for image drawing" ON)
+
+if( USE_CIMG_LIB )
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Dcimg_use_jpeg=1 -D_GLIBCXX_USE_CXX11_ABI=0")
+    #set(CIMG_HOME ${CLIP_GRAPHEXT_HOME}/module/CImg)
+  set(CIMG_HOME ${PROJECT_SOURCE_DIR}/src/CImg)
+  add_definitions(-DENABLE_CIMG_LIB=1)
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+endif()
+
 find_package(SWIG REQUIRED)
 find_package(Boost REQUIRED)
 
@@ -26,6 +39,13 @@ add_custom_command(OUTPUT ${GRAPHEXT_TCL_INIT}
 # Libraries setting 
 ############################################################
 
+if( USE_CIMG_LIB )
+  find_package(X11 REQUIRED)
+  find_package(JPEG REQUIRED)
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${X11_LIBRARIES} ${JPEG_LIBRARIES}")
+else()
+endif()
+
 add_library( ClipGraphExtractor
   src/clipGraphExtractor.cpp
   src/MakeClipGraphExtractor.cpp
@@ -44,6 +64,23 @@ target_include_directories( ClipGraphExtractor
   ${OPENDB_HOME}/include
   ${DBSTA_HOME}/include
   ${OPENSTA_HOME}/include
-
+  ${FLUTE_HOME}
+  ${CIMG_HOME}
   ${Boost_INCLUDE_DIR}
  )
+
+# CIMG_USE case
+if( USE_CIMG_LIB )
+  target_link_libraries( ClipGraphExtractor
+    PRIVATE
+    ${X11_LIBRARIES} 
+    ${JPEG_LIBRARIES} 
+  )
+  target_include_directories( ClipGraphExtractor
+    PUBLIC
+    # For CImg
+    ${CIMG_HOME}
+    ${X11_INCLUDE_DIR}
+    ${JPEG_INCLUDE_DIR}
+  )
+endif()

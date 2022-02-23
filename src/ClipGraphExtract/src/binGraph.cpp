@@ -1,14 +1,20 @@
 #include "math.h"
 #include "opendb/db.h"
 #include "binGraph.h"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 
 #include <iostream>
 
+
+#include "CImg.h"
+#include "flute.h"
+
+
 void wire_value::setBox(int fx, int fy, int tx, int ty){
-    from_x_ = fx;
+	from_x_ = fx;
     from_y_ = fy;
     to_x_ = tx;
     to_y_ = ty;
@@ -51,6 +57,23 @@ void pin_value::setBox(int x, int y){
     box_ = b;
 }
 
+void rudy_value::setBox(int lx, int ly, int ux, int uy){
+    lx_ = lx;
+    ly_ = ly;
+    ux_ = ux;
+    uy_ = uy;
+
+    box b(point(lx_, ly_), 
+           point(ux_, uy_));
+    box_ = b;
+}
+
+void rudy_value::setValue(int length){
+    double boxArea = (ux_ - lx_) * (uy_ - ly_);
+	double wireArea = length * wireWidth_;
+	value_ = wireArea / boxArea;
+}
+
 void drc_value::setBox(int lx, int ly, int ux, int uy){
     lx_ = lx;
     ly_ = ly;
@@ -67,13 +90,11 @@ namespace bingraph {
 using namespace odb;
 using namespace std;
 
-Vertex::Vertex(int id, int lx, int ly, int ux, int uy, vector<dbInst*> insts) :
-    id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), insts_(insts) {
 Vertex::Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer, 
         vector<dbInst*> insts, vector<wire_value> wireValues,
-        vector<via_value> viaValues, vector<pin_value> pinValues) :
+        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues) :
     id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), maxLayer_(maxLayer), insts_(insts), 
-    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues) {
+    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues) {
     label_ = 0;
 }
 
@@ -92,6 +113,10 @@ vector<via_value> Vertex::getViaValues() {
 
 vector<pin_value> Vertex::getPinValues() {
     return pinValues_;
+}
+
+vector<rudy_value> Vertex::getRudyValues() {
+    return rudyValues_;
 }
 
 vector<drc_value> Vertex::getDrcValues() {
@@ -125,6 +150,11 @@ Vertex::addViaValue(via_value viaValue) {
 void
 Vertex::addPinValue(pin_value pinValue) {
     pinValues_.push_back(pinValue);
+}
+
+void
+Vertex::addRudyValue(rudy_value rudyValue) {
+    rudyValues_.push_back(rudyValue);
 }
 
 void
@@ -174,7 +204,82 @@ double Vertex::getUtilization() const {
     return 1.0* overlaps / totalArea;
 }
 
+
+void Vertex::setNets() {
+	for(wire_value wireValue : wireValues_){
+		nets_.insert(wireValue.net_);
+
+		if((wireValue.lx_ < lx_) || (wireValue.ly_ < ly_) || (wireValue.ux_ > ux_) || (wireValue.uy_ > uy_))
+			globalNets_.insert(wireValue.net_);
+	}
+
+	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
+
+/* Debugging
+	cout << "total" << endl;
+	for(auto net : nets_) cout << net->getName() << " ";
+	cout << endl;
+
+	cout << "global" << endl;
+	for(auto net : globalNets_) cout << net->getName() << " ";
+	cout << endl;
+
+	cout << "local" << endl;
+	for(auto net : localNets_) cout << net->getName() << " ";
+	cout << endl;
+*/
+}
+
+
+void
+Vertex::updateCongRUDY() {
+	for(rudy_value rudyValue : rudyValues_){
+		if(rudyValue.degree_ < 2) continue;
+		// flute initialization
+		Flute::readLUT();
+
+		//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
+
+		//int d=0;
+		//int x[100], y[100];
+		Flute::Tree flutetree;
+		//int flutewl;
+		
+		int* xs = rudyValue.xs_.data();
+		int* ys = rudyValue.ys_.data();
+
+		// pin x y coordinate 
+		// store into x[], y[]
+		// d = degree (#terminals)
+
+		//x[0] = 1;
+		//y[0] = 1;
+
+		//x[1] = 3;
+		//y[1] = 5;
+
+		//x[2] = 2;
+		//y[2] = 7;
+
+		//d=3;
+
+		cout << rudyValue.net_->getName() << endl;
+		//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
+		//cout << endl;
+		flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
+		printf("FLUTE wirelength = %d\n", flutetree.length);
+
+		//Flute::printtree(flutetree);
+		//Flute::plottree(flutetree);
+
+		//flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
+		//printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
+	}
+}
+
+
 double Vertex::getRoutingCongestion(char type) const {
+	
 	unsigned int boxLength = ux_-lx_; // Box is a square.
 
 	unordered_map<char, double> layerDemands;	
@@ -182,7 +287,6 @@ double Vertex::getRoutingCongestion(char type) const {
 	unordered_map<unsigned int, bool> tf;
 	
 	char type_;
-
 
 	// Wire distinction
 	for(wire_value wireValue : wireValues_){
@@ -421,7 +525,6 @@ double Vertex::getStdOfPins(char type) const {
     return sqrt(variance);
 }
 
->>>>>>> 5c125e13ae32e423e9ee5015abcf4a52a4957523
 double Vertex::getAvgInEdges() const {
     if (insts_.size() == 0)
         return 0;
@@ -495,7 +598,10 @@ set<dbInst*> getSinks(dbInst* inst) {
 }
 
 Graph::Graph() {
-
+    lx_ = INT_MAX;
+    ly_ = INT_MAX;
+    ux_ = INT_MIN;
+    uy_ = INT_MIN;
 }
 
 Graph::~Graph() {
@@ -509,35 +615,23 @@ vector<Vertex*> Graph::getVertices() {
     return vertices;
 }
 
-
-void 
-Graph::addVertex( int lx, int ly, int ux, int uy, vector<dbInst*> insts ) {
-    //cout << "start addvertex" << endl;
-
-    Vertex vert(vertices_.size(), lx, ly, ux, uy, insts);
-    //for( dbInst* inst : insts ) {
-    //    vert.addInst(inst);
-    //}
-
-    vertices_.push_back(vert);
-   // vertices_.push_back( Vertex(vertices_.size(), lx, ly, ux, uy) );
-    
-    //Vertex* vertex = &vertices_.back();
-    //for( dbInst* inst : insts ) {
-    //    vertex->addInst(inst);
-    //    inst2vertex_[inst] = vertex;
-    //}
-
-    //cout << "end addvertex" << endl;
-}
+void
 Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<dbInst*> insts,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
-                vector<pin_value> pinValues) {
+                vector<pin_value> pinValues,
+                vector<rudy_value> rudyValues) {
+
+
+    // get boundary
+    lx_ = min(lx, lx_);
+    ly_ = min(ly, ly_);
+    ux_ = max(ux, ux_);
+    uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
-                insts, wireValues, viaValues, pinValues);
+                insts, wireValues, viaValues, pinValues, rudyValues);
 
     vertices_.push_back(vert);
 }
@@ -615,7 +709,7 @@ float Edge::getWeight() const {
 
 void
 Graph::saveFile(const char* prefix) {
-    ofstream nodeAttr;
+	ofstream nodeAttr;
     ofstream nodeLabel;
     ofstream edgeIndex;
     string attrFileName = string(prefix) + ".x";
@@ -627,7 +721,9 @@ Graph::saveFile(const char* prefix) {
 
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
-
+		
+		vert.updateCongRUDY();
+		vert.setNets();	
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
                  << vert.getWireCongestion('T') << "," 
@@ -672,6 +768,7 @@ Graph::saveFile(const char* prefix) {
     nodeLabel.close();
     edgeIndex.open(edgeIndexFileName, std::ios_base::out);
 
+	//
     for(auto& edge : edges_) {
         Vertex* from = edge.getFrom();
         Vertex* to = edge.getTo();
@@ -682,6 +779,57 @@ Graph::saveFile(const char* prefix) {
     }
     edgeIndex.close();
 }
+
+
+
+
+void
+Graph::updateCongGR() {
+
+
+
+}
+
+
+
+
+void
+Graph::showCongestion() {
+    using namespace cimg_library;
+
+    float opacity = 1.0;
+
+    dbBlock* block = db_->getChip()->getBlock();
+    int dbUnitMicron = block->getDbUnitsPerMicron();
+    int imgWidth = getWidth() / dbUnitMicron;
+    int imgHeight = getHeight() / dbUnitMicron;
+
+    CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
+
+    for(auto& gcell : vertices_) {
+        int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
+        int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
+        int y1 = (gcell.getLy() - ly_) / dbUnitMicron;
+        int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
+
+
+        double cong = gcell.getRoutingCongestion('T');
+        //cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
+
+        int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
+
+        char denColor[3] = {(char)color, (char)color, (char)color};
+        img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
+    }
+
+    //img.display("Congestion map", false);
+    //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
+
+
+
+}
+
+
 
 };
 

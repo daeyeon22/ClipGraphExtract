@@ -62,11 +62,29 @@ struct pin_value{
     void setBox(int x, int y);
 };
 
+struct rudy_value{
+    odb::dbNet* net_;
+	std::vector<int> xs_;
+	std::vector<int> ys_;
+	int degree_;
+	double value_;
+	int wireWidth_;
+
+	int lx_, ly_; // minimum boundary point
+    int ux_, uy_; // maximum boundary point
+
+	box box_;
+    void setBox(int lx, int ly, int ux, int uy);
+    void setValue(int length);
+};
+
 struct drc_value{
     std::string type_;
-
-	std::string from_;
-	std::string to_;
+	std::string detailed_;
+	std::string toNet_;
+	std::string fromNet_;
+	std::string cell_;
+	int layer_;
 
     int lx_, ly_; // minimum boundary point
     int ux_, uy_; // maximum boundary point
@@ -75,7 +93,6 @@ struct drc_value{
 
     void setBox(int lx, int ly, int ux, int uy);
 };
-
 
 namespace odb {
   class dbInst;
@@ -91,33 +108,36 @@ class Edge;
 // vertex is equal to dbInst
 class Vertex {
   public:
-    Vertex(int id, int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
+    //Vertex(int id, int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
     Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer,  
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
-            std::vector<pin_value> pinValues);
+            std::vector<pin_value> pinValues,
+            std::vector<rudy_value> rudyValues);
 
     std::vector<odb::dbInst*> getInsts();
     std::vector<Edge*>  getInEdges();
     std::vector<Edge*>  getOutEdges();
-
-    void addInst(odb::dbInst* inst);
     std::vector<wire_value> getWireValues();
     std::vector<via_value> getViaValues();
     std::vector<pin_value> getPinValues();
+    std::vector<rudy_value> getRudyValues();
     std::vector<drc_value> getDrcValues();
 
     void addInst(odb::dbInst* inst);
     void addWireValue(wire_value wireValue);
     void addViaValue(via_value viaValue);
     void addPinValue(pin_value pinValue);
+    void addRudyValue(rudy_value rudyValue);
     void addDrcValue(drc_value drcValue);
     void addInEdge(Edge* edge);
     void addOutEdge(Edge* edge);
 
     void setLabel(int label);
     int getLabel();
+	void setNets();
+	void updateCongRUDY();
     
     // for node feature (.x)
     double getUtilization() const;
@@ -134,7 +154,9 @@ class Vertex {
     double getAvgInEdges() const;
     double getAvgOutEdges() const;
     double getSequentialRatio() const;
-
+	
+	double getCongRUDY() const;
+	double getCongGR() const;
 
     int getId() const;
     int getLx() const;
@@ -149,16 +171,19 @@ private:
     std::vector<Edge*> outEdges_;
     int lx_, ly_, ux_, uy_;
     std::vector<wire_value> wireValues_;
+    std::set<odb::dbNet*> nets_;
+    std::set<odb::dbNet*> localNets_;
+    std::set<odb::dbNet*> globalNets_;
     std::vector<via_value> viaValues_;
     std::vector<pin_value> pinValues_;
+    std::vector<rudy_value> rudyValues_;
     std::vector<drc_value> drcValues_;
-    std::vector<Edge*> inEdges_;
-    std::vector<Edge*> outEdges_;
-    int lx_, ly_, ux_, uy_;
     int maxLayer_;
     int id_;
     int label_;
 
+	int congRudy_;
+	int congGr_;
 };
 
 // edge is inst1-inst2 connections
@@ -199,18 +224,27 @@ class Graph {
     std::vector<Vertex*> getVertices();
     std::vector<Edge*> getEdges();
 
+    void setDb(odb::dbDatabase* db) { db_ = db; }
     void addVertex(int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
     void addVertex(int lx, int ly, int ux, int uy, int maxLayer, 
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
-            std::vector<pin_value> pinValues);
+            std::vector<pin_value> pinValues,
+            std::vector<rudy_value> rudyValues);
+
+	void updateCongGR();
 
     void initEdges();
     void saveFile(const char* prefix);
-    
-  
+    int getWidth() { return ux_ - lx_; }
+    int getHeight() { return uy_ - ly_; }
+    void showCongestion();  
+
   private:
+
+    int lx_, ly_, ux_, uy_;
+
     odb::dbDatabase* db_;
     std::vector<Vertex> vertices_;
     std::vector<Edge> edges_;
