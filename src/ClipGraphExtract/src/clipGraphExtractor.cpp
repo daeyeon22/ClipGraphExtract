@@ -160,9 +160,11 @@ ClipGraphExtractor::init() {
         inst_rTree->insert( make_pair(b, temp) );
     }
     
+	Flute::readLUT();
     // DB Query to fill in pin_RTree and rudy_RTree
 	dbSet<dbNet> nets = block->getNets();
 
+    cout << "Start processing" << endl;
 	for(auto net : nets){
 		rudy_value r;
 
@@ -213,7 +215,7 @@ ClipGraphExtractor::init() {
 			r.setBox(lx, ly, ux, uy);
 			r.wireWidth_ = 200;
 			r.value_ = 0; // initialize
-			updateCongRUDY(r);
+            updateCongRUDY(r);
 			cout << r.net_->getName() << " " << r.value_ << endl;
 			rudy_rTree->insert( make_pair(r.box_, r) );
 			//cout << net->getName() << " " << endl;
@@ -308,7 +310,6 @@ void
 ClipGraphExtractor::updateCongRUDY(rudy_value& rudyValue) {
 	if(rudyValue.degree_ < 2) return;
 	// flute initialization
-	Flute::readLUT();
 
 	//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
 

@@ -10,6 +10,7 @@
 
 
 #include "CImg.h"
+#include "flute.h"
 
 void wire_value::setBox(int fx, int fy, int tx, int ty){
 	from_x_ = fx;
@@ -778,6 +779,24 @@ void resize(int &x, int &y, int offsetX, int offsetY, int unit) {
     y = (y - offsetY) / unit;
 }
 
+struct MyBox {
+    int lx, ly;
+    int ux, uy;
+    MyBox(int x1, int y1, int x2, int y2) :
+        lx(x1), ly(y1), ux(x2), uy(y2) {}
+};
+
+
+bool isInside(MyBox b1, MyBox b2) {
+    
+    if((b1.lx <= b2.lx && b1.ux >= b2.ux) 
+            && (b1.ly <= b2.ly && b1.uy >= b2.uy))
+        return true;
+    else
+        return false;
+}
+
+
 
 
 void Graph::drawGcell(CImg<unsigned char> *img, Vertex *gcell) {
@@ -790,15 +809,29 @@ void Graph::drawGcell(CImg<unsigned char> *img, Vertex *gcell) {
     //int x2 = (gcell->getUx() - offsetX) / dbUnitMicron;
     //int y2 = (gcell->getUy() - offsetY) / dbUnitMicron;
 
-    
+   
+    cout << "1" << endl;
     for(rudy_value& rudyValue : gcell->getRudyValues()) {
+
+        if( rudyValue.degree_ < 2 ) {
+            continue;
+        }
+
+
+        MyBox netBbox(rudyValue.lx_, rudyValue.ly_, rudyValue.ux_, rudyValue.uy_);
+        MyBox gcellBbox(gcell->getLx(), gcell->getLy(), gcell->getUx(), gcell->getUy());
+        if(!isInside( gcellBbox, netBbox )) {
+            continue;
+        }
+
+
+
 
 		Flute::Tree tree;
 		int* xs = rudyValue.xs_.data();
 		int* ys = rudyValue.ys_.data();
 		tree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
        
-
         for(int i=0; i < 2* tree.deg - 2; i++) {
 
             int n= tree.branch[i].n;
@@ -824,7 +857,7 @@ void Graph::drawGcell(CImg<unsigned char> *img, Vertex *gcell) {
     float opacity = gcell->getRoutingCongestion('T') - 0.7;
     opacity = min(opacity, (float)0.0);
     opacity = max(opacity, (float)1.0);
-    img->draw_rectangle(x1, y1, x2, y2, red, opacity);
+    //img->draw_rectangle(x1, y1, x2, y2, red, opacity);
 }
 
 
