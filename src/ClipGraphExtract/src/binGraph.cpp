@@ -745,7 +745,28 @@ Graph::updateCongGR() {
 
 void
 Graph::showCongestion() {
-    using namespace cimg_library;
+	char RLEVEL0[3] = {(char) 255, (char) 245, (char) 235};
+	char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
+	char RLEVEL2[3] = {(char) 253, (char) 208, (char) 162};
+	char RLEVEL3[3] = {(char) 253, (char) 174, (char) 107};
+	char RLEVEL4[3] = {(char) 253, (char) 141, (char) 60};
+	char RLEVEL5[3] = {(char) 241, (char) 105, (char) 19};
+	char RLEVEL6[3] = {(char) 217, (char) 72, (char) 1};
+	char RLEVEL7[3] = {(char) 166, (char) 54, (char) 3};
+	char RLEVEL8[3] = {(char) 127, (char) 39, (char) 4};
+
+	char BLEVEL0[3] = {(char) 252, (char) 251, (char) 253};
+	char BLEVEL1[3] = {(char) 239, (char) 237, (char) 245};
+	char BLEVEL2[3] = {(char) 218, (char) 218, (char) 235};
+	char BLEVEL3[3] = {(char) 188, (char) 189, (char) 220};
+	char BLEVEL4[3] = {(char) 158, (char) 154, (char) 200};
+	char BLEVEL5[3] = {(char) 128, (char) 125, (char) 186};
+	char BLEVEL6[3] = {(char) 106, (char) 81, (char) 163};
+	char BLEVEL7[3] = {(char) 84, (char) 39, (char) 143};
+	char BLEVEL8[3] = {(char) 63, (char) 0, (char) 125};
+
+
+	using namespace cimg_library;
 
     float opacity = 1.0;
 
@@ -763,20 +784,38 @@ Graph::showCongestion() {
         int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
 
 
-        double cong = gcell.getRoutingCongestion('T');
-        //cout << "(" << x1 << " " << y1 << ") (" << x2 << " " << y2  << ") -> " << cong << endl;
+        //int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
+        int congValue = gcell.getRoutingCongestion('T')*100;
+		int drcValue = gcell.getNumOfDrc()*10;
+		
+		char *color;
+/*
+		if(congValue < 11) color = RLEVEL0;
+		else if(congValue < 22) color = RLEVEL1;
+		else if(congValue < 33) color = RLEVEL2;
+		else if(congValue < 44) color = RLEVEL3;
+		else if(congValue < 55) color = RLEVEL4;
+		else if(congValue < 66) color = RLEVEL5;
+		else if(congValue < 77) color = RLEVEL6;
+		else if(congValue < 88) color = RLEVEL7;
+		else color = RLEVEL8;
+*/ 
+		if(drcValue < 11) color = BLEVEL0;
+		else if(drcValue < 22) color = BLEVEL1;
+		else if(drcValue < 33) color = BLEVEL2;
+		else if(drcValue < 44) color = BLEVEL3;
+		else if(drcValue < 55) color = BLEVEL4;
+		else if(drcValue < 66) color = BLEVEL5;
+		else if(drcValue < 77) color = BLEVEL6;
+		else if(drcValue < 88) color = BLEVEL7;
+		else color = BLEVEL8;
 
-        int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
 
-        char denColor[3] = {(char)color, (char)color, (char)color};
-        img.draw_rectangle(x1, y1, x2, y2, denColor, opacity);
+		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
     }
 
-    //img.display("Congestion map", false);
+    img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
-
-
-
 }
 
 
