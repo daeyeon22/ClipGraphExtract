@@ -40,7 +40,7 @@ class DrcMarker {
 };
 
 
-class RtTree {
+class RSMT {
   private:
     odb::dbNet* net_;
     odb::Rect bbox_;
@@ -52,7 +52,7 @@ class RtTree {
     std::vector<DrcMarker*> markers_;
     
   public:
-    RtTree(odb::dbNet* net) : net_(net) {}
+    RSMT(odb::dbNet* net) : net_(net) {}
 
     std::vector<odb::Rect> decomposeRSMT();
 
@@ -81,15 +81,14 @@ enum Orient {
 };
 
 struct ResourceModel {
-
-    int numSupply[4] = {0};
-    int numDemand[4] = {0};
+    int trackSupply[4] = {0};
+    int trackDemand[4] = {0};
     int wireCapacity;
     int wireLength;
     
-    double getWireUtilization();
-    double getNumSupply(Orient type);
-    double getNumDemand(Orient type);
+    double getWireDensity();
+    double getTrackSupply(Orient type);
+    double getTrackDemand(Orient type);
     double getWireCapaicty();
     double getWireLength();
 };
@@ -98,8 +97,7 @@ struct ResourceModel {
 class Gcell {
   private:   
     // Gcell features
-    MyBox bbox_;
-    odb::Rect rect_;
+    odb::Rect bbox_;
 
     ResourceModel rmGR; // using GR results
     ResourceModel rmDR; // using DR results
@@ -111,33 +109,59 @@ class Gcell {
     int numLocalNets_;
     int numGlobalNets_;
 
-    double utilization_;
+    int totalCellArea_;
+    int totalPinArea_;
+
+    double cellDensity_;
+    double pinDensity_;
     double RUDY_;
 
-    std::vector<dbInst*> insts_;
+    std::vector<odb::dbInst*> insts_;
+
 
   public:
+    bgBox getQueryBox();
     odb::Rect getBBox(){ return rect_; }
     void updateResourceModelRSMT(odb::Rect seg);
     void updateResourceModelGR(odb::Rect seg);
+    void addInst(odb::dbInst* inst);
 
 
+    //
+    void extractFeaturePL(BoxRtree<odb::dbInst*> &rtree);
+    void extractFeatureEGR(SegRtree<odb::dbNet*> &rtree);
+    void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
 
+    // helper
+    int getArea();
+    int getCellArea();
+    int getPinArea();
 
 };
 
 class Grid {
 
-    odb::Rect rect_;
+    odb::Rect coreBBox_;
     int numCols_, numRows_;
     int gridWidth_, gridHeight_;
+    int wireCapacity_;
+    int trackSupply_;
 
     odb::dbDatabase* db_;
     std::vector<Gcell> gcells_;
-    std::vector<RtTree> rtTrees_;
+    std::vector<RSMT> rsmts_;
     // After read drc.rpt
     std::vector<DrcMarker> markers_;
     
+
+  public:
+    void setCoreArea(odb::Rect& rect);
+    void setGcellWidth(int width);
+    void setGcellHeight(int height);
+    void setWireCapacity(int wCap);
+    void setTrackSupply(int tSup);
+
+
 
 };
 

@@ -5,9 +5,11 @@
 
 
 
+typedef bg::model::point<int, 2, bg::cs::cartesian> bgPoint;
+typedef bg::model::box<bgPoint> bgBox;
+typedef bg::model::segment<bgPoint> bgSeg;
 
-void
-ClipGraphExtractor::initGrid(int numRows, int maxRtLayer) {
+void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
 
     grid = new Grid();
     dbBlock* block = getDb()->getChip()->getBlock();
@@ -17,62 +19,77 @@ ClipGraphExtractor::initGrid(int numRows, int maxRtLayer) {
 
     int gcellWidth = site->getHeight() * numRows();
     int gcellHeight = site->getHeight() * numRows();
-    
+
+    // get routing supply / capacity for each gcell
+    dbSet<dbTechLayer> techLayers = getDb()->getTech()-getLayers();
+    int numLayer=0;
+    int numSupply=0;
+    int wireCapacity=0;
+    for(dbTechLayer* layer : techLayers) {
+        if(layer->getType() == dbTechLayerType::ROUTING) {
+            numLayer++;
+            int minPitch = layer->getPitch();
+            int minSpacing = layer->getSpacing();
+            int capacity=0;
+            int supply=0;
+            if(layer->getDirection() == dbTechLayerDir::HORIZONTAL) {
+                supply = gcellHeight / minPitch;
+                capacity = supply * gcellWidth;
+            }else if(layer->getDirection() == dbTechLayerDir::VERTICAL) {
+                supply = gcellWidth / minPitch;
+                capacity = supply * gcellHeight;
+            }
+            
+            numSupply+= supply;
+            wireCapacity += capacity;
+
+            if(numLayer == maxLayer)
+                break;
+        }
+    }
+
+    // Get core area
     odb::Rect blockArea;
     block->getBBox()->getBox(blockArea);
 
+    // Initialize Gcell Grid
     grid->setBoundary(blockArea);
     grid->setGcellWidth(gcellWidth);
     grid->setGcellHeight(gcellHeight);
+    grid->setWireCapacity(wireCapacity);
+    grid->setTrackSupply(trackSupply);
     grid->initGrid();
-    
     //  
-    
+   
+    template<typename A> 
+    using bgi::rtree<pair<bgBox, A>, bgi::quadratic<6>> BoxRtree;
+    template<typename A> 
+    using bgi::rtree<pair<bgSeg, A>, bgi::quadratic<6>> SegRtree;
 
+    BoxRtree<dbInst*> instRtree;
+    BoxRtree<Gcell*> gcellRtree;
+    SegRtree<dbNet*> egrRtree;
+    SegRtree<RSMT*> rsmtRtree;
 
-    // get layer pitches
-    unordered_map<dbTechLayer*, uint> layerMinWidth;
-    unordered_map<dbTechLayer*, uint> layerMinSpacing;
-    dbSet<dbTechLayer> techLayers = getDb()->getTech()-getLayers();
-    for(dbTechLayer* layer : techLayers) {
-        layerMinWidth[layer] = layer->getWidth();
-        layerMinSpacing[layer] = layer->getSpacing();
-        //if(layer->getType() == dbTechLayerType::ROUTING) {
-        //}
-    }
-
-    typedef bg::model::point<int, 2, bg::cs::cartesian> bgPoint;
-    typedef bg::model::box<bgPoint> bgBox;
-    typedef bg::model::segment<bgPoint> bgSeg;
-
-
-    bgi::rtree<pair<bgBox, dbInst*>, bgi::quadratic<6>> instRtree;
-    bgi::rtree<pair<bgSeg, dbNet*>, bgi::quadratic<6>> egrWireRtree;
-    bgi::rtree<pair<bgBox, Gcell*>, bgi::quadratic<6>> gcellRtree;
-    bgi::rtree<pair<bgSeg, RtTree*>, bgi::quadratic<6>> rtSegRtree;
-
-    bgi::rtree<pair<bgPoint, dbInst*>, bgi::quadratic<6>> viaRtree;
-
+    //bgi::rtree<pair<bgBox, dbInst*>, bgi::quadratic<6>> instRtree;
+    //bgi::rtree<pair<bgBox, Gcell*>, bgi::quadratic<6>> gcellRtree;
+    //bgi::rtree<pair<bgSeg, dbNet*>, bgi::quadratic<6>> egrWireRtree;
+    //bgi::rtree<pair<bgSeg, RSMT*>, bgi::quadratic<6>> rtSegRtree;
+    //bgi::rtree<pair<bgPoint, dbInst*>, bgi::quadratic<6>> viaRtree;
     
     // make gcellRtree
     for( Gcell* gcell : grid->getGcells() ) {
-        odb::Rect rect;
-        gcell->getBox(rect);
-
-        bgBox gcellBox(bgPoint(rect.xMin(), rect.yMin()), bgPoint(rect.xMax(), rect.yMax()));
+        bgBox gcellBox = gcell->getQueryBox();
         gcellRtree.insert( make_pair(gcellBox, gcell) );
     }
-
 
     // make instRtree
     for( dbInst* inst : block->getInsts() ) {
         dbBox* bBox = inst->getBBox();
         bgBox b (bgPoint(bBox->xMin(), bBox->yMin()),
                     bgPoint(bBox->xMax(), bBox->yMax()));
-
         instRtree.insert( make_pair(b, inst) );
-    };
-
+    }
 
     // init FLUTE
     Flute::readLUT();
@@ -83,109 +100,27 @@ ClipGraphExtractor::initGrid(int numRows, int maxRtLayer) {
         
         // add terminals
         int x,y;
-        RtTree* myRtTree = grid->createRoutingTree(net);
+        RSMT* myRSMT = grid->createRSMT(net);
         for(dbITerm* iterm : net->getITerms()) {
             iterm->getAvgXY(&x, &y);
-            myRtTree->addTerminal(x,y);
+            myRSMT->addTerminal(x,y);
         }
         for(dbBTerm* bterm : net->getBTerms()) {
             bterm->getAvgXY(&x, &y);
-            myRtTree->addTerminal(x,y);
+            myRSMT->addTerminal(x,y);
         }
 
         // create RSMT
-        myRtTree->createRSMT();
-
-
+        myRSMT->createRSMT();
         vector<pair<bgBox, Gcell*>> queryResults;
-        vector<odb::Rect> segments = myRtTree->decomposeRSMT();
+        vector<odb::Rect> segments = myRSMT->getSegments();
 
+        // insert segments into rtree
         for(odb::Rect& seg : segments) {
-
-            // update #cut-nets
-            queryResults.clear();
-            bgSeg querySeg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
-            gcellRtree->query(bgi::intersects(querySeg), std::back_inserter(queryResults));
-
-            for(pair<bgBox,Gcell*> val : queryResults) {
-                Gcell* gcell = val.second;
-                Rect rect = gcell->getBBox();
-
-                int xMin = gcell->getBBox()->xMin();
-                int xMax = gcell->getBBox()->xMax();
-                int yMin = gcell->getBBox()->yMin();
-                int yMax = gcell->getBBox()->yMax();
-
-                if(seg.xMin() == seg.xMax() && seg.yMin() != seg.yMax()) {
-                    // vertical
-                    if(seg.yMin() < yMin) {
-
-                    } else {
-
-                    }
-                } else if (seg.xMin() != seg.xMax() && seg.yMin() == seg.yMax()) {
-                    // horizontal
-                } else {    
-                    // point
-                }
-
-
-
-
-                if( seg.xMin() <= xMin ) {
-
-                } else if (seg.xMin() > xMin && seg.xMin() < xMax) {
-
-                } else {
-
-                }
-
-
-
-
-
-
-
-            }
-
-
-
+            // update (1) #cut-nets (2) wire utilization
+            bgSeg bgseg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
+            rsmtRtree.insert( make_pair( bgseg, myRSMT ) );
         }
-
-        
-
-
-
-        // search intersecting gcells 
-        bgBox qeuryBox = myRtTree->getQueryBBox();
-
-
-        gcellRtree->query(bgi::intersects(queryBox), std::back_inserter(queryResults));
-        
-        // update parital RUDY
-        for(pair<bgBox,Gcell*> val : queryResults) {
-            Gcell* gcell = val.second;
-
-            odb::Rect gcellBBox = gcell->getRect();
-            odb::Rect netBBox = myRtTree->getBBox();
-            
-            
-            uint64 gcellArea = gcellBBox.area();
-            uint64 intersectArea = gcellBBox.intersect(netBBox);
-
-            double dn = myRtTree->getWireUniformDensity();
-            double R = 1.0 * intersectArea / gcellArea;
-            double partial_RUDY = dn*R;
-
-            gcell->addRUDY( parital_RUDY );
-        }
-
-        // update cut-nets (RSMT)
-        
-
-
-
-
 
 
 
@@ -225,8 +160,8 @@ ClipGraphExtractor::initGrid(int numRows, int maxRtLayer) {
                             int yMin = min(pt1.getY(), pt2.getY()) - layerMinWidth[decoder.getLayer()]/2;
                             int yMax = max(pt1.getY(), pt2.getY()) + layerMinWidth[decoder.getLayer()]/2;
 
-                            bgBox wireBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            wireRtree->insert( make_pair( wireBox, net ) );
+                            bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                            egrWireRtree->insert( make_pair( wireSeg, net ) );
                         }
                         
                         break;
@@ -240,31 +175,58 @@ ClipGraphExtractor::initGrid(int numRows, int maxRtLayer) {
 
             }
         }
-
-        
-
-
     }
 
 
-    //
+
+
+    // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
-        odb::Rect rect;
-        gcell->getBox(rect);
-
-        bgBox queryBox( bgPoint(rect.xMin(), rect.yMin()), bgPoint(rect.xMax(), rect.yMax()) );
-        vector< pair<bgBox, dbInst*> > foundInsts;
-
-
-
-
-
-
-
-
-
+        bgBox queryBox = gcell->getQueryBox();
+        vector< pair<bgBox, dbInst*> > queryResults;
+        instRtree.query(bgi::intersects(queryBox), std::back_inserter(queryResults));
+        for(auto& val : queryResults) {
+            dbInst* inst = val.sceond;
+            gcell->addInst(inst);
+        }
     }
 
+
+
+
+
+
+            queryResults.clear();
+            bgSeg querySeg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
+            gcellRtree->query(bgi::intersects(querySeg), std::back_inserter(queryResults));
+
+            for(pair<bgBox,Gcell*> val : queryResults) {
+                Gcell* gcell = val.second;
+                Rect rect = gcell->getBBox();
+                gcell->updateResourceModelRSMT(seg);
+            }
+        // search intersecting gcells 
+        bgBox qeuryBox = myRSMT->getQueryBBox();
+        queryResults.clear();
+        gcellRtree->query(bgi::intersects(queryBox), std::back_inserter(queryResults));
+        
+        // update parital RUDY
+        for(pair<bgBox,Gcell*> val : queryResults) {
+            Gcell* gcell = val.second;
+
+            odb::Rect gcellBBox = gcell->getRect();
+            odb::Rect netBBox = myRSMT->getBBox();
+            
+            
+            uint64 gcellArea = gcellBBox.area();
+            uint64 intersectArea = gcellBBox.intersect(netBBox);
+
+            double dn = myRSMT->getWireUniformDensity();
+            double R = 1.0 * intersectArea / gcellArea;
+            double partial_RUDY = dn*R;
+
+            gcell->addRUDY( parital_RUDY );
+        }
 
 
 
