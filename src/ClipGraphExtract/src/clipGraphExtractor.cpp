@@ -23,6 +23,7 @@
 #include "flute.h"
 #include "instGraph.h"
 #include "binGraph.h"
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -210,7 +211,7 @@ ClipGraphExtractor::init() {
 			r.setBox(lx, ly, ux, uy);
 			r.value_ = 0; // initialize
 			updateCongRUDY(r);
-			cout << r.net_->getName() << " " << r.value_ << endl;
+			//cout << r.net_->getName() << " " << r.value_ << endl;
 			rudy_rTree->insert( make_pair(r.box_, r) );
 			//cout << net->getName() << " " << endl;
 			//for(int i = 0; i < degree; i++) cout << r.xs_[i] << " " << r.ys_[i] << endl;
@@ -447,6 +448,10 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
             vector<pin_value> pinValues;
             vector<rudy_value> rudyValues;
 
+			set<string> nets;
+			set<string> localNets;
+			set<string> globalNets;
+
             for(pair<box, inst_value>& val : foundInsts) {
                 insts.push_back(val.second.inst_);
             }
@@ -458,9 +463,25 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
                 //                 << val.second.ly_/2000.0 << " " 
                 //                 << val.second.ux_/2000.0 << " " 
                 //                 << val.second.uy_/2000.0 << endl;
-
+				
+				wire_value wireValue = val.second;
+				nets.insert(wireValue.net_->getName());
+				
+				if((wireValue.lx_ < lx) || (wireValue.ly_ < ly) || (wireValue.ux_ > ux) || (wireValue.uy_ > uy))
+					globalNets.insert(wireValue.net_->getName());
             }
-            
+			set_difference(nets.begin(), nets.end(), globalNets.begin(), globalNets.end(), inserter(localNets, localNets.end()));
+    		
+			//cout << "total" << endl;
+			//for(auto net : nets) cout << net << " ";
+			//cout << endl;
+			//cout << "global" << endl;
+			//for(auto net : globalNets) cout << net << " ";
+			//cout << endl;
+			//cout << "local" << endl;
+			//for(auto net : localNets) cout << net << " ";
+			//cout << endl;
+
             for(pair<box, via_value>& val : foundVias) {
                 viaValues.push_back(val.second);
                 //cout << "via: " << val.second.lx_/2000.0 << " " 
@@ -488,7 +509,8 @@ ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
             }
 
             binGraph->addVertex(lx, ly, ux, uy, maxLayer, insts, 
-                    wireValues, viaValues, pinValues, rudyValues);        
+                    wireValues, viaValues, pinValues, rudyValues,
+					nets, localNets, globalNets); 
         }
     }
 
@@ -595,6 +617,7 @@ ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
 		
 				//cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << cell << " " << layer << " ";
 				//cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
+				
 				box b (point(lx, ly), point(ux, uy));
 				drc_value d;
 				d.type_ = type;
@@ -603,6 +626,7 @@ ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
 				d.fromNet_ = fromNet;
 				d.cell_ = cell;
 				d.layer_ = layer;
+				d.netDrvType_ = 0;
 
 				d.setBox((int)lx, (int)ly, (int)ux, (int)uy);
 				drc_rTree->insert( make_pair(b, d) );
@@ -630,11 +654,32 @@ ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
 		drc_rTree->query(bgi::intersects(queryBox), 
 				std::back_inserter(foundDrcs));
 
+		// To distinguish net type(local or global) and add drc value
+		set<string> localNets = vert->getLocalNetValues();
+		
 		for(pair<box, drc_value>& val : foundDrcs) {
+			if(localNets.find(val.second.toNet_) != localNets.end()){ // toNet is in local nets.
+				if(localNets.find(val.second.fromNet_) != localNets.end() || (val.second.fromNet_ == "0")){
+					val.second.netDrvType_ = 1; // Both nets are local.
+					//cout << "1: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
+				} else {
+					val.second.netDrvType_ = 2; // Either net is local.
+					//cout << "2: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
+				}
+			} else {
+				if(localNets.find(val.second.fromNet_) != localNets.end()){
+					val.second.netDrvType_ = 2; // Either net is local.
+					//cout << "2: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
+				} else {
+					val.second.netDrvType_ = 3; // Either net is local.
+					//cout << "3: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
+				}
+			}
 			vert->addDrcValue(val.second);
 		}
-
-        int label = foundDrcs.size() > 0 ? 1 : 0;
+		//cout << endl;
+        
+		int label = foundDrcs.size() > 0 ? 1 : 0;
         vert->setLabel(label);
     }
 }

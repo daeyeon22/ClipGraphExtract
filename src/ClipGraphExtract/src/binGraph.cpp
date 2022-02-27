@@ -90,9 +90,11 @@ using namespace std;
 
 Vertex::Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer, 
         vector<dbInst*> insts, vector<wire_value> wireValues,
-        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues) :
+        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues,
+		set<string> nets, set<string> localNets, set<string> globalNets) :
     id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), maxLayer_(maxLayer), insts_(insts), 
-    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues) {
+    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues),
+	nets_(nets), localNets_(localNets), globalNets_(globalNets) {
     label_ = 0;
 }
 
@@ -119,6 +121,18 @@ vector<rudy_value> Vertex::getRudyValues() {
 
 vector<drc_value> Vertex::getDrcValues() {
     return drcValues_;
+}
+
+set<string> Vertex::getNetValues() {
+    return nets_;
+}
+
+set<string> Vertex::getLocalNetValues() {
+    return localNets_;
+}
+
+set<string> Vertex::getGlobalNetValues() {
+    return globalNets_;
 }
 
 vector<Edge*> Vertex::getInEdges() {
@@ -161,6 +175,21 @@ Vertex::addDrcValue(drc_value drcValue) {
 }
 
 void
+Vertex::addNetValue(string net) {
+    nets_.insert(net);
+}
+
+void
+Vertex::addLocalNetValue(string localNet) {
+    localNets_.insert(localNet);
+}
+
+void
+Vertex::addGlobalNetValue(string globalNet) {
+    globalNets_.insert(globalNet);
+}
+
+void
 Vertex::addInEdge(Edge* edge) {
     inEdges_.push_back(edge);
 }
@@ -179,7 +208,6 @@ int
 Vertex::getLabel() {
     return label_;
 }
-
 
 int Vertex::getId() const { return id_; }
 int Vertex::getLx() const { return lx_; }
@@ -201,33 +229,6 @@ double Vertex::getUtilization() const {
 
     return 1.0* overlaps / totalArea;
 }
-
-
-void Vertex::setNets() {
-	for(wire_value wireValue : wireValues_){
-		nets_.insert(wireValue.net_);
-
-		if((wireValue.lx_ < lx_) || (wireValue.ly_ < ly_) || (wireValue.ux_ > ux_) || (wireValue.uy_ > uy_))
-			globalNets_.insert(wireValue.net_);
-	}
-
-	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
-
-/* Debugging
-	cout << "total" << endl;
-	for(auto net : nets_) cout << net->getName() << " ";
-	cout << endl;
-
-	cout << "global" << endl;
-	for(auto net : globalNets_) cout << net->getName() << " ";
-	cout << endl;
-
-	cout << "local" << endl;
-	for(auto net : localNets_) cout << net->getName() << " ";
-	cout << endl;
-*/
-}
-
 
 double Vertex::getRoutingCongestion(char type) const {
 	
@@ -572,7 +573,10 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
                 vector<pin_value> pinValues,
-                vector<rudy_value> rudyValues) {
+                vector<rudy_value> rudyValues,
+				set<string> nets,
+				set<string> localNets,
+				set<string> globalNets ) {
 
 
     // get boundary
@@ -582,7 +586,8 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
     uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
-                insts, wireValues, viaValues, pinValues, rudyValues);
+                insts, wireValues, viaValues, pinValues, rudyValues,
+				nets, localNets, globalNets);
 
     vertices_.push_back(vert);
 }
@@ -673,7 +678,6 @@ Graph::saveFile(const char* prefix) {
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
 		
-		vert.setNets();	
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
                  << vert.getWireCongestion('T') << "," 
