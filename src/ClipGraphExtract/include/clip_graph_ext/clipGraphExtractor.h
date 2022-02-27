@@ -45,6 +45,9 @@ class ClipGraphExtractor {
 
     void showCongestionMap();
 
+    // defined in grid.cpp
+    void initGcellGrid(int numRows, int maxLayer);
+
 
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
@@ -67,7 +70,9 @@ class ClipGraphExtractor {
     std::string fileName_;
     std::string prefix_;
     void* binGraph_;
-    
+   
+    void* grid_;
+
 
 
 

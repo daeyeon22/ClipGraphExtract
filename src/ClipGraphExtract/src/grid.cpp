@@ -1,15 +1,11 @@
 #include "opendb/geom.h"
+#include "grid.h"
+#include "bgTypedef.h"
 
 
+using namespace feature_extractor;
 
-
-
-
-typedef bg::model::point<int, 2, bg::cs::cartesian> bgPoint;
-typedef bg::model::box<bgPoint> bgBox;
-typedef bg::model::segment<bgPoint> bgSeg;
-
-void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
+void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 
     grid = new Grid();
     dbBlock* block = getDb()->getChip()->getBlock();
@@ -58,14 +54,10 @@ void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
     grid->setGcellHeight(gcellHeight);
     grid->setWireCapacity(wireCapacity);
     grid->setTrackSupply(trackSupply);
-    grid->initGrid();
+    grid->init();
     //  
-   
-    template<typename A> 
-    using bgi::rtree<pair<bgBox, A>, bgi::quadratic<6>> BoxRtree;
-    template<typename A> 
-    using bgi::rtree<pair<bgSeg, A>, bgi::quadratic<6>> SegRtree;
 
+    // init rtree
     BoxRtree<dbInst*> instRtree;
     BoxRtree<Gcell*> gcellRtree;
     SegRtree<dbNet*> egrRtree;
@@ -111,9 +103,10 @@ void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
         }
 
         // create RSMT
-        myRSMT->createRSMT();
+        myRSMT->createTree();
         vector<pair<bgBox, Gcell*>> queryResults;
         vector<odb::Rect> segments = myRSMT->getSegments();
+
 
         // insert segments into rtree
         for(odb::Rect& seg : segments) {
@@ -163,25 +156,33 @@ void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
                             bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
                             egrWireRtree->insert( make_pair( wireSeg, net ) );
                         }
-                        
                         break;
                     }
-
                     default:
                         decoder.next();
                         break;
-
                 }
 
             }
         }
+        
+        // search overlapping gcells
+        myRSMT->updateOverlaps(gcellRtree);
     }
-
-
-
 
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
+
+        //
+        gcell->extractFeatureEGR(egrRtree);
+        gcell->extractFeaturePL(instRtree);
+        gcell->extractFeatureRsMT(rsmtRtree);
+    }
+}
+
+
+    /*
+        
         bgBox queryBox = gcell->getQueryBox();
         vector< pair<bgBox, dbInst*> > queryResults;
         instRtree.query(bgi::intersects(queryBox), std::back_inserter(queryResults));
@@ -227,10 +228,6 @@ void ClipGraphExtractor::initGrid(int numRows, int maxLayer) {
 
             gcell->addRUDY( parital_RUDY );
         }
-
-
-
-
-}
+    */
 
 

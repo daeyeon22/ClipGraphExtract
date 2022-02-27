@@ -51,9 +51,9 @@ add_library( ClipGraphExtractor
   src/MakeClipGraphExtractor.cpp
   src/instGraph.cpp
   src/binGraph.cpp
-  src/grid.h
   src/grid.cpp
   src/gcell.cpp
+  src/rsmt.cpp
 
 
 
