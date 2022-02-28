@@ -1,25 +1,33 @@
 #include "opendb/geom.h"
 #include "grid.h"
-#include "bgTypedef.h"
+#include "clip_graph_ext/clipGraphExtractor.h"
+#include "opendb/db.h"
+#include "opendb/dbWireCodec.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
-
+using namespace std;
+using namespace odb;
 using namespace feature_extractor;
+using namespace ClipGraphExtract;
 
 void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 
-    grid = new Grid();
+    grid_ = (void*) new Grid();
+    Grid* grid = (Grid*) grid_;
     dbBlock* block = getDb()->getChip()->getBlock();
     
     // Calculate grid size = rowHeight * numRows
     dbSite* site = block->getRows().begin()->getSite(); 
 
-    int gcellWidth = site->getHeight() * numRows();
-    int gcellHeight = site->getHeight() * numRows();
+    int gcellWidth = site->getHeight() * numRows;
+    int gcellHeight = site->getHeight() * numRows;
 
     // get routing supply / capacity for each gcell
-    dbSet<dbTechLayer> techLayers = getDb()->getTech()-getLayers();
+    dbSet<dbTechLayer> techLayers = getDb()->getTech()->getLayers();
     int numLayer=0;
-    int numSupply=0;
+    int trackSupply=0;
     int wireCapacity=0;
     for(dbTechLayer* layer : techLayers) {
         if(layer->getType() == dbTechLayerType::ROUTING) {
@@ -36,7 +44,7 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
                 capacity = supply * gcellHeight;
             }
             
-            numSupply+= supply;
+            trackSupply+= supply;
             wireCapacity += capacity;
 
             if(numLayer == maxLayer)
@@ -88,22 +96,8 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 
     // wireRtree (eGR result)
     for( dbNet* net : block->getNets()) {
-        dbSet<dbITerm> iterms = net->getITerms();
-        
-        // add terminals
-        int x,y;
-        RSMT* myRSMT = grid->createRSMT(net);
-        for(dbITerm* iterm : net->getITerms()) {
-            iterm->getAvgXY(&x, &y);
-            myRSMT->addTerminal(x,y);
-        }
-        for(dbBTerm* bterm : net->getBTerms()) {
-            bterm->getAvgXY(&x, &y);
-            myRSMT->addTerminal(x,y);
-        }
 
-        // create RSMT
-        myRSMT->createTree();
+        RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
         vector<odb::Rect> segments = myRSMT->getSegments();
 
@@ -115,13 +109,11 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
             rsmtRtree.insert( make_pair( bgseg, myRSMT ) );
         }
 
-
-
         // make wireRtree
         dbWire* wire = net->getWire();
         if( wire && wire->length() ) {
             dbWireDecoder decoder;
-            dcoder.begin(wire);
+            decoder.begin(wire);
             
             vector<odb::Point> points;
 
@@ -142,19 +134,20 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
                     }
                     case dbWireDecoder::POINT: {
                         decoder.next();                   
+                        int x,y;
                         decoder.getPoint(x,y);
                         points.push_back(odb::Point(x,y));
-                        if(point.size() >1) {
+                        if(points.size() >1) {
                             odb::Point pt1 = points[points.size()-2];
                             odb::Point pt2 = points[points.size()-1];
                             
-                            int xMin = min(pt1.getX(), pt2.getX()) - layerMinWidth[decoder.getLayer()]/2;
-                            int xMax = max(pt1.getX(), pt2.getX()) + layerMinWidth[decoder.getLayer()]/2;
-                            int yMin = min(pt1.getY(), pt2.getY()) - layerMinWidth[decoder.getLayer()]/2;
-                            int yMax = max(pt1.getY(), pt2.getY()) + layerMinWidth[decoder.getLayer()]/2;
+                            int xMin = min(pt1.getX(), pt2.getX());// - layerMinWidth[decoder.getLayer()]/2;
+                            int xMax = max(pt1.getX(), pt2.getX());// + layerMinWidth[decoder.getLayer()]/2;
+                            int yMin = min(pt1.getY(), pt2.getY());// - layerMinWidth[decoder.getLayer()]/2;
+                            int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
 
                             bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            egrWireRtree->insert( make_pair( wireSeg, net ) );
+                            egrRtree.insert( make_pair( wireSeg, net ) );
                         }
                         break;
                     }
@@ -167,18 +160,72 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
         }
         
         // search overlapping gcells
-        myRSMT->updateOverlaps(gcellRtree);
+        myRSMT->searchOverlaps(gcellRtree);
     }
 
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
-
         //
         gcell->extractFeatureEGR(egrRtree);
         gcell->extractFeaturePL(instRtree);
-        gcell->extractFeatureRsMT(rsmtRtree);
+        gcell->extractFeatureRSMT(rsmtRtree);
     }
 }
+
+
+namespace feature_extractor {
+
+void Grid::init() {
+
+}
+
+vector<Gcell*> Grid::getGcells() {
+    return gcells_;
+}
+
+RSMT* Grid::createRSMT(odb::dbNet* net) {
+    RSMT* myRSMT = new RSMT(net);
+    dbSet<dbITerm> iterms = net->getITerms();
+
+    // add terminals
+    int x,y;
+    for(dbITerm* iterm : net->getITerms()) {
+        iterm->getAvgXY(&x, &y);
+        myRSMT->addTerminal(x,y);
+    }
+    for(dbBTerm* bterm : net->getBTerms()) {
+        bterm->getITerm()->getAvgXY(&x, &y);
+        myRSMT->addTerminal(x,y);
+    }
+
+    // create RSMT
+    myRSMT->createTree();
+    rsmts_.push_back(myRSMT);
+    return myRSMT;
+}
+
+void Grid::setBoundary(odb::Rect rect) {
+    bbox_ = rect;
+}
+
+void Grid::setGcellWidth(int width) {
+    gcellWidth_ = width;
+}
+
+void Grid::setGcellHeight(int height) {
+    gcellHeight_ = height;
+}
+
+void Grid::setWireCapacity(int wcap) {
+    wireCapacity_ = wcap;
+}
+
+void Grid::setTrackSupply(int tsup) {
+    trackSupply_ = tsup;
+}
+
+
+};
 
 
     /*

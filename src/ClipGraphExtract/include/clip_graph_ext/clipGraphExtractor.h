@@ -54,6 +54,8 @@ class ClipGraphExtractor {
 
     ClipGraphExtractor();
     ~ClipGraphExtractor();
+    odb::dbDatabase* getDb() { return db_; }
+  
   private:
     odb::dbDatabase* db_;
     sta::dbSta* sta_;

@@ -1,14 +1,11 @@
 #include "grid.h"
 #include <set>
-
+#include <vector>
 
 namespace feature_extractor {
 
 using namespace std;
 using namespace odb;
-
-
-
 
 Rect RSMT::getBBox() {
     return bbox_;
@@ -43,6 +40,7 @@ vector<Rect> RSMT::getSegments() {
         
         // if barnch has a L shape, decomposes into 2 semgnets
         if(x1 != x2 && y1 != y2) {
+            Rect seg1, seg2;
             if(rand() % 2 == 0) {
                 seg1 = Rect( x1, y1, x1, y2 );
                 seg2 = Rect( x1, y2, x2, y2 );
@@ -70,10 +68,10 @@ void RSMT::createTree() {
     int yMax = INT_MIN;
     
     int deg = terminals_.size();
-    int xs[n] = {0};
-    int ys[n] = {0};
+    int xs[deg] = {0};
+    int ys[deg] = {0};
 
-    for(int i=0; i < n; i++) {
+    for(int i=0; i < deg; i++) {
         xs[i] = terminals_[i].getX();
         ys[i] = terminals_[i].getY();
 
@@ -105,10 +103,10 @@ RSMT::getWireLengthHPWL() {
 
 
 void
-RSMT::updateOverlaps(BoxRtree<Gcell*> &tree) {
+RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
     
     //
-    vector<pair<bgSeg, Gcell*>> queryResults;
+    vector<pair<bgBox, Gcell*>> queryResults;
     set<Gcell*> overlaps;
 
     // RSMT
@@ -116,7 +114,7 @@ RSMT::updateOverlaps(BoxRtree<Gcell*> &tree) {
         queryResults.clear();
         bgSeg bg_seg ( bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()) );
         
-        tree.intersects(bgi::intersects(bg_seg), back_inserter(queryResults));
+        tree.query(bgi::intersects(bg_seg), back_inserter(queryResults));
         for(auto& val : queryResults) {
             Gcell* gcell = val.second;
             overlaps.insert(gcell);
@@ -129,7 +127,7 @@ RSMT::updateOverlaps(BoxRtree<Gcell*> &tree) {
     // BBox
     overlaps.clear();
     queryResults.clear();
-    tree.intersects(bgi::intersects(getQueryBox()), back_inserter(queryResults));
+    tree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
 
     for(auto& val : queryResults) {
         Gcell* gcell = val.second;

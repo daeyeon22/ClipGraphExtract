@@ -3,6 +3,10 @@
 #include <vector>
 #include <string>
 #include <boost/geometry.hpp>
+#include "flute.h"
+#include "opendb/db.h"
+#include "opendb/geom.h"
+
 //#include "bgTypedef.h"
 //#include "opendb/geom.h"
 
@@ -12,22 +16,23 @@ namespace bgi = boost::geometry::index;
 typedef bg::model::point<int, 2, bg::cs::cartesian> bgPoint;
 typedef bg::model::box<bgPoint> bgBox;
 typedef bg::model::segment<bgPoint> bgSeg;
-template<typename A>
-using bgi::rtree<std::pair<bgBox, A>, bgi::quadratic<6>> BoxRtree;
-template<typename A>
-using bgi::rtree<std::pair<bgSeg, A>, bgi::quadratic<6>> SegRtree;
 
-namespace Flute {
-    class Tree;
-};
+template<typename A>
+using BoxRtree = bgi::rtree<std::pair<bgBox, A>, bgi::quadratic<6>>;
+template<typename A>
+using SegRtree = bgi::rtree<std::pair<bgSeg, A>, bgi::quadratic<6>>;
 
-namespace odb {
-    class dbDatabase;
-    class dbNet;
-    class dbInst;
-    class Rect;
-    class Point;
-};
+//namespace Flute {
+//    class Tree;
+//};
+
+//namespace odb {
+//    class dbDatabase;
+//    class dbNet;
+//    class dbInst;
+//    class Rect;
+//    class Point;
+//};
 
 namespace feature_extractor {
 
@@ -62,7 +67,7 @@ class Gcell {
     // Gcell features
     odb::Rect bbox_;
 
-    ResourceModel rmGR; // using GR results
+    ResourceModel rmEGR; // using GR results
     ResourceModel rmDR; // using DR results
     ResourceModel rmRSMT; // using PLACE results
 
@@ -84,7 +89,7 @@ class Gcell {
 
   public:
     bgBox getQueryBox();
-    odb::Rect getBBox(){ return rect_; }
+    odb::Rect getBBox(){ return bbox_; }
     //void updateResourceModelRSMT(odb::Rect seg);
     //void updateResourceModelGR(odb::Rect seg);
     //void addInst(odb::dbInst* inst);
@@ -103,6 +108,8 @@ class Gcell {
     double getRUDY();
     double getPinDensity();
     double getCellDensity();
+
+    
 
 };
 
@@ -136,17 +143,19 @@ class RSMT {
   public:
     RSMT(odb::dbNet* net) : net_(net) {}
 
-    std::vector<odb::Rect> decomposeRSMT();
+    std::vector<odb::Rect> getSegments();
 
     bgBox getQueryBox();
     odb::Rect getBBox();
     void addTerminal(int x, int y);
+    void searchOverlaps(BoxRtree<Gcell*> &tree);
+
 
     bool isLocalNet();
     bool isGlobalNet();
     bool hasDRV();
-    void createRSMT();
-    int getNetDegree() { return terminals_.size(); }
+    void createTree();
+    int getNetDegree(); 
     int getWireLengthRSMT();
     int getWireLengthHPWL();
     double getWireUniformDensity();
@@ -172,9 +181,11 @@ class Grid {
 
   public:
 
+    std::vector<Gcell*> getGcells();
+
     RSMT* createRSMT(odb::dbNet* net);
     void init();
-    void setCoreArea(odb::Rect& rect);
+    void setBoundary(odb::Rect rect);
     void setGcellWidth(int width);
     void setGcellHeight(int height);
     void setWireCapacity(int wCap);

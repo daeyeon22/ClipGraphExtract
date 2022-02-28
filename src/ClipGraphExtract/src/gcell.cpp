@@ -3,8 +3,12 @@
 
 namespace feature_extractor {
 
+using namespace std;
+using namespace odb;
+
+
 bgBox Gcell::getQueryBox() {
-    return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgBox(bbox_.xMax(), bbox_.yMax()));
+    return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
 }
 
 int Gcell::getArea() {
@@ -12,7 +16,7 @@ int Gcell::getArea() {
 }
 
 double Gcell::getCellDensity() {
-    return cellDesntiy_;
+    return cellDensity_;
 }
 
 double Gcell::getPinDensity() {
@@ -29,7 +33,7 @@ Gcell::extractFeaturePL(BoxRtree<odb::dbInst*> &rtree) {
     // Query
     rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
     for(auto& val : queryResults) {
-        dbInst* inst = val.sceond;
+        dbInst* inst = val.second;
         insts_.push_back(inst);
         odb::Rect instBBox;
         inst->getBBox()->getBox(instBBox);
@@ -100,9 +104,9 @@ Gcell::extractFeatureEGR(SegRtree<odb::dbNet*> &rtree) {
         }
 
         int x0 = bg::get<0,0>(wire_seg);
-        int y0 = bg::get<0,1>(wire_seg):
+        int y0 = bg::get<0,1>(wire_seg);
         int x1 = bg::get<1,0>(wire_seg);
-        int y1 = bg::get<1,1>(wire_seg):
+        int y1 = bg::get<1,1>(wire_seg);
         x0 = max(x0, bbox_.xMin());
         y0 = max(y0, bbox_.yMin());
         x1 = min(x1, bbox_.xMax());
@@ -115,7 +119,7 @@ Gcell::extractFeatureEGR(SegRtree<odb::dbNet*> &rtree) {
 
 void
 Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
-    vector<pair<bgSeg, dbNet*>> queryResults;
+    vector<pair<bgSeg, RSMT*>> queryResults;
 
     // Query
     rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
@@ -142,9 +146,9 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         }
 
         int x0 = bg::get<0,0>(wire_seg);
-        int y0 = bg::get<0,1>(wire_seg):
+        int y0 = bg::get<0,1>(wire_seg);
         int x1 = bg::get<1,0>(wire_seg);
-        int y1 = bg::get<1,1>(wire_seg):
+        int y1 = bg::get<1,1>(wire_seg);
         x0 = max(x0, bbox_.xMin());
         y0 = max(y0, bbox_.yMin());
         x1 = min(x1, bbox_.xMax());
