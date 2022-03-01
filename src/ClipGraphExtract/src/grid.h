@@ -59,6 +59,14 @@ struct ResourceModel {
     double getTrackDemand(Orient type);
     double getWireCapaicty();
     double getWireLength();
+
+    void setTrackSupply(int tSup) {
+        for(int i=0; i < 4; i++) trackSupply[i] = tSup;
+    }
+
+    void setWireCapacity(int wCap) { 
+        wireCapacity = wCap;
+    }
 };
 
 
@@ -88,6 +96,8 @@ class Gcell {
 
 
   public:
+    Gcell();
+    
     bgBox getQueryBox();
     odb::Rect getBBox(){ return bbox_; }
     //void updateResourceModelRSMT(odb::Rect seg);
@@ -109,7 +119,10 @@ class Gcell {
     double getPinDensity();
     double getCellDensity();
 
-    
+
+    void setTrackSupply(int tSup);
+    void setWireCapacity(int wCap);
+    void setBoundary(odb::Rect rect);
 
 };
 
@@ -135,10 +148,13 @@ class RSMT {
     odb::Rect bbox_;
     std::vector<odb::Point> terminals_;
     Flute::Tree rsmt_;
+    int minWidth_;
+
 
     std::vector<Gcell*> rsmtOverlaps_;
     std::vector<Gcell*> bboxOverlaps_;
     std::vector<DrcMarker*> markers_;
+   
     
   public:
     RSMT(odb::dbNet* net) : net_(net) {}
@@ -149,7 +165,7 @@ class RSMT {
     odb::Rect getBBox();
     void addTerminal(int x, int y);
     void searchOverlaps(BoxRtree<Gcell*> &tree);
-
+    void setMinWidth(int width);
 
     bool isLocalNet();
     bool isGlobalNet();
@@ -183,6 +199,7 @@ class Grid {
 
     std::vector<Gcell*> getGcells();
 
+    Gcell* createGcell(int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     void init();
     void setBoundary(odb::Rect rect);

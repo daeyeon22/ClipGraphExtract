@@ -6,6 +6,27 @@ namespace feature_extractor {
 using namespace std;
 using namespace odb;
 
+Gcell::Gcell() {
+
+}
+
+void Gcell::setBoundary(Rect rect) { 
+    bbox_ = rect;
+}
+
+void Gcell::setTrackSupply(int tSup) {
+    rmEGR.setTrackSupply(tSup);
+    rmRSMT.setTrackSupply(tSup);
+    rmDR.setTrackSupply(tSup);
+}
+
+void Gcell::setWireCapacity(int wCap) {
+    rmEGR.setWireCapacity(wCap);
+    rmRSMT.setTrackSupply(wCap);
+    rmDR.setTrackSupply(wCap);
+}
+
+
 
 bgBox Gcell::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -133,16 +154,16 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         RSMT* myRSMT = val.second;
         
         if(bg::intersects(lb, wire_seg)) {
-            rmEGR.trackDemand[Orient::LEFT]++;
+            rmRSMT.trackDemand[Orient::LEFT]++;
         }
         if(bg::intersects(rb, wire_seg)) {
-            rmEGR.trackDemand[Orient::RIGHT]++;
+            rmRSMT.trackDemand[Orient::RIGHT]++;
         }
         if(bg::intersects(tb, wire_seg)) {
-            rmEGR.trackDemand[Orient::TOP]++;
+            rmRSMT.trackDemand[Orient::TOP]++;
         }
         if(bg::intersects(bb, wire_seg)) {
-            rmEGR.trackDemand[Orient::BOTTOM]++;
+            rmRSMT.trackDemand[Orient::BOTTOM]++;
         }
 
         int x0 = bg::get<0,0>(wire_seg);
@@ -154,7 +175,7 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         x1 = min(x1, bbox_.xMax());
         y1 = min(y1, bbox_.yMax());
         // intersection wirelength
-        rmEGR.wireLength += (x1-x0) + (y1-y0);
+        rmRSMT.wireLength += (x1-x0) + (y1-y0);
 
         // update RUDY
         odb::Rect r1 = bbox_;

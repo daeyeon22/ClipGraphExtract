@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cassert>
+
 
 using namespace std;
 using namespace odb;
@@ -13,7 +15,6 @@ using namespace feature_extractor;
 using namespace ClipGraphExtract;
 
 void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
-
     grid_ = (void*) new Grid();
     Grid* grid = (Grid*) grid_;
     dbBlock* block = getDb()->getChip()->getBlock();
@@ -51,7 +52,6 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
                 break;
         }
     }
-
     // Get core area
     odb::Rect blockArea;
     block->getBBox()->getBox(blockArea);
@@ -70,12 +70,6 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
     BoxRtree<Gcell*> gcellRtree;
     SegRtree<dbNet*> egrRtree;
     SegRtree<RSMT*> rsmtRtree;
-
-    //bgi::rtree<pair<bgBox, dbInst*>, bgi::quadratic<6>> instRtree;
-    //bgi::rtree<pair<bgBox, Gcell*>, bgi::quadratic<6>> gcellRtree;
-    //bgi::rtree<pair<bgSeg, dbNet*>, bgi::quadratic<6>> egrWireRtree;
-    //bgi::rtree<pair<bgSeg, RSMT*>, bgi::quadratic<6>> rtSegRtree;
-    //bgi::rtree<pair<bgPoint, dbInst*>, bgi::quadratic<6>> viaRtree;
     
     // make gcellRtree
     for( Gcell* gcell : grid->getGcells() ) {
@@ -93,14 +87,11 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 
     // init FLUTE
     Flute::readLUT();
-
     // wireRtree (eGR result)
     for( dbNet* net : block->getNets()) {
-
         RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
         vector<odb::Rect> segments = myRSMT->getSegments();
-
 
         // insert segments into rtree
         for(odb::Rect& seg : segments) {
@@ -158,11 +149,9 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 
             }
         }
-        
         // search overlapping gcells
         myRSMT->searchOverlaps(gcellRtree);
     }
-
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
         //
@@ -176,12 +165,36 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
 namespace feature_extractor {
 
 void Grid::init() {
+    assert(gcellWidth_ == 0);
+    assert(gcellHeight_ == 0);
+    assert(bbox_.dx() * bbox_.dy() == 0);
 
+    numCols_ = bbox_.dx() / gcellWidth_;
+    numRows_ = bbox_.dy() / gcellHeight_;
+
+    int x1, y1, x2, y2;
+    for(x1=0; x1 < bbox_.xMax()-gcellWidth_; x1+= gcellWidth_) {
+        for(y1=0; y1 < bbox_.yMax()-gcellHeight_; y1+=gcellHeight_) {
+            x2 = min(bbox_.xMax(), x1 + gcellWidth_);
+            y2 = min(bbox_.yMax(), y1 + gcellHeight_);
+            Gcell* gcell = createGcell(x1,y1,x2,y2);
+            gcell->setTrackSupply(trackSupply_);
+            gcell->setWireCapacity(wireCapacity_);
+        }
+    }
 }
 
 vector<Gcell*> Grid::getGcells() {
     return gcells_;
 }
+
+Gcell* Grid::createGcell(int x1, int y1, int x2, int y2) {
+    Gcell* gcell = new Gcell;
+    gcell->setBoundary(Rect(x1,y1, x2,y2));
+    gcells_.push_back(gcell);
+    return gcell;
+}
+
 
 RSMT* Grid::createRSMT(odb::dbNet* net) {
     RSMT* myRSMT = new RSMT(net);
@@ -194,8 +207,10 @@ RSMT* Grid::createRSMT(odb::dbNet* net) {
         myRSMT->addTerminal(x,y);
     }
     for(dbBTerm* bterm : net->getBTerms()) {
-        bterm->getITerm()->getAvgXY(&x, &y);
-        myRSMT->addTerminal(x,y);
+        //cout << bterm->getName() << endl;
+        if(bterm->getFirstPinLocation(x,y)) {
+            myRSMT->addTerminal(x,y);
+        }
     }
 
     // create RSMT

@@ -30,6 +30,16 @@ using ClipGraphExtract::EdgeWeightModel;
 
 %inline %{
 
+void
+construct_gcell_grid_cmd(int num_rows, int max_layer) 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->setDb(getDb());
+    graphExt->initGcellGrid(num_rows, max_layer);
+}
+
+
+
 
 void
 analyze_congestion_cmd() 

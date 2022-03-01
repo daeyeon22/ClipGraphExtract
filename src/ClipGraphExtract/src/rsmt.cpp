@@ -27,6 +27,10 @@ bool RSMT::isLocalNet() {
     return bboxOverlaps_.size() < 2 ? true : false;
 }
 
+void RSMT::setMinWidth(int width) {
+    minWidth_ = width;
+}
+
 vector<Rect> RSMT::getSegments() {
     vector<Rect> segments;
     int n, x1, y1, x2, y2;
@@ -99,6 +103,13 @@ RSMT::getWireLengthRSMT() {
 int
 RSMT::getWireLengthHPWL() {
     return bbox_.dx() + bbox_.dy(); 
+}
+
+double
+RSMT::getWireUniformDensity() {
+    int totalArea = bbox_.dx() * bbox_.dy();
+    int wireArea = minWidth_ * getWireLengthRSMT();
+    return 1.0* wireArea / totalArea;
 }
 
 
