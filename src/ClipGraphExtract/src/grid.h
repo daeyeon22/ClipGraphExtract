@@ -131,7 +131,16 @@ enum ObjectType {
     NET, INSTANCE, BLOCKAGE, SNET
 };
 
+enum DrvTag {
+    LOCAL2LOCAL,
+    LOCAL2GLOBAL,
+    GLOBAL2GLOBAL,
+    PIN2LOCAL,
+    PIN2GLOBAL
+};
+
 class DrcMarker {
+  private:
     std::string type_;
     std::string rule_;
     ObjectType objType1_, objType2_;
@@ -139,6 +148,16 @@ class DrcMarker {
     void* obj1_;
     void* obj2_;
     odb::Rect bbox_;
+
+  public:
+    void setType(std::string type);
+    void setDesignRule(std::string rule);
+    void setBoundary(odb::Rect rect);
+    void setObject1(odb::dbNet* net);
+    void setObject2(odb::dbNet* net);
+    void setObject1(odb::dbInst* inst);
+    void setObject2(odb::dbInst* inst);
+
 };
 
 
@@ -196,17 +215,22 @@ class Grid {
     
 
   public:
-
+    odb::dbDatabase* getDb() { return db_; }
+    odb::Rect getBoundary();
     std::vector<Gcell*> getGcells();
 
     Gcell* createGcell(int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     void init();
+    void setDb(odb::dbDatabase* db);
     void setBoundary(odb::Rect rect);
     void setGcellWidth(int width);
     void setGcellHeight(int height);
     void setWireCapacity(int wCap);
     void setTrackSupply(int tSup);
+
+
+    void saveMapImages(std::string dirPath);
 };
 
 

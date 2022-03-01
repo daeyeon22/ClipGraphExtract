@@ -54,7 +54,7 @@ add_library( ClipGraphExtractor
   src/grid.cpp
   src/gcell.cpp
   src/rsmt.cpp
-
+  src/plot.cpp
 
 
   ${GRAPHEXT_WRAP}

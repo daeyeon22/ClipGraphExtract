@@ -123,6 +123,18 @@ proc construct_gcell_grid { args } {
     construct_gcell_grid_cmd $num_rows $max_route_layer
 }
 
+proc save_map_images { args } {
+    sta::parse_key_args "save_map_imges" args \
+        keys { -save_dir } flags {}
+
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+    }
+
+    save_map_images_cmd $save_dir
+}
+
 
 proc analyze_congestion { } {
     analyze_congestion_cmd

@@ -57,10 +57,10 @@ void pin_value::setBox(int x, int y){
 }
 
 void rudy_value::setBox(int lx, int ly, int ux, int uy){
-    lx_ = lx;
-    ly_ = ly;
-    ux_ = ux;
-    uy_ = uy;
+    lx_ = lx-(wireWidth_/2);
+    ly_ = ly-(wireWidth_/2);
+    ux_ = ux+(wireWidth_/2);
+    uy_ = uy+(wireWidth_/2);
 
     box b(point(lx_, ly_), 
            point(ux_, uy_));
@@ -91,9 +91,11 @@ using namespace std;
 
 Vertex::Vertex(int id, int lx, int ly, int ux, int uy, int maxLayer, 
         vector<dbInst*> insts, vector<wire_value> wireValues,
-        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues) :
+        vector<via_value> viaValues, vector<pin_value> pinValues, vector<rudy_value> rudyValues,
+		set<string> nets, set<string> localNets, set<string> globalNets) :
     id_(id), lx_(lx), ly_(ly), ux_(ux), uy_(uy), maxLayer_(maxLayer), insts_(insts), 
-    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues) {
+    wireValues_(wireValues), viaValues_(viaValues), pinValues_(pinValues), rudyValues_(rudyValues),
+	nets_(nets), localNets_(localNets), globalNets_(globalNets) {
     label_ = 0;
 }
 
@@ -120,6 +122,18 @@ vector<rudy_value> Vertex::getRudyValues() {
 
 vector<drc_value> Vertex::getDrcValues() {
     return drcValues_;
+}
+
+set<string> Vertex::getNetValues() {
+    return nets_;
+}
+
+set<string> Vertex::getLocalNetValues() {
+    return localNets_;
+}
+
+set<string> Vertex::getGlobalNetValues() {
+    return globalNets_;
 }
 
 vector<Edge*> Vertex::getInEdges() {
@@ -162,6 +176,21 @@ Vertex::addDrcValue(drc_value drcValue) {
 }
 
 void
+Vertex::addNetValue(string net) {
+    nets_.insert(net);
+}
+
+void
+Vertex::addLocalNetValue(string localNet) {
+    localNets_.insert(localNet);
+}
+
+void
+Vertex::addGlobalNetValue(string globalNet) {
+    globalNets_.insert(globalNet);
+}
+
+void
 Vertex::addInEdge(Edge* edge) {
     inEdges_.push_back(edge);
 }
@@ -180,7 +209,6 @@ int
 Vertex::getLabel() {
     return label_;
 }
-
 
 int Vertex::getId() const { return id_; }
 int Vertex::getLx() const { return lx_; }
@@ -202,33 +230,6 @@ double Vertex::getUtilization() const {
 
     return 1.0* overlaps / totalArea;
 }
-
-
-void Vertex::setNets() {
-	for(wire_value wireValue : wireValues_){
-		nets_.insert(wireValue.net_);
-
-		if((wireValue.lx_ < lx_) || (wireValue.ly_ < ly_) || (wireValue.ux_ > ux_) || (wireValue.uy_ > uy_))
-			globalNets_.insert(wireValue.net_);
-	}
-
-	set_difference(nets_.begin(), nets_.end(), globalNets_.begin(), globalNets_.end(), inserter(localNets_, localNets_.end()));
-
-/* Debugging
-	cout << "total" << endl;
-	for(auto net : nets_) cout << net->getName() << " ";
-	cout << endl;
-
-	cout << "global" << endl;
-	for(auto net : globalNets_) cout << net->getName() << " ";
-	cout << endl;
-
-	cout << "local" << endl;
-	for(auto net : localNets_) cout << net->getName() << " ";
-	cout << endl;
-*/
-}
-
 
 double Vertex::getRoutingCongestion(char type) const {
 	
@@ -573,7 +574,10 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
                 vector<wire_value> wireValues,
                 vector<via_value> viaValues,
                 vector<pin_value> pinValues,
-                vector<rudy_value> rudyValues) {
+                vector<rudy_value> rudyValues,
+				set<string> nets,
+				set<string> localNets,
+				set<string> globalNets ) {
 
 
     // get boundary
@@ -583,7 +587,8 @@ Graph::addVertex( int lx, int ly, int ux, int uy, int maxLayer,
     uy_ = max(uy, uy_);
 
     Vertex vert(vertices_.size(), lx, ly, ux, uy, maxLayer, 
-                insts, wireValues, viaValues, pinValues, rudyValues);
+                insts, wireValues, viaValues, pinValues, rudyValues,
+				nets, localNets, globalNets);
 
     vertices_.push_back(vert);
 }
@@ -674,7 +679,6 @@ Graph::saveFile(const char* prefix) {
     for(auto& vert : vertices_) {
         unordered_map<unsigned int, pair<char, unsigned int> > each = vert.getEachWireLength();
 		
-		vert.setNets();	
         nodeAttr << vert.getId() << ","
 				 <<	vert.getNumOfDrc() << ","
                  << vert.getWireCongestion('T') << "," 
@@ -742,16 +746,39 @@ Graph::updateCongGR() {
 }
 
 
-using namespace cimg_library;
-static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
-                           green[] = {0, 255, 0}, blue[] = {120, 200, 255},
-                           darkblue[] = {69, 66, 244},
-                           purple[] = {255, 100, 255}, black[] = {0, 0, 0},
-                           red[] = {255, 0, 0};
-
 void
 Graph::showCongestion() {
+/*
+using namespace cimg_library;
+static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
+green[] = {0, 255, 0}, blue[] = {120, 200, 255},
+darkblue[] = {69, 66, 244},
+purple[] = {255, 100, 255}, black[] = {0, 0, 0},
+red[] = {255, 0, 0};
 
+
+char RLEVEL0[3] = {(char) 255, (char) 245, (char) 235};
+char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
+	char RLEVEL2[3] = {(char) 253, (char) 208, (char) 162};
+	char RLEVEL3[3] = {(char) 253, (char) 174, (char) 107};
+	char RLEVEL4[3] = {(char) 253, (char) 141, (char) 60};
+	char RLEVEL5[3] = {(char) 241, (char) 105, (char) 19};
+	char RLEVEL6[3] = {(char) 217, (char) 72, (char) 1};
+	char RLEVEL7[3] = {(char) 166, (char) 54, (char) 3};
+	char RLEVEL8[3] = {(char) 127, (char) 39, (char) 4};
+
+	char BLEVEL0[3] = {(char) 252, (char) 251, (char) 253};
+	char BLEVEL1[3] = {(char) 239, (char) 237, (char) 245};
+	char BLEVEL2[3] = {(char) 218, (char) 218, (char) 235};
+	char BLEVEL3[3] = {(char) 188, (char) 189, (char) 220};
+	char BLEVEL4[3] = {(char) 158, (char) 154, (char) 200};
+	char BLEVEL5[3] = {(char) 128, (char) 125, (char) 186};
+	char BLEVEL6[3] = {(char) 106, (char) 81, (char) 163};
+	char BLEVEL7[3] = {(char) 84, (char) 39, (char) 143};
+	char BLEVEL8[3] = {(char) 63, (char) 0, (char) 125};
+
+
+	using namespace cimg_library;
     float opacity = 0.5;
 
     dbBlock* block = db_->getChip()->getBlock();
@@ -762,102 +789,39 @@ Graph::showCongestion() {
     CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
 
     for(int i=0; i < vertices_.size(); i++) {
-        Vertex* gcell = &vertices_[i];
-        drawGcell(&img, gcell);
- 
+        Vertex &gcell = vertices_[i];
+
+        //int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
+        int congValue = gcell.getRoutingCongestion('T')*100;
+		int drcValue = gcell.getNumOfDrc()*10;
+		
+		char *color;
+		if(congValue < 11) color = RLEVEL0;
+		else if(congValue < 22) color = RLEVEL1;
+		else if(congValue < 33) color = RLEVEL2;
+		else if(congValue < 44) color = RLEVEL3;
+		else if(congValue < 55) color = RLEVEL4;
+		else if(congValue < 66) color = RLEVEL5;
+		else if(congValue < 77) color = RLEVEL6;
+		else if(congValue < 88) color = RLEVEL7;
+		else color = RLEVEL8;
+		if(drcValue < 11) color = BLEVEL0;
+		else if(drcValue < 22) color = BLEVEL1;
+		else if(drcValue < 33) color = BLEVEL2;
+		else if(drcValue < 44) color = BLEVEL3;
+		else if(drcValue < 55) color = BLEVEL4;
+		else if(drcValue < 66) color = BLEVEL5;
+		else if(drcValue < 77) color = BLEVEL6;
+		else if(drcValue < 88) color = BLEVEL7;
+		else color = BLEVEL8;
+
+
+		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
     }
 
     img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
-
-}
-
-
-
-void resize(int &x, int &y, int offsetX, int offsetY, int unit) {
-    x = (x - offsetX) / unit;
-    y = (y - offsetY) / unit;
-}
-
-struct MyBox {
-    int lx, ly;
-    int ux, uy;
-    MyBox(int x1, int y1, int x2, int y2) :
-        lx(x1), ly(y1), ux(x2), uy(y2) {}
-};
-
-
-bool isInside(MyBox b1, MyBox b2) {
-    
-    if((b1.lx <= b2.lx && b1.ux >= b2.ux) 
-            && (b1.ly <= b2.ly && b1.uy >= b2.uy))
-        return true;
-    else
-        return false;
-}
-
-
-
-
-void Graph::drawGcell(CImg<unsigned char> *img, Vertex *gcell) {
-    int dbUnitMicron = db_->getChip()->getBlock()->getDbUnitsPerMicron();
-    int offsetX = lx_;
-    int offsetY = ly_;
-
-    //int x1 = (gcell->getLx() - offsetX) / dbUnitMicron;
-    //int y1 = (gcell->getLy() - offsetY) / dbUnitMicron;
-    //int x2 = (gcell->getUx() - offsetX) / dbUnitMicron;
-    //int y2 = (gcell->getUy() - offsetY) / dbUnitMicron;
-
-   
-    cout << "1" << endl;
-    for(rudy_value& rudyValue : gcell->getRudyValues()) {
-
-        if( rudyValue.degree_ < 2 ) {
-            continue;
-        }
-
-
-        MyBox netBbox(rudyValue.lx_, rudyValue.ly_, rudyValue.ux_, rudyValue.uy_);
-        MyBox gcellBbox(gcell->getLx(), gcell->getLy(), gcell->getUx(), gcell->getUy());
-        if(!isInside( gcellBbox, netBbox )) {
-            continue;
-        }
-
-
-
-
-		Flute::Tree tree;
-		int* xs = rudyValue.xs_.data();
-		int* ys = rudyValue.ys_.data();
-		tree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
-       
-        for(int i=0; i < 2* tree.deg - 2; i++) {
-
-            int n= tree.branch[i].n;
-            int x1 = tree.branch[i].x;
-            int y1 = tree.branch[i].y;
-            int x2 = tree.branch[n].x;
-            int y2 = tree.branch[n].y;
-
-            resize(x1, y1, offsetX, offsetY, dbUnitMicron);
-            resize(x2, y2, offsetX, offsetY, dbUnitMicron);
-            img->draw_line(x1, y1, x2, y2, black);
-        }
-    }
-    
-    int x1 = gcell->getLx();
-    int x2 = gcell->getUx();
-    int y1 = gcell->getLy();
-    int y2 = gcell->getUy();
-    resize(x1, y1, offsetX, offsetY, dbUnitMicron);
-    resize(x2, y2, offsetX, offsetY, dbUnitMicron);
-
-
-    float opacity = gcell->getRoutingCongestion('T') - 0.7;
-    opacity = min(opacity, (float)0.0);
-    opacity = max(opacity, (float)1.0);
-    //img->draw_rectangle(x1, y1, x2, y2, red, opacity);
+*/ 
 }
 
 

@@ -38,6 +38,11 @@ construct_gcell_grid_cmd(int num_rows, int max_layer)
     graphExt->initGcellGrid(num_rows, max_layer);
 }
 
+void
+save_map_images_cmd(const char* imgDir) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveMapImages(imgDir);
+}
 
 
 

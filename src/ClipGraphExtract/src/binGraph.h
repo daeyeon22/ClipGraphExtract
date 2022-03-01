@@ -90,6 +90,7 @@ struct drc_value{
 	std::string toNet_;
 	std::string fromNet_;
 	std::string cell_;
+	int netDrvType_; // 1 = Local to Local, 2 = Local to Global, 3 = Global to Global
 	int layer_;
 
     int lx_, ly_; // minimum boundary point
@@ -120,7 +121,10 @@ class Vertex {
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
             std::vector<pin_value> pinValues,
-            std::vector<rudy_value> rudyValues);
+            std::vector<rudy_value> rudyValues,
+			std::set<std::string> nets,
+			std::set<std::string> localNets,
+			std::set<std::string> globalNets);
 
     std::vector<odb::dbInst*> getInsts();
     std::vector<Edge*>  getInEdges();
@@ -130,6 +134,9 @@ class Vertex {
     std::vector<pin_value> getPinValues();
     std::vector<rudy_value> getRudyValues();
     std::vector<drc_value> getDrcValues();
+    std::set<std::string> getNetValues();
+    std::set<std::string> getLocalNetValues();
+    std::set<std::string> getGlobalNetValues();
 
     void addInst(odb::dbInst* inst);
     void addWireValue(wire_value wireValue);
@@ -137,12 +144,14 @@ class Vertex {
     void addPinValue(pin_value pinValue);
     void addRudyValue(rudy_value rudyValue);
     void addDrcValue(drc_value drcValue);
+    void addNetValue(std::string net);
+    void addLocalNetValue(std::string localNet);
+    void addGlobalNetValue(std::string globalNet);
     void addInEdge(Edge* edge);
     void addOutEdge(Edge* edge);
 
     void setLabel(int label);
     int getLabel();
-	void setNets();
     
     // for node feature (.x)
     double getUtilization() const;
@@ -176,9 +185,9 @@ private:
     std::vector<Edge*> outEdges_;
     int lx_, ly_, ux_, uy_;
     std::vector<wire_value> wireValues_;
-    std::set<odb::dbNet*> nets_;
-    std::set<odb::dbNet*> localNets_;
-    std::set<odb::dbNet*> globalNets_;
+    std::set<std::string> nets_;
+    std::set<std::string> localNets_;
+    std::set<std::string> globalNets_;
     std::vector<via_value> viaValues_;
     std::vector<pin_value> pinValues_;
     std::vector<rudy_value> rudyValues_;
@@ -229,13 +238,15 @@ class Graph {
     std::vector<Edge*> getEdges();
 
     void setDb(odb::dbDatabase* db) { db_ = db; }
-    void addVertex(int lx, int ly, int ux, int uy, std::vector<odb::dbInst*> insts);
     void addVertex(int lx, int ly, int ux, int uy, int maxLayer, 
             std::vector<odb::dbInst*> insts, 
             std::vector<wire_value> wireValues, 
             std::vector<via_value> viaValues,
             std::vector<pin_value> pinValues,
-            std::vector<rudy_value> rudyValues);
+            std::vector<rudy_value> rudyValues,
+			std::set<std::string> nets,
+			std::set<std::string> globalNets,
+			std::set<std::string> localNets );
 
 	void updateCongGR();
 
