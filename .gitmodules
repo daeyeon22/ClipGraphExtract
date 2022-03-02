@@ -10,3 +10,9 @@
 [submodule "src/CImg"]
 	path = src/CImg
 	url = https://github.com/dtschump/CImg.git
+[submodule "src/JKQtPlotter"]
+	path = src/JKQtPlotter
+	url = https://github.com/jkriege2/JKQtPlotter.git
+[submodule "src/tinycolormap"]
+	path = src/tinycolormap
+	url = https://github.com/yuki-koyama/tinycolormap.git

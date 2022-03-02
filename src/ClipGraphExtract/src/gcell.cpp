@@ -1,4 +1,5 @@
 #include "grid.h"
+#include <iostream>
 
 
 namespace feature_extractor {
@@ -6,9 +7,11 @@ namespace feature_extractor {
 using namespace std;
 using namespace odb;
 
-Gcell::Gcell() {
+Gcell::Gcell() :
+    numInstances_(0), numTerminals_(0), numLocalNets_(0),
+    numGlobalNets_(0), totalCellArea_(0), totalPinArea_(0),
+    cellDensity_(0), pinDensity_(0), RUDY_(0) {}
 
-}
 
 void Gcell::setBoundary(Rect rect) { 
     bbox_ = rect;
@@ -32,7 +35,7 @@ bgBox Gcell::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
 }
 
-int Gcell::getArea() {
+uint Gcell::getArea() {
     return bbox_.area();    
 }
 
@@ -90,7 +93,10 @@ Gcell::extractFeaturePL(BoxRtree<odb::dbInst*> &rtree) {
         numInstances_++;
         totalCellArea_ += cellArea; 
     }
-    // 
+    //
+cellDensity_ = 1.0* totalCellArea_ / getArea();
+    pinDensity_ = 1.0 * totalPinArea_ / getArea();
+
 }
 
 
@@ -149,6 +155,8 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
     bgSeg tb(bgPoint(bbox_.xMin(), bbox_.yMax()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg bb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMin()));
 
+    set<RSMT*> RSMTs;
+
     for(auto &val : queryResults) {
         bgSeg wire_seg = val.first;
         RSMT* myRSMT = val.second;
@@ -176,13 +184,23 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         y1 = min(y1, bbox_.yMax());
         // intersection wirelength
         rmRSMT.wireLength += (x1-x0) + (y1-y0);
+        RSMTs.insert(myRSMT);
+    }
 
+    cout << "GCELL (" << bbox_.xMin() << " " << bbox_.yMin() << ") (" << bbox_.xMax() << " " << bbox_.yMax() << ")" << endl;
+
+    for(RSMT* myRSMT : RSMTs) {
         // update RUDY
         odb::Rect r1 = bbox_;
         odb::Rect r2 = myRSMT->getBBox();
+        uint area1 = r2.intersect(r1).area();
+        uint area2 = r1.area();
         double dn = myRSMT->getWireUniformDensity();
-        double R = 1.0 * r2.intersect(r1).area() / r1.area();
+        double R = 1.0* area1 / area2;
+        //double R = 1.0 * r2.intersect(r1).area() / r1.area();
         double partialRUDY = dn * R;   
+       
+        cout << "   - "<< myRSMT->getNet()->getName() << " RUDY = " << partialRUDY << " (" << dn << " " << R << ")" << endl;
         RUDY_ += partialRUDY;
     }
 }

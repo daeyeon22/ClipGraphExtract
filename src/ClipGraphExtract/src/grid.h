@@ -85,8 +85,8 @@ class Gcell {
     int numLocalNets_;
     int numGlobalNets_;
 
-    int totalCellArea_;
-    int totalPinArea_;
+    uint totalCellArea_;
+    uint totalPinArea_;
 
     double cellDensity_;
     double pinDensity_;
@@ -112,9 +112,9 @@ class Gcell {
     void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
 
     // helper
-    int getArea();
-    int getCellArea();
-    int getPinArea();
+    uint getArea();
+    uint getCellArea();
+    uint getPinArea();
     double getRUDY();
     double getPinDensity();
     double getCellDensity();
@@ -167,7 +167,7 @@ class RSMT {
     odb::Rect bbox_;
     std::vector<odb::Point> terminals_;
     Flute::Tree rsmt_;
-    int minWidth_;
+    int width_;
 
 
     std::vector<Gcell*> rsmtOverlaps_;
@@ -176,23 +176,25 @@ class RSMT {
    
     
   public:
-    RSMT(odb::dbNet* net) : net_(net) {}
-
+    RSMT();
+    RSMT(odb::dbNet* net);
+    odb::dbNet* getNet() { return net_; }
     std::vector<odb::Rect> getSegments();
 
     bgBox getQueryBox();
     odb::Rect getBBox();
     void addTerminal(int x, int y);
     void searchOverlaps(BoxRtree<Gcell*> &tree);
-    void setMinWidth(int width);
+    void setWireWidth(int width);
+    
 
     bool isLocalNet();
     bool isGlobalNet();
     bool hasDRV();
     void createTree();
     int getNetDegree(); 
-    int getWireLengthRSMT();
-    int getWireLengthHPWL();
+    uint getWireLengthRSMT();
+    uint getWireLengthHPWL();
     double getWireUniformDensity();
 
 
@@ -206,6 +208,8 @@ class Grid {
     int gcellWidth_, gcellHeight_;
     int wireCapacity_;
     int trackSupply_;
+    int minWidth_;
+
 
     odb::dbDatabase* db_;
     std::vector<Gcell*> gcells_;
@@ -222,6 +226,7 @@ class Grid {
     Gcell* createGcell(int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     void init();
+    void setWireMinWidth(int width);
     void setDb(odb::dbDatabase* db);
     void setBoundary(odb::Rect rect);
     void setGcellWidth(int width);

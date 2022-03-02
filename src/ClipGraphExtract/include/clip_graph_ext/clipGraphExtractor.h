@@ -14,6 +14,7 @@ namespace sta {
 class dbSta;
 }
 
+
 namespace ClipGraphExtract {
 
 enum GraphModel {
@@ -47,7 +48,8 @@ class ClipGraphExtractor {
 
     // defined in grid.cpp
     void initGcellGrid(int numRows, int maxLayer);
-
+    void readRoutingReport(const char* fileName);
+    void saveMapImages(const char* dirPath);
 
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }

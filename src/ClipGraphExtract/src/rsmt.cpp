@@ -1,11 +1,22 @@
 #include "grid.h"
 #include <set>
 #include <vector>
+#include <cassert>
+#include <iostream>
 
 namespace feature_extractor {
 
 using namespace std;
 using namespace odb;
+
+RSMT::RSMT() : net_(nullptr), width_(0) {}
+
+RSMT::RSMT(dbNet* net) :
+    net_(net), width_(0) {}
+
+
+
+
 
 Rect RSMT::getBBox() {
     return bbox_;
@@ -27,8 +38,8 @@ bool RSMT::isLocalNet() {
     return bboxOverlaps_.size() < 2 ? true : false;
 }
 
-void RSMT::setMinWidth(int width) {
-    minWidth_ = width;
+void RSMT::setWireWidth(int width) {
+    width_ = width;
 }
 
 vector<Rect> RSMT::getSegments() {
@@ -94,22 +105,26 @@ void RSMT::createTree() {
 }
 
 
-int 
+uint 
 RSMT::getWireLengthRSMT() {
     return Flute::wirelength(rsmt_);   
 }
 
 
-int
+uint
 RSMT::getWireLengthHPWL() {
     return bbox_.dx() + bbox_.dy(); 
 }
 
 double
 RSMT::getWireUniformDensity() {
-    int totalArea = bbox_.dx() * bbox_.dy();
-    int wireArea = minWidth_ * getWireLengthRSMT();
-    return 1.0* wireArea / totalArea;
+    //cout << bbox_.dx() << " " << bbox_.dy() << endl;
+    uint totalArea = bbox_.dx() * bbox_.dy();
+    uint wireArea = width_ * getWireLengthRSMT();
+    double u_den = (totalArea == 0)? 1.0 : 1.0*wireArea/totalArea;
+    //double u_den = 1.0 * wireArea / totalArea;
+    assert(u_den < 0);
+    return u_den;
 }
 
 

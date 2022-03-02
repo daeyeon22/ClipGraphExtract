@@ -163,9 +163,13 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
     int numLayer=0;
     int trackSupply=0;
     int wireCapacity=0;
+    int minWidth =INT_MAX;
     for(dbTechLayer* layer : techLayers) {
         if(layer->getType() == dbTechLayerType::ROUTING) {
             numLayer++;
+
+
+            minWidth = min(minWidth, (int)layer->getWidth());
             int minPitch = layer->getPitch();
             int minSpacing = layer->getSpacing();
             int capacity=0;
@@ -196,6 +200,7 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
     grid->setGcellHeight(gcellHeight);
     grid->setWireCapacity(wireCapacity);
     grid->setTrackSupply(trackSupply);
+    grid->setWireMinWidth(minWidth);
     grid->init();
     //  
 
@@ -224,6 +229,11 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
     Flute::readLUT();
     // wireRtree (eGR result)
     for( dbNet* net : block->getNets()) {
+        
+        if(net->isSpecial()) {
+            continue; //cout << net->getName() << "is SpecialNet" << endl;
+        }
+        
         RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
         vector<odb::Rect> segments = myRSMT->getSegments();
@@ -331,7 +341,7 @@ vector<Gcell*> Grid::getGcells() {
 }
 
 Gcell* Grid::createGcell(int x1, int y1, int x2, int y2) {
-    Gcell* gcell = new Gcell;
+    Gcell* gcell = new Gcell();
     gcell->setBoundary(Rect(x1,y1, x2,y2));
     gcells_.push_back(gcell);
     return gcell;
@@ -357,9 +367,31 @@ RSMT* Grid::createRSMT(odb::dbNet* net) {
 
     // create RSMT
     myRSMT->createTree();
+    myRSMT->setWireWidth(minWidth_);
+
+
+    // DEBUG
+    double w_den = myRSMT->getWireUniformDensity();
+    cout << net->getName() << endl;
+    cout << "   - wire length (RSMT) : " << myRSMT->getWireLengthRSMT() << endl;
+    cout << "   - wire area (RSMT)   : " << myRSMT->getWireLengthRSMT() * minWidth_ << endl;
+    cout << "   - bbox area          : " << myRSMT->getBBox().area() << endl;
+    cout << "   - wire uniform den   : " << w_den << endl;
+
+    if(myRSMT->getBBox().area() == 0){
+        cout << "BBox is 0" << endl;
+    }
+    assert(w_den <0 || w_den > 1);
     rsmts_.push_back(myRSMT);
+
     return myRSMT;
 }
+
+
+void Grid::setWireMinWidth(int width) {
+    minWidth_ = width;
+}
+
 
 void Grid::setDb(dbDatabase* db) {
     db_ = db;
