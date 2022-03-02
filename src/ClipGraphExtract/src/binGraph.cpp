@@ -781,6 +781,22 @@ Graph::showCongestion() {
 
     CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
 
+	dbSet<dbInst> insts = block->getInsts();
+	
+	img.draw_rectangle(0, 0, (ux_-lx_)/dbUnitMicron, (uy_-ly_)/dbUnitMicron, BLEVEL0, opacity);
+	
+	char color[3] = {(char) 192, (char) 192, (char) 192};
+
+	for(dbInst* inst : insts){
+	    int x1 = (inst->getBBox()->xMin()-lx_) / dbUnitMicron;
+        int x2 = (inst->getBBox()->xMax()-lx_) / dbUnitMicron;
+        int y1 = (inst->getBBox()->yMin()-ly_) / dbUnitMicron;
+        int y2 = (inst->getBBox()->yMax()-ly_) / dbUnitMicron;
+
+		cout << x1 << " " << y1 << " " << x2 << " "	<< y2 << endl;
+		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
+	}
+/*
     for(auto& gcell : vertices_) {
         int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
         int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
@@ -793,7 +809,7 @@ Graph::showCongestion() {
 		int drcValue = gcell.getNumOfDrc()*10;
 		
 		char *color;
-/*
+
 		if(congValue < 11) color = RLEVEL0;
 		else if(congValue < 22) color = RLEVEL1;
 		else if(congValue < 33) color = RLEVEL2;
@@ -803,7 +819,7 @@ Graph::showCongestion() {
 		else if(congValue < 77) color = RLEVEL6;
 		else if(congValue < 88) color = RLEVEL7;
 		else color = RLEVEL8;
-*/ 
+		
 		if(drcValue < 11) color = BLEVEL0;
 		else if(drcValue < 22) color = BLEVEL1;
 		else if(drcValue < 33) color = BLEVEL2;
@@ -814,10 +830,9 @@ Graph::showCongestion() {
 		else if(drcValue < 88) color = BLEVEL7;
 		else color = BLEVEL8;
 
-
 		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
     }
-
+*/
     img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
 }
