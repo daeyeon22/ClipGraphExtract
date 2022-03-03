@@ -121,7 +121,7 @@ RSMT::getWireUniformDensity() {
     //cout << bbox_.dx() << " " << bbox_.dy() << endl;
     uint totalArea = bbox_.dx() * bbox_.dy();
     uint wireArea = width_ * getWireLengthRSMT();
-    double u_den = (totalArea == 0)? 1.0 : 1.0*wireArea/totalArea;
+    double u_den = (totalArea == 0)? 1.0 : min(1.0, 1.0*wireArea/totalArea);
     //double u_den = 1.0 * wireArea / totalArea;
     assert(u_den < 0);
     return u_den;

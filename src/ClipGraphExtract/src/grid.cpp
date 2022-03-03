@@ -189,6 +189,13 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
                 break;
         }
     }
+
+
+cout << "TrackSupply    : " << trackSupply << endl;
+cout << "WireCapacity   : " << wireCapacity << endl;
+
+
+
     // Get core area
     odb::Rect blockArea;
     block->getBBox()->getBox(blockArea);
@@ -306,6 +313,9 @@ void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {
         gcell->extractFeatureEGR(egrRtree);
         gcell->extractFeaturePL(instRtree);
         gcell->extractFeatureRSMT(rsmtRtree);
+
+        // for debug
+        gcell->print();
     }
 
     cout << "Feature extraction finished" << endl;

@@ -48,25 +48,33 @@ enum Orient {
     BOTTOM=3
 };
 
-struct ResourceModel {
-    int trackSupply[4] = {0};
-    int trackDemand[4] = {0};
-    int wireCapacity;
-    int wireLength;
+enum ModelType {
+    DR,EGR,PL
+};
+
+class Resource {
+  private:
+    uint trackSupply_[4] = {0};
+    uint trackDemand_[4] = {0};
+    uint wireCapacity_;
+    uint wireLength_;
+
+  public:
     
-    double getWireDensity();
-    double getTrackSupply(Orient type);
-    double getTrackDemand(Orient type);
-    double getWireCapaicty();
-    double getWireLength();
+    Resource() : wireCapacity_(0), wireLength_(0) {}
 
-    void setTrackSupply(int tSup) {
-        for(int i=0; i < 4; i++) trackSupply[i] = tSup;
-    }
-
-    void setWireCapacity(int wCap) { 
-        wireCapacity = wCap;
-    }
+    double getChannelDensity(Orient type) { return 1.0 * trackDemand_[type] / trackSupply_[type]; }
+    double getWireDensity() { return 1.0 * wireLength_ / wireCapacity_; }
+    uint getTrackSupply(Orient type) { return trackSupply_[type]; }
+    uint getTrackDemand(Orient type) { return trackDemand_[type]; }
+    uint getWireCapacity() { return wireCapacity_; }
+    uint getWireLength() { return wireLength_; }
+    void incrTrackDemand(Orient type) { trackDemand_[type]++; }
+    void addTrackDemand(Orient type, uint dem) { trackDemand_[type] += dem; }
+    void setTrackSupply(uint tSup) {  for(int i=0; i < 4; i++) trackSupply_[i] = tSup; }
+    void setWireCapacity(uint wCap) {  wireCapacity_ = wCap;  }
+    void setWireLength(uint wl) { wireLength_ = wl; }
+    void addWireLength(uint wl) { wireLength_ += wl; }
 };
 
 
@@ -75,15 +83,15 @@ class Gcell {
     // Gcell features
     odb::Rect bbox_;
 
-    ResourceModel rmEGR; // using GR results
-    ResourceModel rmDR; // using DR results
-    ResourceModel rmRSMT; // using PLACE results
+    Resource rmEGR_; // using GR results
+    Resource rmDR_; // using DR results
+    Resource rmPL_; // using PLACE results
 
     // using placement, RSMT results
-    int numInstances_;
-    int numTerminals_;
-    int numLocalNets_;
-    int numGlobalNets_;
+    uint numInstances_;
+    uint numTerminals_;
+    uint numLocalNets_;
+    uint numGlobalNets_;
 
     uint totalCellArea_;
     uint totalPinArea_;
@@ -100,8 +108,8 @@ class Gcell {
     
     bgBox getQueryBox();
     odb::Rect getBBox(){ return bbox_; }
-    //void updateResourceModelRSMT(odb::Rect seg);
-    //void updateResourceModelGR(odb::Rect seg);
+    //void updateResourceRSMT(odb::Rect seg);
+    //void updateResourceGR(odb::Rect seg);
     //void addInst(odb::dbInst* inst);
     void createTree();
     std::vector<odb::Rect> getSegments(); // available after createTree()
@@ -111,18 +119,29 @@ class Gcell {
     void extractFeatureEGR(SegRtree<odb::dbNet*> &rtree);
     void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
 
+    //void extractFeature((void*)rtree, ModelType type);
+
     // helper
+    uint getNumInstances();
+    uint getNumTerminals();
+    uint getNumGlobalNets();
+    uint getNumLocalNets();
     uint getArea();
     uint getCellArea();
     uint getPinArea();
     double getRUDY();
     double getPinDensity();
     double getCellDensity();
-
-
+    double getWireDensity(ModelType type);
+    double getChannelDensity(ModelType type);
+    double getChannelDensity(Orient orient, ModelType = ModelType::PL);
+    uint getTrackDemand(Orient orient, ModelType type = ModelType::PL);
+    uint getTrackSupply(Orient orient, ModelType type = ModelType::PL);
+    uint getWireCapacity(ModelType type = ModelType::PL);
     void setTrackSupply(int tSup);
     void setWireCapacity(int wCap);
     void setBoundary(odb::Rect rect);
+    void print();
 
 };
 
@@ -197,8 +216,6 @@ class RSMT {
     uint getWireLengthHPWL();
     double getWireUniformDensity();
 
-
-    
 };
 
 class Grid {

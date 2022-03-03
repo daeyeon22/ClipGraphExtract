@@ -17,6 +17,7 @@ static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
                            red[] = {255, 0, 0};
 
 
+
 void Grid::saveMapImages(string dirPath) {
 
     int dbUnitMicron = getDb()->getChip()->getBlock()->getDbUnitsPerMicron();
@@ -31,24 +32,32 @@ void Grid::saveMapImages(string dirPath) {
     int xOrigin = getBoundary().xMin();
     int yOrigin = getBoundary().yMin();
     float opacity = 1.0;
-    
+    string imgName = "";
+    string imgPath = "";
+    double RUDY, PinDen, CellDen, ChanDen, WireDen;
 
     cout << "imageSize (" << imgWidth << " " << imgHeight << ")" << endl;
-    // RUDY Map
-    //
-    CImgObj img1(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum);
+    CImgObj img1(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum); // RUDY Map
+    CImgObj img2(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum); // PinDen Map
+    CImgObj img3(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum); // CellDen Map
+    CImgObj img4(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum); // ChanDen(Avg) Map
+    CImgObj img5(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum); // WireDen Map
+
     for(Gcell* gcell : gcells_) {
 
-        gcell->getBBox().print();
-        cout << "   - cell density  : " << gcell->getCellDensity() << endl;
-        cout << "   - pin density   : " << gcell->getPinDensity() << endl;
-        cout << "   - RUDY          : " << gcell->getRUDY() << endl;
+        //gcell->getBBox().print();
+        //cout << "   - cell density  : " << gcell->getCellDensity() << endl;
+        //cout << "   - pin density   : " << gcell->getPinDensity() << endl;
+        //cout << "   - RUDY          : " << gcell->getRUDY() << endl;
 
 
-        double value = gcell->getRUDY(); // + 0.5;
-        value = min(1.0, value);
+        RUDY = min(1.0, gcell->getRUDY());
+        WireDen = min(1.0, gcell->getWireDensity(ModelType::PL));
+        CellDen = min(1.0, gcell->getCellDensity());
+        PinDen = min(1.0, gcell->getPinDensity());
+        ChanDen = min(1.0, gcell->getChannelDensity(ModelType::PL));
+
         
-        int lev = min((int)(100 * gcell->getRUDY()) % 10, 8);
         //const unsigned char *color = RLEV[lev];
         int x1 = gcell->getBBox().xMin();
         int y1 = gcell->getBBox().yMin();
@@ -59,14 +68,46 @@ void Grid::saveMapImages(string dirPath) {
         y1 = (int) ( sf * (y1 - yOrigin) );
         y2 = (int) ( sf * (y2 - yOrigin) );
         
-        const Color tinyColor = GetColor(value, ColormapType::Heat);
-        unsigned char color[] = {tinyColor.ri(), tinyColor.gi(), tinyColor.bi()};
-        img1.draw_rectangle(x1,y1,x2,y2,color,opacity);
+        // RUDY
+        Color tinyColor1 = GetColor(RUDY, ColormapType::Heat);
+        const unsigned char color1[] = {tinyColor1.ri(), tinyColor1.gi(), tinyColor1.bi()};
+        img1.draw_rectangle(x1,y1,x2,y2,color1,opacity);
+
+        // PinDen
+        Color tinyColor2 = GetColor(PinDen, ColormapType::Heat);
+        const unsigned char color2[] = {tinyColor2.ri(), tinyColor2.gi(), tinyColor2.bi()};
+        img2.draw_rectangle(x1,y1,x2,y2,color2,opacity);
+
+        // CellDen
+        Color tinyColor3 = GetColor(CellDen, ColormapType::Heat);
+        const unsigned char color3[] = {tinyColor3.ri(), tinyColor3.gi(), tinyColor3.bi()};
+        img3.draw_rectangle(x1,y1,x2,y2,color3,opacity);
+
+        // ChanDen
+        Color tinyColor4 = GetColor(ChanDen, ColormapType::Heat);
+        const unsigned char color4[] = {tinyColor4.ri(), tinyColor4.gi(), tinyColor4.bi()};
+        img4.draw_rectangle(x1,y1,x2,y2,color4,opacity);
+        
+        // WireDen
+        Color tinyColor5 = GetColor(WireDen, ColormapType::Heat);
+        const unsigned char color5[] = {tinyColor5.ri(), tinyColor5.gi(), tinyColor5.bi()};
+        img5.draw_rectangle(x1,y1,x2,y2,color5,opacity);
     }
-    string imgName = "RUDY";
-    string imgPath = dirPath + "/RUDY.jpg";
-    img1.draw_text(50,50,imgName.c_str(), black, NULL, 1, 30);
+    imgPath = dirPath + "/RUDY.jpg";
     img1.save_jpeg(imgPath.c_str(), 200);
+
+    imgPath = dirPath + "/PinDen.jpg";
+    img2.save_jpeg(imgPath.c_str(), 200);
+
+    imgPath = dirPath + "/CellDen.jpg";
+    img3.save_jpeg(imgPath.c_str(), 200);
+
+    imgPath = dirPath + "/ChanDen.jpg";
+    img4.save_jpeg(imgPath.c_str(), 200);
+
+    imgPath = dirPath + "/WireDen.jpg";
+    img5.save_jpeg(imgPath.c_str(), 200);
+
 }
 
 
