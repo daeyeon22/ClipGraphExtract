@@ -59,6 +59,8 @@ add_library( ClipGraphExtractor
   src/gcell.cpp
   src/rsmt.cpp
   src/plot.cpp
+  src/marker.cpp
+  src/label.cpp
   ${GRAPHEXT_WRAP}
   ${GRAPHEXT_TCL_INIT}
 )

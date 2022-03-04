@@ -105,6 +105,16 @@ proc save_bin_graph_file { args } {
     save_bin_graph_file_cmd
 }
 
+########################################################
+proc read_routing_report { args } {
+    sta::parse_key_args "read_routing_report" args \
+        keys { -in_file }  flags {}
+
+    if { [info exists keys(-in_file)] } {
+        set in_file $keys(-in_file)
+        read_routing_report_cmd $in_file
+    }
+}
 
 proc construct_gcell_grid { args } {
     sta::parse_key_args "construct_gcell_grid" args \

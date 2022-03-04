@@ -9,8 +9,9 @@ using namespace std;
 using namespace odb;
 
 Gcell::Gcell() :
-    numInstances_(0), numTerminals_(0), numLocalNets_(0),
-    numGlobalNets_(0), totalCellArea_(0), totalPinArea_(0),
+    numInstances_(0), numTerminals_(0), 
+    //numLocalNets_(0), numGlobalNets_(0), 
+    totalCellArea_(0), totalPinArea_(0),
     cellDensity_(0), pinDensity_(0), RUDY_(0) {}
 
 
@@ -99,13 +100,31 @@ uint Gcell::getNumTerminals() {
     return numTerminals_;
 }
 
+uint Gcell::getNumNets() {
+    return (uint)(rsmts_.size());
+}
+
+
 uint Gcell::getNumLocalNets() {
-    return numLocalNets_;
+    uint count =0;
+    for(RSMT* rsmt : rsmts_) {
+        if(rsmt->isLocalNet())
+            count++;
+    }
+
+    return count;
 }
 
 uint Gcell::getNumGlobalNets() {
-    return numGlobalNets_;
+    uint count = getNumNets() - getNumLocalNets();
+    return count;
+
 }
+
+uint Gcell::getNumMarkers() {
+    return (uint)(markers_.size());
+}
+
 
 double Gcell::getWireDensity(ModelType type) {
      switch(type) {
@@ -119,6 +138,26 @@ double Gcell::getWireDensity(ModelType type) {
             return 0; 
     }   
 }
+
+double Gcell::getLNetDensity() {
+    uint wireCap = rmPL_.getWireCapacity();
+    uint wireLen = 0;
+    for(RSMT* rsmt : rsmts_) {
+        if(rsmt->isLocalNet()) {
+            wireLen += rsmt->getWireLengthRSMT();
+        }
+    }
+    return 1.0 * wireLen / wireCap;
+}
+
+double Gcell::getGNetDensity() {
+    //uint wireCap = rmPL_.getWireCapacity();
+    //uint wireLen = rmPL_.getWireLength();
+    return getWireDensity(ModelType::PL) - getLNetDensity();
+}
+
+
+
 
 double Gcell::getChannelDensity(ModelType type) {
     double chanDenL = getChannelDensity(Orient::LEFT, type);
@@ -138,7 +177,6 @@ double Gcell::getChannelDensity(Orient orient, ModelType type) {
             return rmPL_.getChannelDensity(orient);
         default:
             return 0.0; 
- 
     }
 }
 
@@ -314,6 +352,13 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         int y0 = bg::get<0,1>(wire_seg);
         int x1 = bg::get<1,0>(wire_seg);
         int y1 = bg::get<1,1>(wire_seg);
+
+        //if(x0 > x1 || y0 > y1) {
+        //    cout << "??????????" << endl;
+        //    exit(0);
+        //}
+
+        
         x0 = max(x0, bbox_.xMin());
         y0 = max(y0, bbox_.yMin());
         x1 = min(x1, bbox_.xMax());
@@ -341,6 +386,14 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
        
         //cout << "   - "<< myRSMT->getNet()->getName() << " RUDY = " << partialRUDY << " (" << dn << " " << R << ")" << endl;
         RUDY_ += partialRUDY;
+
+        //
+        rsmts_.push_back(myRSMT);
+        //if(myRSMT->isLocalNet())
+        //    numLocalNets_++;
+        //else
+        //    numGlobalNets_++;
+
     }
 }
 
@@ -370,6 +423,12 @@ void Gcell::print() {
     cout << "   - #Terms    : " << getNumTerminals() << endl;
     cout << "   - #GNets    : " << getNumGlobalNets() << endl;
     cout << "   - #LNets    : " << getNumLocalNets() << endl;
+    cout << "   - LNetDen   : " << getLNetDensity() << endl;
+    cout << "   - GNetDen   : " << getGNetDensity() << endl;
+    cout << "   - #DRVs     : " << getNumMarkers() << endl;
+
+
+    
     cout << endl;
 
 }

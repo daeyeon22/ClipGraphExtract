@@ -44,6 +44,15 @@ save_map_images_cmd(const char* imgDir) {
     graphExt->saveMapImages(imgDir);
 }
 
+void
+read_routing_report_cmd(const char* file_name) {
+
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->readRoutingReport(file_name);
+
+}
+
+
 
 
 void

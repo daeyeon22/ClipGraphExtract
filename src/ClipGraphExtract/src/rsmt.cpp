@@ -43,10 +43,14 @@ void RSMT::setWireWidth(int width) {
 }
 
 vector<Rect> RSMT::getSegments() {
+
+    
+    // NEED TO DEBUG
+    //
     vector<Rect> segments;
     int n, x1, y1, x2, y2;
     Flute::Tree *tree = &rsmt_;
-    for(int i=0; i < tree->deg -2; i++) {
+    for(int i=0; i < 2*tree->deg -2; i++) {
         n = tree->branch[i].n;
         x1 = tree->branch[i].x;
         y1 = tree->branch[i].y;
@@ -107,6 +111,21 @@ void RSMT::createTree() {
 
 uint 
 RSMT::getWireLengthRSMT() {
+
+   
+    //////////////////////////////////////////////////
+    //uint wl = 0;
+    //for(Rect& seg : getSegments())  {
+    //    wl += seg.dx() + seg.dy();
+    //}
+
+    //if(wl != Flute::wirelength(rsmt_)) {
+    //    cout << wl << " " << Flute::wirelength(rsmt_) << endl;
+    //    exit(0);
+    //}
+    //////////////////////////////////////////////////
+    
+    
     return Flute::wirelength(rsmt_);   
 }
 

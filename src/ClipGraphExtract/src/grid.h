@@ -36,7 +36,7 @@ using SegRtree = bgi::rtree<std::pair<bgSeg, A>, bgi::quadratic<6>>;
 
 namespace feature_extractor {
 
-class DrcMarker;
+class Marker;
 class Gcell;
 class RSMT;
 
@@ -90,8 +90,8 @@ class Gcell {
     // using placement, RSMT results
     uint numInstances_;
     uint numTerminals_;
-    uint numLocalNets_;
-    uint numGlobalNets_;
+    //uint numLocalNets_;
+    //uint numGlobalNets_;
 
     uint totalCellArea_;
     uint totalPinArea_;
@@ -101,6 +101,8 @@ class Gcell {
     double RUDY_;
 
     std::vector<odb::dbInst*> insts_;
+    std::vector<Marker*> markers_;
+    std::vector<RSMT*> rsmts_;
 
 
   public:
@@ -119,22 +121,34 @@ class Gcell {
     void extractFeatureEGR(SegRtree<odb::dbNet*> &rtree);
     void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
 
+    // 
+    void annotateLabel(BoxRtree<Marker*> &rtree);
+
+
+
     //void extractFeature((void*)rtree, ModelType type);
 
     // helper
     uint getNumInstances();
     uint getNumTerminals();
+    uint getNumNets();
     uint getNumGlobalNets();
     uint getNumLocalNets();
     uint getArea();
     uint getCellArea();
     uint getPinArea();
+    uint getNumMarkers();
+
     double getRUDY();
     double getPinDensity();
     double getCellDensity();
+    double getLNetDensity();
+    double getGNetDensity();
     double getWireDensity(ModelType type);
     double getChannelDensity(ModelType type);
     double getChannelDensity(Orient orient, ModelType = ModelType::PL);
+
+    
     uint getTrackDemand(Orient orient, ModelType type = ModelType::PL);
     uint getTrackSupply(Orient orient, ModelType type = ModelType::PL);
     uint getWireCapacity(ModelType type = ModelType::PL);
@@ -150,32 +164,39 @@ enum ObjectType {
     NET, INSTANCE, BLOCKAGE, SNET
 };
 
-enum DrvTag {
-    LOCAL2LOCAL,
-    LOCAL2GLOBAL,
-    GLOBAL2GLOBAL,
-    PIN2LOCAL,
-    PIN2GLOBAL
-};
+class Marker {
+  public:
+    enum Tag { N2N, N2I };  
+    
+    Marker();
 
-class DrcMarker {
+    void setType(std::string type);
+    void setRule(std::string rule);
+    void setBoundary(odb::Rect rect);
+    void setTag(Tag tag);
+    void setFromNet(odb::dbNet* net);
+    void setToNet(odb::dbNet* net);
+    void setToInst(odb::dbInst* inst);
+
+    odb::dbNet* getFromNet();
+    odb::dbNet* getToNet();
+    odb::dbInst* getToInst();
+
+    bgBox getQueryBox();
+    odb::Rect getBBox();
+    odb::Point getCentor();
+
+
   private:
     std::string type_;
     std::string rule_;
-    ObjectType objType1_, objType2_;
+    Tag tag_;
 
-    void* obj1_;
-    void* obj2_;
+    odb::dbNet* fromNet_;
+    odb::dbNet* toNet_;
+    odb::dbInst* toInst_;
+
     odb::Rect bbox_;
-
-  public:
-    void setType(std::string type);
-    void setDesignRule(std::string rule);
-    void setBoundary(odb::Rect rect);
-    void setObject1(odb::dbNet* net);
-    void setObject2(odb::dbNet* net);
-    void setObject1(odb::dbInst* inst);
-    void setObject2(odb::dbInst* inst);
 
 };
 
@@ -191,7 +212,7 @@ class RSMT {
 
     std::vector<Gcell*> rsmtOverlaps_;
     std::vector<Gcell*> bboxOverlaps_;
-    std::vector<DrcMarker*> markers_;
+    std::vector<Marker*> markers_;
    
     
   public:
@@ -232,7 +253,7 @@ class Grid {
     std::vector<Gcell*> gcells_;
     std::vector<RSMT*> rsmts_;
     // After read drc.rpt
-    std::vector<DrcMarker*> markers_;
+    std::vector<Marker*> markers_;
     
 
   public:
@@ -242,6 +263,7 @@ class Grid {
 
     Gcell* createGcell(int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
+    Marker* createMarker(int x1, int y1, int x2, int y2);
     void init();
     void setWireMinWidth(int width);
     void setDb(odb::dbDatabase* db);
