@@ -95,6 +95,7 @@ class Gcell {
 
     uint totalCellArea_;
     uint totalPinArea_;
+    uint numLayers_;
 
     double cellDensity_;
     double pinDensity_;
@@ -154,6 +155,7 @@ class Gcell {
     uint getWireCapacity(ModelType type = ModelType::PL);
     void setTrackSupply(int tSup);
     void setWireCapacity(int wCap);
+    void setNumLayers(int nLyr);
     void setBoundary(odb::Rect rect);
     void print();
 
@@ -232,7 +234,7 @@ class RSMT {
     bool isGlobalNet();
     bool hasDRV();
     void createTree();
-    int getNetDegree(); 
+    uint getNumTerminals();
     uint getWireLengthRSMT();
     uint getWireLengthHPWL();
     double getWireUniformDensity();
@@ -246,6 +248,7 @@ class Grid {
     int gcellWidth_, gcellHeight_;
     int wireCapacity_;
     int trackSupply_;
+    int numLayers_;
     int minWidth_;
 
 
@@ -272,9 +275,16 @@ class Grid {
     void setGcellHeight(int height);
     void setWireCapacity(int wCap);
     void setTrackSupply(int tSup);
-
-
+    void setNumLayers(int nLyr);
     void saveMapImages(std::string dirPath);
+
+
+    
+    //
+    double getMaxRUDY();
+    double getMaxCellDensity();
+
+
 };
 
 
