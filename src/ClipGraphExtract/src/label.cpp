@@ -40,6 +40,9 @@ vector<string> splitAsTokens(string str, string delim){
 
 void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
+
+    cout << "Start to read routing report (" << fileName << ")" << endl;
+
     ifstream inFile(fileName);
     const std::regex colon(":");
     string line;

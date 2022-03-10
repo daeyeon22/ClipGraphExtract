@@ -42,36 +42,44 @@ void RSMT::setWireWidth(int width) {
     width_ = width;
 }
 
+uint RSMT::getNumTerminals() {
+    return (uint)terminals_.size();
+}
+
+
 vector<Rect> RSMT::getSegments() {
 
     
     // NEED TO DEBUG
     //
     vector<Rect> segments;
-    int n, x1, y1, x2, y2;
-    Flute::Tree *tree = &rsmt_;
-    for(int i=0; i < 2*tree->deg -2; i++) {
-        n = tree->branch[i].n;
-        x1 = tree->branch[i].x;
-        y1 = tree->branch[i].y;
-        x2 = tree->branch[n].x;
-        y2 = tree->branch[n].y;
-        
-        // if barnch has a L shape, decomposes into 2 semgnets
-        if(x1 != x2 && y1 != y2) {
-            Rect seg1, seg2;
-            if(rand() % 2 == 0) {
-                seg1 = Rect( x1, y1, x1, y2 );
-                seg2 = Rect( x1, y2, x2, y2 );
+    
+    if(terminals_.size() > 1) {
+        int n, x1, y1, x2, y2;
+        Flute::Tree *tree = &rsmt_;
+        for(int i=0; i < 2*tree->deg -2; i++) {
+            n = tree->branch[i].n;
+            x1 = tree->branch[i].x;
+            y1 = tree->branch[i].y;
+            x2 = tree->branch[n].x;
+            y2 = tree->branch[n].y;
 
+            // if barnch has a L shape, decomposes into 2 semgnets
+            if(x1 != x2 && y1 != y2) {
+                Rect seg1, seg2;
+                if(rand() % 2 == 0) {
+                    seg1 = Rect( x1, y1, x1, y2 );
+                    seg2 = Rect( x1, y2, x2, y2 );
+
+                } else {
+                    seg1 = Rect( x1, y1, x2, y1 );
+                    seg2 = Rect( x2, y1, x2, y2 );
+                }
+                segments.push_back(seg1);
+                segments.push_back(seg2);
             } else {
-                seg1 = Rect( x1, y1, x2, y1 );
-                seg2 = Rect( x2, y1, x2, y2 );
+                segments.push_back( Rect( x1, y1, x2, y2 ) );
             }
-            segments.push_back(seg1);
-            segments.push_back(seg2);
-        } else {
-            segments.push_back( Rect( x1, y1, x2, y2 ) );
         }
     }
 
@@ -102,8 +110,10 @@ void RSMT::createTree() {
 
     }
 
-    // RSMT
-    rsmt_ = Flute::flute(deg, xs, ys, FLUTE_ACCURACY);
+    if(deg > 1) {
+        // RSMT
+        rsmt_ = Flute::flute(deg, xs, ys, FLUTE_ACCURACY);
+    }
     // BBOX
     bbox_ = Rect(xMin, yMin, xMax, yMax);
 }
@@ -124,9 +134,10 @@ RSMT::getWireLengthRSMT() {
     //    exit(0);
     //}
     //////////////////////////////////////////////////
-    
-    
-    return Flute::wirelength(rsmt_);   
+    if(terminals_.size() > 1) 
+        return Flute::wirelength(rsmt_);   
+    else
+        return 0;
 }
 
 

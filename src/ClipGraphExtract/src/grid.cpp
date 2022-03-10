@@ -84,6 +84,7 @@ cout << "WireCapacity   : " << wireCapacity << endl;
     grid->setGcellHeight(gcellHeight);
     grid->setWireCapacity(wireCapacity);
     grid->setTrackSupply(trackSupply);
+    grid->setNumLayers(numLayer);
     grid->setWireMinWidth(minWidth);
     grid->init();
     //  
@@ -117,18 +118,16 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         if(net->isSpecial()) {
             continue; //cout << net->getName() << "is SpecialNet" << endl;
         }
-        
+       
         RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
         vector<odb::Rect> segments = myRSMT->getSegments();
-
         // insert segments into rtree
         for(odb::Rect& seg : segments) {
             // update (1) #cut-nets (2) wire utilization
             bgSeg bgseg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
             rsmtRtree.insert( make_pair( bgseg, myRSMT ) );
         }
-
         // make wireRtree
         dbWire* wire = net->getWire();
         if( wire && wire->length() ) {
@@ -194,7 +193,16 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         // for debug
         gcell->print();
     }
-
+    ////// FOR DEBUG
+    cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
+    
+    
+    double avgRUDY = 0;
+    for(Gcell* gcell : grid->getGcells()) 
+        avgRUDY += gcell->getRUDY();
+    avgRUDY /= grid->getGcells().size();
+    cout << "[REP] Avg RUDY : " << avgRUDY << endl;
+    
     cout << "Feature extraction finished" << endl;
 }
 
@@ -217,8 +225,18 @@ void Grid::init() {
             Gcell* gcell = createGcell(x1,y1,x2,y2);
             gcell->setTrackSupply(trackSupply_);
             gcell->setWireCapacity(wireCapacity_);
+            gcell->setNumLayers(numLayers_);
         }
     }
+}
+
+
+double Grid::getMaxRUDY() {
+    double maxRUDY = 0;
+    for(Gcell* gcell : gcells_) 
+        maxRUDY = max(maxRUDY, gcell->getRUDY());
+
+    return maxRUDY;
 }
 
 
@@ -251,6 +269,8 @@ RSMT* Grid::createRSMT(odb::dbNet* net) {
             myRSMT->addTerminal(x,y);
         }
     }
+
+    //cout << "#Terminals : " << myRSMT->getNumTerminals() << endl;
 
     // create RSMT
     myRSMT->createTree();
@@ -301,6 +321,10 @@ void Grid::setWireCapacity(int wcap) {
 
 void Grid::setTrackSupply(int tsup) {
     trackSupply_ = tsup;
+}
+
+void Grid::setNumLayers(int nlyr) {
+    numLayers_ = nlyr;
 }
 
 Rect Grid::getBoundary() {

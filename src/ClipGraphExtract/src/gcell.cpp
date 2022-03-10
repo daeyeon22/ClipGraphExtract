@@ -11,6 +11,7 @@ using namespace odb;
 Gcell::Gcell() :
     numInstances_(0), numTerminals_(0), 
     //numLocalNets_(0), numGlobalNets_(0), 
+    numLayers_(1),
     totalCellArea_(0), totalPinArea_(0),
     cellDensity_(0), pinDensity_(0), RUDY_(0) {}
 
@@ -29,6 +30,10 @@ void Gcell::setWireCapacity(int wCap) {
     rmEGR_.setWireCapacity((uint)wCap);
     rmPL_.setWireCapacity((uint)wCap);
     rmDR_.setWireCapacity((uint)wCap);
+}
+
+void Gcell::setNumLayers(int nLyr) {
+    numLayers_ = nLyr;
 }
 
 
@@ -395,6 +400,8 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         //    numGlobalNets_++;
 
     }
+
+    RUDY_ = RUDY_ / numLayers_;
 }
 
 

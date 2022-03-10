@@ -51,6 +51,29 @@ double getValue(Gcell* gcell, ValueType valType) {
     }
 }
 
+double getDenom(Grid* grid, ValueType valType) {
+    switch(valType) {
+        case ValueType::RUDY:
+            return grid->getMaxRUDY();
+        case ValueType::WIRE_DEN:
+            return 1.0;
+        case ValueType::CELL_DEN:
+            return 1.0;
+        case ValueType::PIN_DEN:
+            return 1.0;
+        case ValueType::CHAN_DEN:
+            return 1.0;
+        case ValueType::MARKER:
+            return 1.0;
+        case ValueType::LNET_DEN:
+            return 1.0;
+        case ValueType::GNET_DEN:
+            return 1.0;
+        default:
+            return 1.0;
+    }
+}
+
 
 
 void drawGcell(CImgObj* img, Gcell* gcell, Point origin, double scale, double opacity, double value) {
@@ -74,7 +97,7 @@ void drawGcell(CImgObj* img, Gcell* gcell, Point origin, double scale, double op
 void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) {
 
     // img scaling factor
-    float sf = 0.01;
+    float sf = 0.001;
     int imgWidth = (int) ( sf * grid->getBoundary().dx() );
     int imgHeight = (int) ( sf * grid->getBoundary().dy() );
     int imgDepth = 1;   
@@ -84,8 +107,15 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
     float opacity = 1.0;
     CImgObj img(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum);
 
+
+    //double denom = getDenom(grid, vtype);
+
     for(Gcell* gcell : grid->getGcells()) {
-        drawGcell(&img, gcell, origin, sf, opacity, getValue(gcell,vtype));
+    
+        double val = getValue(gcell, vtype);
+        //val = val / denom;
+        
+        drawGcell(&img, gcell, origin, sf, opacity, val);
     }
 
     string imgPath = dirPath + "/" + fileName + ".jpg";
