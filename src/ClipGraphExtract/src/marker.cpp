@@ -1,4 +1,5 @@
 #include "grid.h"
+#include <iostream>
 
 
 namespace feature_extractor {
@@ -30,23 +31,45 @@ void Marker::setTag(Marker::Tag tag) {
     tag_ = tag;
 }
 
-void Marker::setFromNet(dbNet* net) {
-    fromNet_ = net;    
+void Marker::setFromNet(RSMT* rsmt) {
+    fromNet_ = rsmt;    
 }
 
-void Marker::setToNet(dbNet* net) {
-    toNet_ = net;
+void Marker::setToNet(RSMT* rsmt) {
+    toNet_ = rsmt;
 }
 
 void Marker::setToInst(dbInst* inst) {
     toInst_ = inst;
 }
 
-odb::dbNet* Marker::getFromNet() {
+Marker::Tag Marker::getTag() {
+    if(fromNet_ != NULL && toNet_ != NULL)
+        return Tag::N2N;
+    else if(fromNet_ != NULL && toInst_ != NULL)
+        return Tag::N2I;
+    else
+        return Tag::N2I;
+}
+
+
+string Marker::getType() {
+    return type_;
+}
+
+string Marker::getRule() {
+    return rule_;
+}
+
+
+
+
+
+RSMT* Marker::getFromNet() {
     return fromNet_;
 }
 
-odb::dbNet* Marker::getToNet() {
+RSMT* Marker::getToNet() {
     return toNet_;
 }
 
@@ -70,6 +93,48 @@ Point Marker::getCentor() {
 }
 
 
+
+Marker::Category Marker::getCategory() {
+    if(tag_ == Tag::N2N) {
+        if(fromNet_->isLocalNet() && toNet_->isLocalNet()) {
+            return Category::L2L;
+        } else if(!fromNet_->isLocalNet() && toNet_->isLocalNet()) {
+            return Category::L2G;
+        } else if(fromNet_->isLocalNet() && !toNet_->isLocalNet()) {
+            return Category::L2G;
+        } else {
+            return Category::G2G;
+        } 
+    } else {
+        //if (tag_ == Tag::N2I) {
+        if(fromNet_->isLocalNet()) {
+            return Category::L2I;
+        } else {
+            return Category::G2I;
+        }
+    }
+}
+
+
+
+
+void Marker::print() {
+    Category ctgy = getCategory();
+    switch(ctgy) {
+        case Category::L2L:
+            cout << "Marker from Local to Local" << endl; break;
+        case Category::L2G:
+            cout << "Marker from Local to Global" << endl; break;
+        case Category::L2I:
+            cout << "Marker from Local to Instance" << endl; break;
+        case Category::G2G:
+            cout << "Marker from Global to Global" << endl; break;
+        case Category::G2I:
+            cout << "Marker from Global to Instance" << endl; break;
+        default:
+            cout << "Exception case..." << endl; break;
+    }
+}
 
 
 

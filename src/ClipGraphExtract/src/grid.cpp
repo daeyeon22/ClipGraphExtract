@@ -257,9 +257,18 @@ Gcell* Grid::createGcell(int x1, int y1, int x2, int y2) {
 }
 
 
+RSMT* Grid::getRSMT(odb::dbNet* net) {
+    return net2rsmt_[net];
+}
+
+
 RSMT* Grid::createRSMT(odb::dbNet* net) {
     RSMT* myRSMT = new RSMT(net);
     dbSet<dbITerm> iterms = net->getITerms();
+
+    //
+    net2rsmt_[net] = myRSMT;
+
 
     // add terminals
     int x,y;

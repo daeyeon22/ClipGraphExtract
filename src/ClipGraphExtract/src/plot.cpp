@@ -140,6 +140,10 @@ void Grid::saveMapImages(string dirPath) {
 
 
 
+
+    reportDRC();
+
+
     /*
     int dbUnitMicron = getDb()->getChip()->getBlock()->getDbUnitsPerMicron();
 
