@@ -8,15 +8,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(USE_CIMG_LIB "Use CImg drawing library for image drawing" ON)
 
+
 if( USE_CIMG_LIB )
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Dcimg_use_jpeg=1 -D_GLIBCXX_USE_CXX11_ABI=0")
     #set(CIMG_HOME ${CLIP_GRAPHEXT_HOME}/module/CImg)
   set(CIMG_HOME ${PROJECT_SOURCE_DIR}/src/CImg)
-  add_definitions(-DENABLE_CIMG_LIB=1)
+  set(COLORMAP_HOME ${PROJECT_SOURCE_DIR}/src/tinycolormap)
+    add_definitions(-DENABLE_CIMG_LIB=1)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
+   
+    
 find_package(SWIG REQUIRED)
 find_package(Boost REQUIRED)
 
@@ -51,7 +55,12 @@ add_library( ClipGraphExtractor
   src/MakeClipGraphExtractor.cpp
   src/instGraph.cpp
   src/binGraph.cpp
-
+  src/grid.cpp
+  src/gcell.cpp
+  src/rsmt.cpp
+  src/plot.cpp
+  src/marker.cpp
+  src/label.cpp
   ${GRAPHEXT_WRAP}
   ${GRAPHEXT_TCL_INIT}
 )
@@ -65,9 +74,10 @@ target_include_directories( ClipGraphExtractor
   ${DBSTA_HOME}/include
   ${OPENSTA_HOME}/include
   ${FLUTE_HOME}
-  ${CIMG_HOME}
+    #${CIMG_HOME}
   ${Boost_INCLUDE_DIR}
  )
+
 
 # CIMG_USE case
 if( USE_CIMG_LIB )
@@ -80,6 +90,7 @@ if( USE_CIMG_LIB )
     PUBLIC
     # For CImg
     ${CIMG_HOME}
+    ${COLORMAP_HOME}/include
     ${X11_INCLUDE_DIR}
     ${JPEG_INCLUDE_DIR}
   )

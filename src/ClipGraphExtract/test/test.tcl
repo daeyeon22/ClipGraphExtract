@@ -1,22 +1,14 @@
-set design test
-read_lef test.lef
-read_def $design.def
+read_lef keccak/test.lef
+read_def keccak/test.def
 
-#read_liberty NangateOpenCellLibrary_typical.lib
-#read_sdc $design.sdc
+construct_gcell_grid -num_rows 5 -max_route_layer 7
+read_routing_report -in_file keccak/test.drc.rpt
 
-puts "clique model end"
+save_map_images -save_dir ./img
+#bin_graph_extract -num_rows 5 -max_layer 5
+#bin_graph_labeling -drc_rpt_file test.drc.rpt
+#save_bin_graph_file -prefix bin_graph
+#analyze_congestion
 
-#graph_extract -out_file extract_clique_a.txt -graph_model clique -edge_weight_model a 500000 500000 550000 550000 
-#graph_extract -out_file extract_clique_b.txt -graph_model clique -edge_weight_model b 500000 500000 550000 550000 
-#graph_extract -out_file extract_star_a.txt -graph_model star -edge_weight_model a 500000 500000 550000 550000 
-#graph_extract -out_file extract_star_b.txt -graph_model star -edge_weight_model b 500000 500000 550000 550000 
-bin_graph_extract -num_rows 5 -max_layer 7
-bin_graph_labeling -drc_rpt_file test.drc.rpt
-save_bin_graph_file -prefix bin_graph
-
-analyze_congestion
-
-puts "star model end"
 exit
 

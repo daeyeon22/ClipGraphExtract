@@ -30,6 +30,30 @@ using ClipGraphExtract::EdgeWeightModel;
 
 %inline %{
 
+void
+construct_gcell_grid_cmd(int num_rows, int max_layer) 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->setDb(getDb());
+    graphExt->initGcellGrid(num_rows, max_layer);
+}
+
+void
+save_map_images_cmd(const char* imgDir) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveMapImages(imgDir);
+}
+
+void
+read_routing_report_cmd(const char* file_name) {
+
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->readRoutingReport(file_name);
+
+}
+
+
+
 
 void
 analyze_congestion_cmd() 

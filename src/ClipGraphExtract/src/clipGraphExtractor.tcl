@@ -11,6 +11,9 @@ sta::define_cmd_args "bin_graph_extract" {
 }
 
 
+
+
+
 proc graph_extract { args } {
   sta::parse_key_args "graph_extract" args \
     keys {-graph_model -edge_weight_model -out_file} flags {}
@@ -102,11 +105,48 @@ proc save_bin_graph_file { args } {
     save_bin_graph_file_cmd
 }
 
+########################################################
+proc read_routing_report { args } {
+    sta::parse_key_args "read_routing_report" args \
+        keys { -in_file }  flags {}
+
+    if { [info exists keys(-in_file)] } {
+        set in_file $keys(-in_file)
+        read_routing_report_cmd $in_file
+    }
+}
+
+proc construct_gcell_grid { args } {
+    sta::parse_key_args "construct_gcell_grid" args \
+        keys { -num_rows -max_route_layer } flags {}
+
+    set num_rows 5 
+    set max_route_layer 7
+
+    if { [info exists keys(-num_rows)] } {
+        set num_rows $keys(-num_rows)
+    } 
+    if { [info exists keys(-max_route_layer)]} {
+        set max_route_layer $keys(-max_route_layer)
+    }
+
+    construct_gcell_grid_cmd $num_rows $max_route_layer
+}
+
+proc save_map_images { args } {
+    sta::parse_key_args "save_map_imges" args \
+        keys { -save_dir } flags {}
+
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+    }
+
+    save_map_images_cmd $save_dir
+}
+
 
 proc analyze_congestion { } {
-    
     analyze_congestion_cmd
-
-
 }
 

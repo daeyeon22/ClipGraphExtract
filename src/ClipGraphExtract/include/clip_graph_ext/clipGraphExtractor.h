@@ -14,6 +14,7 @@ namespace sta {
 class dbSta;
 }
 
+
 namespace ClipGraphExtract {
 
 enum GraphModel {
@@ -45,12 +46,18 @@ class ClipGraphExtractor {
 
     void showCongestionMap();
 
+    // defined in grid.cpp
+    void initGcellGrid(int numRows, int maxLayer);
+    void readRoutingReport(const char* fileName);
+    void saveMapImages(const char* dirPath);
 
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
 
     ClipGraphExtractor();
     ~ClipGraphExtractor();
+    odb::dbDatabase* getDb() { return db_; }
+  
   private:
     odb::dbDatabase* db_;
     sta::dbSta* sta_;
@@ -67,7 +74,9 @@ class ClipGraphExtractor {
     std::string fileName_;
     std::string prefix_;
     void* binGraph_;
-    
+   
+    void* grid_;
+
 
 
 

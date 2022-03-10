@@ -1,4 +1,5 @@
 build
+src/ClipGraphExtract/test/**
 src/ClipGraphExtract/test/*.py
 src/ClipGraphExtract/test/*.x
 src/ClipGraphExtract/test/*.y

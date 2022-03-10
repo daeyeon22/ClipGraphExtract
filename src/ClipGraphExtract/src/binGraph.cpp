@@ -10,6 +10,7 @@
 
 
 #include "CImg.h"
+#include "flute.h"
 
 void wire_value::setBox(int fx, int fy, int tx, int ty){
 	from_x_ = fx;
@@ -745,12 +746,19 @@ Graph::updateCongGR() {
 }
 
 
-
-
 void
 Graph::showCongestion() {
-	char RLEVEL0[3] = {(char) 255, (char) 245, (char) 235};
-	char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
+/*
+using namespace cimg_library;
+static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
+green[] = {0, 255, 0}, blue[] = {120, 200, 255},
+darkblue[] = {69, 66, 244},
+purple[] = {255, 100, 255}, black[] = {0, 0, 0},
+red[] = {255, 0, 0};
+
+
+char RLEVEL0[3] = {(char) 255, (char) 245, (char) 235};
+char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
 	char RLEVEL2[3] = {(char) 253, (char) 208, (char) 162};
 	char RLEVEL3[3] = {(char) 253, (char) 174, (char) 107};
 	char RLEVEL4[3] = {(char) 253, (char) 141, (char) 60};
@@ -771,8 +779,7 @@ Graph::showCongestion() {
 
 
 	using namespace cimg_library;
-
-    float opacity = 1.0;
+    float opacity = 0.5;
 
     dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
@@ -781,35 +788,14 @@ Graph::showCongestion() {
 
     CImg<unsigned char> img(imgWidth, imgHeight, 1, 3, 255);
 
-	dbSet<dbInst> insts = block->getInsts();
-	
-	img.draw_rectangle(0, 0, (ux_-lx_)/dbUnitMicron, (uy_-ly_)/dbUnitMicron, BLEVEL0, opacity);
-	
-	char color[3] = {(char) 192, (char) 192, (char) 192};
-
-	for(dbInst* inst : insts){
-	    int x1 = (inst->getBBox()->xMin()-lx_) / dbUnitMicron;
-        int x2 = (inst->getBBox()->xMax()-lx_) / dbUnitMicron;
-        int y1 = (inst->getBBox()->yMin()-ly_) / dbUnitMicron;
-        int y2 = (inst->getBBox()->yMax()-ly_) / dbUnitMicron;
-
-		cout << x1 << " " << y1 << " " << x2 << " "	<< y2 << endl;
-		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
-	}
-/*
-    for(auto& gcell : vertices_) {
-        int x1 = (gcell.getLx() - lx_) / dbUnitMicron;
-        int x2 = (gcell.getUx() - lx_) / dbUnitMicron;
-        int y1 = (gcell.getLy() - ly_) / dbUnitMicron;
-        int y2 = (gcell.getUy() - ly_) / dbUnitMicron;
-
+    for(int i=0; i < vertices_.size(); i++) {
+        Vertex &gcell = vertices_[i];
 
         //int color = gcell.getRoutingCongestion('T') > 1.0 ? 0 : 255;
         int congValue = gcell.getRoutingCongestion('T')*100;
 		int drcValue = gcell.getNumOfDrc()*10;
 		
 		char *color;
-
 		if(congValue < 11) color = RLEVEL0;
 		else if(congValue < 22) color = RLEVEL1;
 		else if(congValue < 33) color = RLEVEL2;
@@ -832,10 +818,11 @@ Graph::showCongestion() {
 
 		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
     }
-*/
     img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
+*/
 }
+
 
 
 

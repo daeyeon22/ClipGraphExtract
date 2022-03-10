@@ -51,7 +51,6 @@ typedef bgi::rtree< std::pair<box, drc_value>,
 typedef bgi::rtree< std::pair<box, rudy_value>,
 					bgi::quadratic<6> > rudy_RTree;
 
-
 using namespace odb;
 using namespace std;
 using std::vector;
@@ -162,11 +161,13 @@ ClipGraphExtractor::init() {
         inst_rTree->insert( make_pair(b, temp) );
     }
     
+	Flute::readLUT();
     // DB Query to fill in pin_RTree and rudy_RTree
 	// flute initialization
 	Flute::readLUT();
 	dbSet<dbNet> nets = block->getNets();
 
+    cout << "Start processing" << endl;
 	for(auto net : nets){
 		rudy_value r;
 
@@ -177,11 +178,18 @@ ClipGraphExtractor::init() {
 		int lx, ly, ux, uy;
 
 		for(dbITerm* iterm : iterms){
-			int x, y;
+			
+            int x, y;
 			iterm->getAvgXY(&x, &y);
-			xs.push_back(x);
-			ys.push_back(y);
 
+            if(iterm->isOutputSignal()) {
+                xs.insert(xs.begin(), x);
+                ys.insert(ys.begin(), y);
+            } else {
+                xs.push_back(x);
+                ys.push_back(y);
+            }
+            
 			if(degree == 0){
 				lx = x;
 				ly = y;
@@ -210,6 +218,7 @@ ClipGraphExtractor::init() {
 			r.wireWidth_ = 200;
 			r.setBox(lx, ly, ux, uy);
 			r.value_ = 0; // initialize
+
 			updateCongRUDY(r);
 			//cout << r.net_->getName() << " " << r.value_ << endl;
 			rudy_rTree->insert( make_pair(r.box_, r) );
@@ -304,8 +313,7 @@ ClipGraphExtractor::init() {
 void
 ClipGraphExtractor::updateCongRUDY(rudy_value& rudyValue) {
 	if(rudyValue.degree_ < 2) return;
-	
-	//Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
+    //Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
 
 	//int d=0;
 	//int x[100], y[100];
@@ -752,6 +760,5 @@ ClipGraphExtractor::setEdgeWeightModel( const char* edgeWeightModel ) {
     exit(1);
   }
 }
-
 
 }
