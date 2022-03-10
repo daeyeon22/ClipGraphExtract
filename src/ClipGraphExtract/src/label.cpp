@@ -40,6 +40,9 @@ vector<string> splitAsTokens(string str, string delim){
 
 void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
+
+    cout << "Start to read routing report (" << fileName << ")" << endl;
+
     ifstream inFile(fileName);
     const std::regex colon(":");
     string line;
@@ -146,6 +149,10 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
+
+        if(gcell->getNumMarkers() > 0)
+            gcell->print();
+    
     }
 }
 
