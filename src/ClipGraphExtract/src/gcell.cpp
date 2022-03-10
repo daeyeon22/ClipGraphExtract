@@ -152,7 +152,10 @@ double Gcell::getLNetDensity() {
             wireLen += rsmt->getWireLengthRSMT();
         }
     }
-    return 1.0 * wireLen / wireCap;
+
+    double c = min(1.0, 3.0 / numLayers_);
+
+    return 1.0 * wireLen / (c*wireCap);
 }
 
 double Gcell::getGNetDensity() {

@@ -190,8 +190,9 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         gcell->extractFeaturePL(instRtree);
         gcell->extractFeatureRSMT(rsmtRtree);
 
-        // for debug
-        gcell->print();
+        if(gcell->getNumMarkers() > 0)
+            // for debug
+            gcell->print();
     }
     ////// FOR DEBUG
     cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
@@ -202,7 +203,10 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         avgRUDY += gcell->getRUDY();
     avgRUDY /= grid->getGcells().size();
     cout << "[REP] Avg RUDY : " << avgRUDY << endl;
-    
+   
+
+
+
     cout << "Feature extraction finished" << endl;
 }
 

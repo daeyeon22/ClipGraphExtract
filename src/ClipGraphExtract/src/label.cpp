@@ -149,6 +149,10 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
+
+        if(gcell->getNumMarkers() > 0)
+            gcell->print();
+    
     }
 }
 
