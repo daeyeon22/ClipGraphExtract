@@ -124,8 +124,12 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 mark->setType(type);
                 mark->setRule(detailed);
                 //mark->setBoundary(Rect(lx, ly, ux, uy));
-                mark->setFromNet(block->findNet(fromNet.c_str()));
-                mark->setToNet(block->findNet(toNet.c_str()));
+                
+                dbNet* net1 = block->findNet(fromNet.c_str());
+                dbNet* net2 = block->findNet(toNet.c_str());
+                
+                mark->setFromNet(grid->getRSMT(net1));
+                mark->setToNet(grid->getRSMT(net2));
                 mark->setToInst(block->findInst(toInst.c_str()));
 
                 if(mark->getFromNet() != NULL && mark->getToNet() != NULL) {
@@ -160,6 +164,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 namespace feature_extractor {
 
+
 Marker* Grid::createMarker(int x1, int y1, int x2, int y2) {
     Marker* mark = new Marker();
     mark->setBoundary(Rect(x1,y1,x2,y2));
@@ -177,7 +182,52 @@ void Gcell::annotateLabel(BoxRtree<Marker*> &rtree) {
     }
 }
 
+void Grid::reportDRC() {
+    int nL2L=0;
+    int nL2I=0;
+    int nL2G=0;
+    int nG2I=0;
+    int nG2G=0;
 
+    unordered_map<string,int> type2count;
+
+    for(Marker* mark : markers_) {
+        switch(mark->getCategory()) {
+            case Marker::Category::L2L:
+                nL2L++; break;
+            case Marker::Category::L2G:
+                nL2G++; break;
+            case Marker::Category::L2I:
+                nL2I++; break;
+            case Marker::Category::G2I:
+                nG2I++; break;
+            case Marker::Category::G2G:
+                nL2L++; break;
+
+            default: break;
+        }
+
+
+        type2count[mark->getType()]++;
+    }
+
+
+    cout << "= = = = Report DRC = = = =" << endl;
+    cout << " Total #DRVs is " << markers_.size() << endl;
+    cout << "   - L2L : " << nL2L << endl;
+    cout << "   - L2G : " << nL2G << endl;
+    cout << "   - L2I : " << nL2I << endl;
+    cout << "   - G2I : " << nG2I << endl;
+    cout << "   - G2G : " << nG2G << endl;
+    cout << " #DRVs due to Global =" << nL2G + nG2I + nG2G << endl;
+    cout << " #DRVs due to Local =" << nL2L + nL2G + nL2I << endl;
+    cout << " #DRVs due to Inst =" << nL2I + nG2I << endl;
+
+    for(auto elem : type2count)
+    cout << " #DRVs due to " << elem.first << " = " << elem.second << endl;
+    cout << "= = = = = = = = = = = = = =" << endl;
+
+}
 
 
 

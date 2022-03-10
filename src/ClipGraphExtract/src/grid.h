@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <boost/geometry.hpp>
+#include <unordered_map>
 #include "flute.h"
 #include "opendb/db.h"
 #include "opendb/geom.h"
@@ -161,32 +162,34 @@ class Gcell {
 
 };
 
-
-enum ObjectType {
-    NET, INSTANCE, BLOCKAGE, SNET
-};
-
 class Marker {
   public:
     enum Tag { N2N, N2I };  
-    
-    Marker();
+    enum Category { L2L, L2I, L2G, G2I, G2G };
 
+    Marker();
+    void print();
     void setType(std::string type);
     void setRule(std::string rule);
     void setBoundary(odb::Rect rect);
     void setTag(Tag tag);
-    void setFromNet(odb::dbNet* net);
-    void setToNet(odb::dbNet* net);
+    void setFromNet(RSMT* rsmt);
+    void setToNet(RSMT* rsmt);
     void setToInst(odb::dbInst* inst);
 
-    odb::dbNet* getFromNet();
-    odb::dbNet* getToNet();
+    RSMT* getFromNet();
+    RSMT* getToNet();
     odb::dbInst* getToInst();
 
     bgBox getQueryBox();
     odb::Rect getBBox();
     odb::Point getCentor();
+
+    Category getCategory();
+    Tag getTag();
+
+    std::string getType();
+    std::string getRule();
 
 
   private:
@@ -194,8 +197,8 @@ class Marker {
     std::string rule_;
     Tag tag_;
 
-    odb::dbNet* fromNet_;
-    odb::dbNet* toNet_;
+    RSMT* fromNet_;
+    RSMT* toNet_;
     odb::dbInst* toInst_;
 
     odb::Rect bbox_;
@@ -257,7 +260,8 @@ class Grid {
     std::vector<RSMT*> rsmts_;
     // After read drc.rpt
     std::vector<Marker*> markers_;
-    
+   
+    std::unordered_map<odb::dbNet*, RSMT*> net2rsmt_;
 
   public:
     odb::dbDatabase* getDb() { return db_; }
@@ -267,6 +271,10 @@ class Grid {
     Gcell* createGcell(int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     Marker* createMarker(int x1, int y1, int x2, int y2);
+    
+    
+    RSMT* getRSMT(odb::dbNet* net);
+
     void init();
     void setWireMinWidth(int width);
     void setDb(odb::dbDatabase* db);
@@ -284,6 +292,7 @@ class Grid {
     double getMaxRUDY();
     double getMaxCellDensity();
 
+    void reportDRC();
 
 };
 
