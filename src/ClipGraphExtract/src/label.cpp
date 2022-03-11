@@ -264,9 +264,14 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 mark->setType(type);
                 mark->setRule(detailed);
                 //mark->setBoundary(Rect(lx, ly, ux, uy));
-                mark->setFromNet(block->findNet(fromNet.c_str()));
-                mark->setToNet(block->findNet(toNet.c_str()));
+                dbNet* net1 = block->findNet(fromNet.c_str());
+                dbNet* net2 = block->findNet(toNet.c_str());
+                mark->setFromNet(grid->getRSMT(net1));
+                mark->setToNet(grid->getRSMT(net2));
                 mark->setToInst(block->findInst(toInst.c_str()));
+				//mark->setFromNet(block->findNet(fromNet.c_str()));
+                //mark->setToNet(block->findNet(toNet.c_str()));
+                //mark->setToInst(block->findInst(toInst.c_str()));
 
                 if(mark->getFromNet() != NULL && mark->getToNet() != NULL) {
                     mark->setTag(Marker::Tag::N2N);
@@ -282,6 +287,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 toNet = "0";
                 fromNet = "0";
                 toInst = "0";
+                fromInst = "0";
                 layer = 0;
             }
         }
