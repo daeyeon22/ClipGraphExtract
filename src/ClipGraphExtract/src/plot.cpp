@@ -117,7 +117,6 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
         
         drawGcell(&img, gcell, origin, sf, opacity, val);
     }
-
     string imgPath = dirPath + "/" + fileName + ".jpg";
     img.save_jpeg(imgPath.c_str(), 200);
 

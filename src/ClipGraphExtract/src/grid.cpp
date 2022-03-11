@@ -190,9 +190,9 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         gcell->extractFeaturePL(instRtree);
         gcell->extractFeatureRSMT(rsmtRtree);
 
-        if(gcell->getNumMarkers() > 0)
+        //if(gcell->getNumMarkers() > 0)
             // for debug
-            gcell->print();
+            //gcell->print();
     }
     ////// FOR DEBUG
     cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
@@ -291,16 +291,16 @@ RSMT* Grid::createRSMT(odb::dbNet* net) {
 
 
     // DEBUG
-    double w_den = myRSMT->getWireUniformDensity();
-    cout << net->getName() << endl;
-    cout << "   - wire length (RSMT) : " << myRSMT->getWireLengthRSMT() << endl;
-    cout << "   - wire area (RSMT)   : " << myRSMT->getWireLengthRSMT() * minWidth_ << endl;
-    cout << "   - bbox area          : " << myRSMT->getBBox().area() << endl;
-    cout << "   - wire uniform den   : " << w_den << endl;
+    //double w_den = myRSMT->getWireUniformDensity();
+    //cout << net->getName() << endl;
+    //cout << "   - wire length (RSMT) : " << myRSMT->getWireLengthRSMT() << endl;
+    //cout << "   - wire area (RSMT)   : " << myRSMT->getWireLengthRSMT() * minWidth_ << endl;
+    //cout << "   - bbox area          : " << myRSMT->getBBox().area() << endl;
+    //cout << "   - wire uniform den   : " << w_den << endl;
 
-    if(myRSMT->getBBox().area() == 0){
-        cout << "BBox is 0" << endl;
-    }
+    //if(myRSMT->getBBox().area() == 0){
+    //    cout << "BBox is 0" << endl;
+    //}
     assert(w_den <0 || w_den > 1);
     rsmts_.push_back(myRSMT);
 

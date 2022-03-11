@@ -164,18 +164,28 @@ class Gcell {
 
 class Marker {
   public:
-    enum Tag { N2N, N2I };  
-    enum Category { L2L, L2I, L2G, G2I, G2G };
+    
+    enum Tag { BoC, PoC, RWoN, NONE };  
+    enum Category { L2L, L2I, L2G, G2I, G2G, I2I, ERR, SELF };
 
     Marker();
     void print();
     void setType(std::string type);
     void setRule(std::string rule);
     void setBoundary(odb::Rect rect);
-    void setTag(Tag tag);
+    void setFromTag(Tag tag);
+    void setToTag(Tag tag);
     void setFromNet(RSMT* rsmt);
     void setToNet(RSMT* rsmt);
+    void setFromInst(odb::dbInst* inst);
     void setToInst(odb::dbInst* inst);
+
+
+    bool isFromNet();
+    bool isToNet();
+    bool isFromInst();
+    bool isToInst();
+
 
     RSMT* getFromNet();
     RSMT* getToNet();
@@ -186,7 +196,8 @@ class Marker {
     odb::Point getCentor();
 
     Category getCategory();
-    Tag getTag();
+    Tag getFromTag();
+    Tag getToTag();
 
     std::string getType();
     std::string getRule();
@@ -195,11 +206,14 @@ class Marker {
   private:
     std::string type_;
     std::string rule_;
-    Tag tag_;
-
+    Tag fromTag_;
+    Tag toTag_;
+    
     RSMT* fromNet_;
     RSMT* toNet_;
+    odb::dbInst* fromInst_;
     odb::dbInst* toInst_;
+
 
     odb::Rect bbox_;
 
