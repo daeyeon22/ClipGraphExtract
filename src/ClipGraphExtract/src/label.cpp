@@ -69,7 +69,6 @@ string parseLayerName(string substr) {
 
 void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
-
     cout << "Start to read routing report (" << fileName << ")" << endl;
 
     ifstream inFile(fileName);
@@ -78,10 +77,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 	dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
-
-	//int lineNum = 0;
-    //int layer=0;
-
 
     BoxRtree<Marker*> rtree;
 
@@ -111,14 +106,19 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
         smatch matStr; 
         string str = line;
         smatch m;
+
+		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
-            
+			
+			// Detect type and delete the corresponding part
             if(regex_search(str, m, typeRex)) {
                 //cout << "1" << str << endl;
                 typeName = parseType(m[0].str());
                 str = regex_replace(str, typeRex, "");
                 //cout << str << endl;
             }
+			
+			// Detect rule and delete the corresponding part
             if(regex_search(str, m, ruleRex)) {
                 ruleName = parseRule(m[0].str());
                 //for(int i=0; i < m.size(); i++) {
@@ -128,7 +128,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 //cout << str << endl;
             }
 
-            // parse object1
+            // Parse object and delete the corresponding part
             if(regex_search(str, m, objRex1)) {
                 fromInst = parseInstName(m[0].str());
                 fromPrefix = "Blockage of Cell";
@@ -168,7 +168,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 str = regex_replace(str, objRex3, "");
                 //cout << str << endl;
             } else {
-                cout << "There is only object1" << endl;
+                //cout << "There is only object1" << endl;
             }
 
 
@@ -181,10 +181,9 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
         } else if (regex_search(str, m, boxRex)) {
             string delim = " (),";
             vector<string> tokens = splitAsTokens(m[0].str(), delim);
-            if(tokens.size() != 4) {			
+            if(tokens.size() != 4) {
                 continue;
             }
-
 
             int lx = dbUnitMicron * atof(tokens[0].c_str());
             int ly = dbUnitMicron * atof(tokens[1].c_str());
@@ -251,76 +250,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 //cout << str << endl;
                 //exit(0);
         }
-        /*
-        lineNum++;
-        if(lineNum < 10) continue;
-        std::smatch match;
-        if(regex_search(line, match, colon)) {
-            string head = match.prefix();
-            string tail = match.suffix();
-            if(head != "Bounds "){
-                if(head == "  Total Violations ") continue;
-                type = head;
-                string delim = "()";
-                vector<string> tokens = splitAsTokens(tail, delim);
-                ZASSERT(tokens.size() == 4);
-                for(int i = 0; i < tokens.size(); i++)
-                    tokens[i] = tokens[i].substr(1, tokens[i].size()-2);
-                detailed = tokens[1];
-                layer = atoi(tokens[3].substr(1).c_str());
-                delim = "&";
-                tokens = splitAsTokens(tokens[2], delim);
-                ZASSERT(tokens.size() < 3);
-                if(tokens[0].substr(0, 19) == "Regular Wire of Net")
-                    toNet = tokens[0].substr(20, tokens[0].size()-21);
-                else if(tokens[0].substr(0, 11) == "Pin of Cell")
-                    toInst = tokens[0].substr(12, tokens[0].size()-12);
-                else cout << "outlier: " << line << endl;
-                if(tokens.size() > 1){
-                    tokens[1] = tokens[1].substr(1, tokens[1].size()-2);
-                    if(tokens[1].substr(0, 19) == "Regular Wire of Net")
-                        fromNet = tokens[1].substr(20, tokens[1].size()-20);
-                }
-            } else{
-                string delim = " (),";
-                vector<string> tokens = splitAsTokens(tail, delim);
-                if(tokens.size() != 4) {			
-                    continue;
-                }
-                int lx = dbUnitMicron * atof(tokens[0].c_str());
-                int ly = dbUnitMicron * atof(tokens[1].c_str());
-                int ux = dbUnitMicron * atof(tokens[2].c_str());
-                int uy = dbUnitMicron * atof(tokens[3].c_str());
-                //cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << toInst << " " << layer << " ";
-                //cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
-                // TODO
-                Marker* mark = grid->createMarker(lx,ly,ux,uy);
-                mark->setType(type);
-                mark->setRule(detailed);
-                //mark->setBoundary(Rect(lx, ly, ux, uy));
-                
-                dbNet* net1 = block->findNet(fromNet.c_str());
-                dbNet* net2 = block->findNet(toNet.c_str());
-                
-                mark->setFromNet(grid->getRSMT(net1));
-                mark->setToNet(grid->getRSMT(net2));
-                mark->setToInst(block->findInst(toInst.c_str()));
-                if(mark->getFromNet() != NULL && mark->getToNet() != NULL) {
-                    mark->setTag(Marker::Tag::N2N);
-                }
-                if(mark->getFromNet() != NULL && mark->getToInst() != NULL) {
-                    mark->setTag(Marker::Tag::N2I);
-                }
-                rtree.insert(make_pair(mark->getQueryBox(), mark));
-                type = "0";
-                detailed = "0";
-                toNet = "0";
-                fromNet = "0";
-                toInst = "0";
-                layer = 0;
-            }
-        }
-        */
     }
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
@@ -335,7 +264,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 
 namespace feature_extractor {
-
 
 Marker* Grid::createMarker(int x1, int y1, int x2, int y2) {
     Marker* mark = new Marker();
@@ -363,30 +291,35 @@ void Grid::reportDRC() {
     int nI2I=0;
     int nSELF=0;
     int nERR=0;
-
     unordered_map<string,int> type2count;
 
     for(Marker* mark : markers_) {
-        switch(mark->getCategory()) {
+        switch(mark->getCategory()) { // seg fault
             case Marker::Category::L2L:
-                nL2L++; break;
+                nL2L++;
+				break;
             case Marker::Category::L2G:
-                nL2G++; break;
+                nL2G++;
+				break;
             case Marker::Category::L2I:
-                nL2I++; break;
+                nL2I++;
+				break;
             case Marker::Category::G2I:
-                nG2I++; break;
+                nG2I++;
+				break;
             case Marker::Category::G2G:
-                nL2L++; break;
+                nL2L++;
+				break;
             case Marker::Category::I2I:
-                nI2I++; break;
+                nI2I++;
+				break;
             case Marker::Category::SELF:
-                nSELF++; break;
-
-            default: nERR++; break;
+                nSELF++;
+				break;
+            default:
+				nERR++;
+				break;
         }
-
-
         type2count[mark->getType()]++;
     }
 
@@ -410,10 +343,6 @@ void Grid::reportDRC() {
     cout << "= = = = = = = = = = = = = =" << endl;
 
 }
-
-
-
-
 
 
 
