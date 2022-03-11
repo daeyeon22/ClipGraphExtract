@@ -9,11 +9,12 @@ using namespace std;
 
 
 Marker::Marker():
-    type_(""), rule_(""), tag_(Marker::Tag::N2N), 
-    fromNet_(nullptr), toNet_(nullptr), toInst_(nullptr),
+    type_(""), rule_(""), 
+    fromTag_(Marker::Tag::NONE), 
+    toTag_(Marker::Tag::NONE), 
+    fromNet_(nullptr), toNet_(nullptr), 
+    fromInst_(nullptr), toInst_(nullptr),
     bbox_(Rect(0,0,0,0)) {}
-
-
 
 void Marker::setType(string type) {
     type_ = type;
@@ -27,9 +28,14 @@ void Marker::setBoundary(Rect rect) {
     bbox_ = rect;
 }
 
-void Marker::setTag(Marker::Tag tag) {
-    tag_ = tag;
+void Marker::setFromTag(Marker::Tag tag) {
+    fromTag_ = tag;
 }
+
+void Marker::setToTag(Marker::Tag tag) {
+    toTag_ = tag;
+}
+
 
 void Marker::setFromNet(RSMT* rsmt) {
     fromNet_ = rsmt;    
@@ -43,15 +49,18 @@ void Marker::setToInst(dbInst* inst) {
     toInst_ = inst;
 }
 
-Marker::Tag Marker::getTag() {
-    if(fromNet_ != NULL && toNet_ != NULL)
-        return Tag::N2N;
-    else if(fromNet_ != NULL && toInst_ != NULL)
-        return Tag::N2I;
-    else
-        return Tag::N2I;
+void Marker::setFromInst(dbInst* inst) {
+    fromInst_ = inst;
 }
 
+
+Marker::Tag Marker::getFromTag() {
+    return fromTag_;
+}
+
+Marker::Tag Marker::getToTag() {
+    return toTag_;
+}
 
 string Marker::getType() {
     return type_;
@@ -60,8 +69,6 @@ string Marker::getType() {
 string Marker::getRule() {
     return rule_;
 }
-
-
 
 
 
@@ -94,23 +101,56 @@ Point Marker::getCentor() {
 
 
 
+bool Marker::isFromNet() {
+    return (fromTag_ == Tag::RWoN)? true :  false;
+}
+
+bool Marker::isToNet() {
+    return (toTag_ == Tag::RWoN) ? true : false;
+}
+
+bool Marker::isToInst() {
+    return (toTag_ == Tag::BoC || toTag_ == Tag::PoC) ? true : false;
+}
+
+bool Marker::isFromInst() {
+    return (fromTag_ == Tag::BoC || fromTag_ == Tag::PoC) ? true : false;
+}
+
+
+
+
+
 Marker::Category Marker::getCategory() {
-    if(tag_ == Tag::N2N) {
-        if(fromNet_->isLocalNet() && toNet_->isLocalNet()) {
+    if(isFromNet() && isToNet()) {
+        if(toNet_->isLocalNet() && fromNet_->isLocalNet()) {
             return Category::L2L;
-        } else if(!fromNet_->isLocalNet() && toNet_->isLocalNet()) {
+        } else if (!toNet_->isLocalNet() && fromNet_->isLocalNet()) {
             return Category::L2G;
-        } else if(fromNet_->isLocalNet() && !toNet_->isLocalNet()) {
+        } else if (toNet_->isLocalNet() && !fromNet_->isLocalNet()) {
             return Category::L2G;
-        } else {
+        } else if (!toNet_->isLocalNet() && !fromNet_->isLocalNet()) {
             return Category::G2G;
-        } 
-    } else {
-        //if (tag_ == Tag::N2I) {
-        if(fromNet_->isLocalNet()) {
-            return Category::L2I;
         } else {
+            return Category::ERR;
+        }
+    } else if (isFromInst() && isToNet()) {
+        if(toNet_->isLocalNet())
+            return Category::L2I;
+        else
             return Category::G2I;
+    } else if (isFromNet() && isToInst()) {
+        if(fromNet_->isLocalNet())
+            return Category::L2I;
+        else
+            return Category::G2I;
+    } else if (isFromInst() && isToInst()) {
+        return Category::I2I;
+    } else {
+        if(toTag_ == Tag::NONE) {
+            return Category::SELF;
+        } else {
+            return Category::ERR;
         }
     }
 }
@@ -131,6 +171,10 @@ void Marker::print() {
             cout << "Marker from Global to Global" << endl; break;
         case Category::G2I:
             cout << "Marker from Global to Instance" << endl; break;
+        case Category::I2I:
+            cout << "Marker from Instance to Instance" << endl; break;
+        case Category::SELF:
+            cout << "Marker from Itself" << endl; break;
         default:
             cout << "Exception case..." << endl; break;
     }
