@@ -212,7 +212,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
             mark->setFromInst(inst1);
             mark->setToInst(inst2);
 
-
             if(fromPrefix == "Blockage of Cell") {
                 mark->setFromTag(Marker::Tag::BoC);
             } else if (fromPrefix == "Pin of Cell") {
@@ -235,21 +234,21 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
             rtree.insert(make_pair(mark->getQueryBox(), mark));
             
-            typeName ="";
-            ruleName ="";
-            lyrName ="";
-            fromPrefix = "";
-            toPrefix = "";
-            fromInst ="";
-            toInst ="";
-            fromNet ="";
-            toNet ="";
-
         } else {
                 //cout << "exception case!" << endl;
                 //cout << str << endl;
                 //exit(0);
         }
+		
+		typeName ="";
+		ruleName ="";
+		lyrName ="";
+		fromPrefix = "";
+		toPrefix = "";
+		fromInst ="";
+		toInst ="";
+		fromNet ="";
+		toNet ="";
     }
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
@@ -294,7 +293,7 @@ void Grid::reportDRC() {
     unordered_map<string,int> type2count;
 
     for(Marker* mark : markers_) {
-        switch(mark->getCategory()) { // seg fault
+        switch(mark->getCategory()) {
             case Marker::Category::L2L:
                 nL2L++;
 				break;

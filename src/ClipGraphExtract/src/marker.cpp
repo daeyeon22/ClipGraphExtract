@@ -135,13 +135,10 @@ Marker::Category Marker::getCategory() {
             return Category::ERR;
         }
     } else if (isFromInst() && isToNet()) {
-        //if(toNet_->isLocalNet()) // seg fault => memory map problem!!!
-        //    return Category::L2I;
-        //else
-        //    return Category::G2I;
-		
-		cout << "hey: " << toNet_->getNet()->getName() << endl; // To debug.
-
+		if(toNet_->isLocalNet())
+			return Category::L2I;
+		else
+			return Category::G2I;
     } else if (isFromNet() && isToInst()) {
         if(fromNet_->isLocalNet())
             return Category::L2I;

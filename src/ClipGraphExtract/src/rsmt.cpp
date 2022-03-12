@@ -34,7 +34,7 @@ bool RSMT::isGlobalNet() {
     return !isLocalNet();
 }
 
-bool RSMT::isLocalNet() { // seg fault
+bool RSMT::isLocalNet() {
 	return bboxOverlaps_.size() < 2 ? true : false;
     //return true;
 }
@@ -193,8 +193,6 @@ RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
 
 	bboxOverlaps_ = vector<Gcell*>(overlaps.size());
 	copy(overlaps.begin(), overlaps.end(), bboxOverlaps_.begin());
-	cout << net_->getName() << endl;
-	//cout << &bboxOverlaps_ << endl;
 }
 
 

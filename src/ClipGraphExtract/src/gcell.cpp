@@ -336,7 +336,7 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
     bgSeg tb(bgPoint(bbox_.xMin(), bbox_.yMax()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg bb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMin()));
 
-	cout << bbox_.xMin() << " " << bbox_.yMin() << " " << bbox_.xMax() << " " << bbox_.yMax() << endl;
+	// cout << bbox_.xMin() << " " << bbox_.yMin() << " " << bbox_.xMax() << " " << bbox_.yMax() << endl;
     
 	set<RSMT*> RSMTs;
     uint wirelength=0;
@@ -362,7 +362,7 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         int x1 = bg::get<1,0>(wire_seg);
         int y1 = bg::get<1,1>(wire_seg);
 		
-		cout << x0 << " " << y0 << " " << x1 << " " << y1 << endl;
+		// cout << x0 << " " << y0 << " " << x1 << " " << y1 << endl;
 
         //if(x0 > x1 || y0 > y1) {
         //    cout << "??????????" << endl;
