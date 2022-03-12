@@ -114,10 +114,14 @@ cout << "WireCapacity   : " << wireCapacity << endl;
     Flute::readLUT();
     // wireRtree (eGR result)
     for( dbNet* net : block->getNets()) {
-        
+		
+		// Segmentation fault occurs because Net is not entered here.
         if(net->isSpecial()) {
-            continue; //cout << net->getName() << "is SpecialNet" << endl;
+//          cout << net->getName() << " is SpecialNet" << endl;
+//			continue;
         }
+
+
        
         RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
@@ -185,10 +189,10 @@ cout << "WireCapacity   : " << wireCapacity << endl;
 
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
-        //
-        gcell->extractFeatureEGR(egrRtree);
-        gcell->extractFeaturePL(instRtree);
-        gcell->extractFeatureRSMT(rsmtRtree);
+        
+		gcell->extractFeatureEGR(egrRtree);
+        //gcell->extractFeaturePL(instRtree);
+        //gcell->extractFeatureRSMT(rsmtRtree);
 
         //if(gcell->getNumMarkers() > 0)
             // for debug

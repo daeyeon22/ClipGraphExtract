@@ -296,7 +296,7 @@ Gcell::extractFeatureEGR(SegRtree<odb::dbNet*> &rtree) {
     for(auto &val : queryResults) {
         bgSeg wire_seg = val.first;
         dbNet* net = val.second;
-        
+/*
         if(bg::intersects(lb, wire_seg)) {
             rmEGR_.incrTrackDemand(Orient::LEFT);
         }
@@ -309,7 +309,7 @@ Gcell::extractFeatureEGR(SegRtree<odb::dbNet*> &rtree) {
         if(bg::intersects(bb, wire_seg)) {
             rmEGR_.incrTrackDemand(Orient::BOTTOM);
         }
-
+*/
         int x0 = bg::get<0,0>(wire_seg);
         int y0 = bg::get<0,1>(wire_seg);
         int x1 = bg::get<1,0>(wire_seg);
@@ -344,10 +344,10 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         bgSeg wire_seg = val.first;
         RSMT* myRSMT = val.second;
         
-        if(bg::intersects(lb, wire_seg)) {
+		if(bg::intersects(lb, wire_seg)) {
             rmPL_.incrTrackDemand(Orient::LEFT);
         }
-        if(bg::intersects(rb, wire_seg)) { // DEBUG!!!
+        if(bg::intersects(rb, wire_seg)) {
             rmPL_.incrTrackDemand(Orient::RIGHT);
         }
         if(bg::intersects(tb, wire_seg)) {
@@ -362,14 +362,6 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         int x1 = bg::get<1,0>(wire_seg);
         int y1 = bg::get<1,1>(wire_seg);
 		
-		// cout << x0 << " " << y0 << " " << x1 << " " << y1 << endl;
-
-        //if(x0 > x1 || y0 > y1) {
-        //    cout << "??????????" << endl;
-        //    exit(0);
-        //}
-
-        
         x0 = max(x0, bbox_.xMin());
         y0 = max(y0, bbox_.yMin());
         x1 = min(x1, bbox_.xMax());
