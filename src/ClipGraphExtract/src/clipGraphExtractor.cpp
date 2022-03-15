@@ -232,8 +232,10 @@ ClipGraphExtractor::init() {
     for ( dbNet* net : nets ){ // net
         dbWire* wire = net->getWire();
 
+
         if ( wire && wire->length() ){ // wire
             dbWireDecoder decoder;
+        cout << "here" << endl;
             decoder.begin(wire);
             
             vector< pair<int, int > > point;

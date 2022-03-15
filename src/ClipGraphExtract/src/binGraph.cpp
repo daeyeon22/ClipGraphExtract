@@ -805,6 +805,7 @@ char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
 		else if(congValue < 77) color = RLEVEL6;
 		else if(congValue < 88) color = RLEVEL7;
 		else color = RLEVEL8;
+		
 		if(drcValue < 11) color = BLEVEL0;
 		else if(drcValue < 22) color = BLEVEL1;
 		else if(drcValue < 33) color = BLEVEL2;
@@ -815,13 +816,11 @@ char RLEVEL1[3] = {(char) 254, (char) 230, (char) 206};
 		else if(drcValue < 88) color = BLEVEL7;
 		else color = BLEVEL8;
 
-
 		img.draw_rectangle(x1, y1, x2, y2, color, opacity);
     }
-
     img.display("Congestion map", false);
     //CImgDisplay display(dispWidth, dispHeight, "Congestion map");
-*/ 
+*/
 }
 
 

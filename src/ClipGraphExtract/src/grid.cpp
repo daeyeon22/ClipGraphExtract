@@ -93,7 +93,7 @@ cout << "WireCapacity   : " << wireCapacity << endl;
     // init rtree
     BoxRtree<dbInst*> instRtree;
     BoxRtree<Gcell*> gcellRtree;
-    SegRtree<dbNet*> egrRtree;
+    SegRtree<dbNet*> drRtree;
     SegRtree<RSMT*> rsmtRtree;
     
     // make gcellRtree
@@ -113,11 +113,17 @@ cout << "WireCapacity   : " << wireCapacity << endl;
     // init FLUTE
     Flute::readLUT();
     // wireRtree (eGR result)
-    for( dbNet* net : block->getNets()) {
-        
+    
+
+    for( dbNet* net : block->getNets() ) {
+		
+		// Segmentation fault occurs because Net is not entered here.
         if(net->isSpecial()) {
-            continue; //cout << net->getName() << "is SpecialNet" << endl;
+//          cout << net->getName() << " is SpecialNet" << endl;
+//			continue;
         }
+
+
        
         RSMT* myRSMT = grid->createRSMT(net);
         vector<pair<bgBox, Gcell*>> queryResults;
@@ -128,9 +134,15 @@ cout << "WireCapacity   : " << wireCapacity << endl;
             bgSeg bgseg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
             rsmtRtree.insert( make_pair( bgseg, myRSMT ) );
         }
+
+
         // make wireRtree
         dbWire* wire = net->getWire();
+        
         if( wire && wire->length() ) {
+
+            //cout << net->getName() << " has wire" << endl;
+
             dbWireDecoder decoder;
             decoder.begin(wire);
             
@@ -155,6 +167,7 @@ cout << "WireCapacity   : " << wireCapacity << endl;
                         decoder.next();                   
                         int x,y;
                         decoder.getPoint(x,y);
+                       // cout << "get point " << x << " " << y <<endl;
                         points.push_back(odb::Point(x,y));
                         if(points.size() >1) {
                             odb::Point pt1 = points[points.size()-2];
@@ -166,7 +179,7 @@ cout << "WireCapacity   : " << wireCapacity << endl;
                             int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
 
                             bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            egrRtree.insert( make_pair( wireSeg, net ) );
+                            drRtree.insert( make_pair( wireSeg, net ) );
                         }
                         break;
                     }
@@ -181,14 +194,16 @@ cout << "WireCapacity   : " << wireCapacity << endl;
         myRSMT->searchOverlaps(gcellRtree);
     }
 
+    cout << "dr rtree size : " << drRtree.size() << endl;
+
     cout << "RSMT construction finished" << endl;
 
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
-        //
-        gcell->extractFeatureEGR(egrRtree);
+        
         gcell->extractFeaturePL(instRtree);
         gcell->extractFeatureRSMT(rsmtRtree);
+		gcell->extractFeatureDR(drRtree);
 
         //if(gcell->getNumMarkers() > 0)
             // for debug

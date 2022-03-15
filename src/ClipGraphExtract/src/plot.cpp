@@ -19,33 +19,60 @@ static const unsigned char yellow[] = {255, 255, 0}, white[] = {255, 255, 255},
 
 enum ValueType {
   RUDY,
-  WIRE_DEN,
   CELL_DEN,
   PIN_DEN,
-  CHAN_DEN,
-  MARKER,
-  LNET_DEN,
-  GNET_DEN
+  PL_WIRE_DEN,
+  PL_CHAN_DEN,
+  PL_LNET_DEN,
+  PL_GNET_DEN,
+  DR_WIRE_DEN,
+  DR_CHAN_DEN,
+  DR_LNET_DEN,
+  DR_GNET_DEN,
+  MARKER_ALL,
+  MARKER_LNET,
+  MARKER_GNET,
+  MARKER_INST
 };
 
 double getValue(Gcell* gcell, ValueType valType) {
+    uint lnet;
+    uint gnet;
+    uint inst;
     switch(valType) {
         case ValueType::RUDY:
             return min(1.0, gcell->getRUDY());
-        case ValueType::WIRE_DEN:
-            return min(1.0, gcell->getWireDensity(ModelType::PL));
         case ValueType::CELL_DEN:
             return min(1.0, gcell->getCellDensity());
         case ValueType::PIN_DEN:
             return min(1.0, gcell->getPinDensity());
-        case ValueType::CHAN_DEN:
-            return min(1.0, gcell->getChannelDensity(ModelType::PL));
-        case ValueType::MARKER:
+        case ValueType::MARKER_ALL:
             return min(1.0, 0.3 * gcell->getNumMarkers());
-        case ValueType::LNET_DEN:
-            return min(1.0, gcell->getLNetDensity());
-        case ValueType::GNET_DEN:
-            return min(1.0, gcell->getGNetDensity());
+        case ValueType::MARKER_LNET:
+            gcell->getNumMarkers(lnet, gnet, inst);
+            return min(1.0, 0.3*lnet);
+        case ValueType::MARKER_GNET:
+            gcell->getNumMarkers(lnet, gnet, inst);
+            return min(1.0, 0.3*gnet);
+        case ValueType::MARKER_INST:
+            gcell->getNumMarkers(lnet, gnet, inst);
+            return min(1.0, 0.3*inst);
+        case ValueType::PL_WIRE_DEN:
+            return min(1.0, gcell->getWireDensity(ModelType::PL));
+        case ValueType::PL_CHAN_DEN:
+            return min(1.0, gcell->getChannelDensity(ModelType::PL));
+        case ValueType::PL_LNET_DEN:
+            return min(1.0, gcell->getLNetDensity(ModelType::PL));
+        case ValueType::PL_GNET_DEN:
+            return min(1.0, gcell->getGNetDensity(ModelType::PL));
+        case ValueType::DR_WIRE_DEN:
+            return min(1.0, gcell->getWireDensity(ModelType::DR));
+        case ValueType::DR_CHAN_DEN:
+            return min(1.0, gcell->getChannelDensity(ModelType::DR));
+        case ValueType::DR_LNET_DEN:
+            return min(1.0, gcell->getLNetDensity(ModelType::DR));
+        case ValueType::DR_GNET_DEN:
+            return min(1.0, gcell->getGNetDensity(ModelType::DR));
         default:
             return 0.0;
     }
@@ -55,19 +82,33 @@ double getDenom(Grid* grid, ValueType valType) {
     switch(valType) {
         case ValueType::RUDY:
             return grid->getMaxRUDY();
-        case ValueType::WIRE_DEN:
-            return 1.0;
         case ValueType::CELL_DEN:
             return 1.0;
         case ValueType::PIN_DEN:
             return 1.0;
-        case ValueType::CHAN_DEN:
+        case ValueType::MARKER_ALL:
             return 1.0;
-        case ValueType::MARKER:
+        case ValueType::MARKER_LNET:
             return 1.0;
-        case ValueType::LNET_DEN:
+        case ValueType::MARKER_GNET:
             return 1.0;
-        case ValueType::GNET_DEN:
+        case ValueType::MARKER_INST:
+            return 1.0;
+        case ValueType::PL_WIRE_DEN:
+            return 1.0;
+        case ValueType::PL_CHAN_DEN:
+            return 1.0;
+        case ValueType::PL_LNET_DEN:
+            return 1.0;
+        case ValueType::PL_GNET_DEN:
+            return 1.0;
+        case ValueType::DR_WIRE_DEN:
+            return 1.0;
+        case ValueType::DR_CHAN_DEN:
+            return 1.0;
+        case ValueType::DR_LNET_DEN:
+            return 1.0;
+        case ValueType::DR_GNET_DEN:
             return 1.0;
         default:
             return 1.0;
@@ -117,7 +158,6 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
         
         drawGcell(&img, gcell, origin, sf, opacity, val);
     }
-
     string imgPath = dirPath + "/" + fileName + ".jpg";
     img.save_jpeg(imgPath.c_str(), 200);
 
@@ -130,13 +170,20 @@ void Grid::saveMapImages(string dirPath) {
 
    
     saveMapImage(this, ValueType::RUDY, "RUDY", dirPath);
-    saveMapImage(this, ValueType::WIRE_DEN, "WireDen", dirPath);
     saveMapImage(this, ValueType::CELL_DEN, "CellDen", dirPath);
     saveMapImage(this, ValueType::PIN_DEN, "PinDen", dirPath);
-    saveMapImage(this, ValueType::CHAN_DEN, "ChanDen", dirPath);
-    saveMapImage(this, ValueType::MARKER, "DRV", dirPath);
-    saveMapImage(this, ValueType::LNET_DEN, "LNetDen", dirPath);
-    saveMapImage(this, ValueType::GNET_DEN, "GNetDen", dirPath);
+    saveMapImage(this, ValueType::MARKER_ALL, "DRV_ALL", dirPath);
+    saveMapImage(this, ValueType::MARKER_LNET, "DRV_LNET", dirPath);
+    saveMapImage(this, ValueType::MARKER_GNET, "DRV_GNET", dirPath);
+    saveMapImage(this, ValueType::MARKER_INST, "DRV_INST", dirPath);
+    saveMapImage(this, ValueType::PL_LNET_DEN, "PL_LNetDen", dirPath);
+    saveMapImage(this, ValueType::PL_GNET_DEN, "PL_GNetDen", dirPath);
+    saveMapImage(this, ValueType::PL_CHAN_DEN, "PL_ChanDen", dirPath);
+    saveMapImage(this, ValueType::PL_WIRE_DEN, "PL_WireDen", dirPath);
+    saveMapImage(this, ValueType::DR_LNET_DEN, "DR_LNetDen", dirPath);
+    saveMapImage(this, ValueType::DR_GNET_DEN, "DR_GNetDen", dirPath);
+    saveMapImage(this, ValueType::DR_CHAN_DEN, "DR_ChanDen", dirPath);
+    saveMapImage(this, ValueType::DR_WIRE_DEN, "DR_WireDen", dirPath);
 
 
 

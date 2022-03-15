@@ -35,7 +35,8 @@ bool RSMT::isGlobalNet() {
 }
 
 bool RSMT::isLocalNet() {
-    return bboxOverlaps_.size() < 2 ? true : false;
+	return bboxOverlaps_.size() < 2 ? true : false;
+    //return true;
 }
 
 void RSMT::setWireWidth(int width) {
@@ -184,15 +185,14 @@ RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
     overlaps.clear();
     queryResults.clear();
     tree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
-
+	
     for(auto& val : queryResults) {
         Gcell* gcell = val.second;
         overlaps.insert(gcell);
     }
 
-
-    bboxOverlaps_ = vector<Gcell*>(overlaps.size());
-    copy(overlaps.begin(), overlaps.end(), bboxOverlaps_.begin());
+	bboxOverlaps_ = vector<Gcell*>(overlaps.size());
+	copy(overlaps.begin(), overlaps.end(), bboxOverlaps_.begin());
 }
 
 

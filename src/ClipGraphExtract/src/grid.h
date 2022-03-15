@@ -84,7 +84,7 @@ class Gcell {
     // Gcell features
     odb::Rect bbox_;
 
-    Resource rmEGR_; // using GR results
+    //Resource rmEGR_; // using GR results
     Resource rmDR_; // using DR results
     Resource rmPL_; // using PLACE results
 
@@ -120,7 +120,7 @@ class Gcell {
 
     //
     void extractFeaturePL(BoxRtree<odb::dbInst*> &rtree);
-    void extractFeatureEGR(SegRtree<odb::dbNet*> &rtree);
+    void extractFeatureDR(SegRtree<odb::dbNet*> &rtree);
     void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
 
     // 
@@ -141,11 +141,13 @@ class Gcell {
     uint getPinArea();
     uint getNumMarkers();
 
+    void getNumMarkers(uint &lnet, uint &gnet, uint &inst);
+
     double getRUDY();
     double getPinDensity();
     double getCellDensity();
-    double getLNetDensity();
-    double getGNetDensity();
+    double getLNetDensity(ModelType type);
+    double getGNetDensity(ModelType type);
     double getWireDensity(ModelType type);
     double getChannelDensity(ModelType type);
     double getChannelDensity(Orient orient, ModelType = ModelType::PL);

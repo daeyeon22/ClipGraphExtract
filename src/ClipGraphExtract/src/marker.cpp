@@ -122,7 +122,7 @@ bool Marker::isFromInst() {
 
 
 Marker::Category Marker::getCategory() {
-    if(isFromNet() && isToNet()) {
+	if(isFromNet() && isToNet()) {
         if(toNet_->isLocalNet() && fromNet_->isLocalNet()) {
             return Category::L2L;
         } else if (!toNet_->isLocalNet() && fromNet_->isLocalNet()) {
@@ -135,10 +135,10 @@ Marker::Category Marker::getCategory() {
             return Category::ERR;
         }
     } else if (isFromInst() && isToNet()) {
-        if(toNet_->isLocalNet())
-            return Category::L2I;
-        else
-            return Category::G2I;
+		if(toNet_->isLocalNet())
+			return Category::L2I;
+		else
+			return Category::G2I;
     } else if (isFromNet() && isToInst()) {
         if(fromNet_->isLocalNet())
             return Category::L2I;

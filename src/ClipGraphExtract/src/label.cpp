@@ -53,11 +53,22 @@ string parseInstName(string substr) {
     string str =substr;
     str = regex_replace(str, regex("Blockage of Cell "), "");
     str = regex_replace(str, regex("Pin of Cell "), "");
+    str = regex_replace(str, regex("\\s"), "");
+    return str;
+}
+
+string parseDrv(string substr) {
+    string str =substr;
+    str = regex_replace(str, regex("\\s+Total Violations\\s:\\s"), "");
+    str = regex_replace(str, regex("\\sViols\\."), "");
     return str;
 }
 
 string parseNetName(string substr) {
-    return regex_replace(substr, regex("Regular Wire of Net "), "");
+    string str =substr;
+    str = regex_replace(substr, regex("Regular Wire of Net "), "");
+    str = regex_replace(str, regex("\\s"), "");
+	return str;
 }
 
 string parseLayerName(string substr) {
@@ -69,7 +80,6 @@ string parseLayerName(string substr) {
 
 void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
-
     cout << "Start to read routing report (" << fileName << ")" << endl;
 
     ifstream inFile(fileName);
@@ -79,46 +89,58 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 	dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
 
-	//int lineNum = 0;
-    //int layer=0;
-
-
     BoxRtree<Marker*> rtree;
 
     regex lyrRex("\\( Metal[0-9]+ \\)");
-    regex startRex("[A-Z]+: \\( [\\w\\s\\d-\\.]+ \\)");
-    regex typeRex("[A-Z]+:");
+    regex startRex("[\\w]+: \\( [\\w\\s\\d-\\.]+ \\)");
+    regex DrvRex("\\s+Total Violations : \\d+ Viols\\.");
+    regex typeRex("[\\w]+:");
     regex ruleRex("\\( [\\w\\s\\d-]+ \\)");
     regex objRex1("Blockage of Cell [\\w\\d]+");
     regex objRex2("Pin of Cell [\\w\\d]+");
     regex objRex3("Regular Wire of Net [\\w\\d]+");
-    regex sepRex("&");
     regex boxRex("\\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\) \\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\)");
 
     string typeName ="";
     string ruleName ="";
     string lyrName ="";
-    string fromPrefix = "";
+    
+	string fromPrefix = "";
     string toPrefix = "";
-    string fromInst ="";
+ 
+ 	string fromInst ="";
     string toInst ="";
     string fromNet ="";
     string toNet ="";
-    Grid* grid = (Grid*)grid_;
-    // NEED TO BE GENERALIZED!
-    // TO JKLEE
-    while(getline(inFile, line)) {
+    
+	Grid* grid = (Grid*)grid_;
+	
+	uint drvNum = 0;
+
+	while(getline(inFile, line)) {
         smatch matStr; 
         string str = line;
         smatch m;
+
+		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
-            
+			
+			// Detect type and delete the corresponding part
             if(regex_search(str, m, typeRex)) {
                 //cout << "1" << str << endl;
                 typeName = parseType(m[0].str());
                 str = regex_replace(str, typeRex, "");
                 //cout << str << endl;
             }
+		
+			// Detect layer and delete the corresponding part
+			if(regex_search(str, m, lyrRex)) {
+                lyrName = parseLayerName(m[0].str());
+                str = regex_replace(str, lyrRex, "");
+                //cout << str << endl;
+            }
+		
+			// Detect rule and delete the corresponding part
             if(regex_search(str, m, ruleRex)) {
                 ruleName = parseRule(m[0].str());
                 //for(int i=0; i < m.size(); i++) {
@@ -127,64 +149,62 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 str = regex_replace(str, ruleRex, "");
                 //cout << str << endl;
             }
-
-            // parse object1
-            if(regex_search(str, m, objRex1)) {
+			
+			// Split object1 and object2
+			string delim = "&";
+            vector<string> tokens = splitAsTokens(str, delim);
+		
+            // Parse object and delete the corresponding part
+            if(regex_search(tokens[0], m, objRex1)) {
                 fromInst = parseInstName(m[0].str());
                 fromPrefix = "Blockage of Cell";
-                str = regex_replace(str, objRex1, "");
-                //cout << str << endl;
-            } else if(regex_search(str, m, objRex2)) {
+                tokens[0] = regex_replace(tokens[0], objRex1, "");
+                //cout << tokens[0] << endl;
+            } else if(regex_search(tokens[0], m, objRex2)) {
                 fromInst = parseInstName(m[0].str());
                 fromPrefix = "Pin of Cell";
-                str = regex_replace(str, objRex2, "");
-                //cout << str << endl;
-            } else if(regex_search(str, m, objRex3)) {
+                tokens[0] = regex_replace(tokens[0], objRex2, "");
+                //cout << tokens[0] << endl;
+            } else if(regex_search(tokens[0], m, objRex3)) {
                 fromNet = parseNetName(m[0].str());
                 fromPrefix = "Regular Wire of Net";
-                str = regex_replace(str, objRex3, "");
-                //cout << str << endl;
+                tokens[0] = regex_replace(tokens[0], objRex3, "");
+                //cout << tokens[0] << endl;
             } else {
                 cout << "exception case! here!" << endl;
-                cout << str << endl;
+                cout << tokens[0] << endl;
                 exit(0);
             }
-
-            // parse object2
-            if(regex_search(str, m, objRex1)) {
-                
-                toInst = parseInstName(m[0].str());
-                toPrefix = "Blockage of Cell";
-                str = regex_replace(str, objRex1, "");
-                //cout << str << endl;
-            } else if(regex_search(str, m, objRex2)) {
-                toInst = parseInstName(m[0].str());
-                toPrefix = "Pin of Cell";
-                str = regex_replace(str, objRex2, "");
-                //cout << str << endl;
-            } else if(regex_search(str, m, objRex3)) {
-                toNet = parseNetName(m[0].str());
-                toPrefix = "Regular Wire of Net";
-                str = regex_replace(str, objRex3, "");
-                //cout << str << endl;
-            } else {
-                cout << "There is only object1" << endl;
-            }
-
-
-            if(regex_search(str, m, lyrRex)) {
-                lyrName = parseLayerName(m[0].str());
-                str = regex_replace(str, lyrRex, "");
-                //cout << str << endl;
-            }
-       
+			
+			if(tokens.size() > 1) {
+				// parse object2
+				if(regex_search(tokens[1], m, objRex1)) {
+					toInst = parseInstName(m[0].str());
+					toPrefix = "Blockage of Cell";
+					tokens[1] = regex_replace(tokens[1], objRex1, "");
+					//cout << tokens[1] << endl;
+				} else if(regex_search(tokens[1], m, objRex2)) {
+					toInst = parseInstName(m[0].str());
+					toPrefix = "Pin of Cell";
+					tokens[1] = regex_replace(tokens[1], objRex2, "");
+					//cout << tokens[1] << endl;
+				} else if(regex_search(tokens[1], m, objRex3)) {
+					toNet = parseNetName(m[0].str());
+					toPrefix = "Regular Wire of Net";
+					tokens[1] = regex_replace(tokens[1], objRex3, "");
+					//cout << tokens[1] << endl;
+				} else {
+					//cout << "There is only object1" << endl;
+				}
+			}
         } else if (regex_search(str, m, boxRex)) {
             string delim = " (),";
             vector<string> tokens = splitAsTokens(m[0].str(), delim);
-            if(tokens.size() != 4) {			
-                continue;
+            if(tokens.size() != 4) {
+            	cout << "exception case!" << endl;
+				cout << str << endl;
+				exit(0);
             }
-
 
             int lx = dbUnitMicron * atof(tokens[0].c_str());
             int ly = dbUnitMicron * atof(tokens[1].c_str());
@@ -213,7 +233,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
             mark->setFromInst(inst1);
             mark->setToInst(inst2);
 
-
             if(fromPrefix == "Blockage of Cell") {
                 mark->setFromTag(Marker::Tag::BoC);
             } else if (fromPrefix == "Pin of Cell") {
@@ -235,107 +254,43 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
             }
 
             rtree.insert(make_pair(mark->getQueryBox(), mark));
-            
-            typeName ="";
-            ruleName ="";
-            lyrName ="";
-            fromPrefix = "";
-            toPrefix = "";
-            fromInst ="";
-            toInst ="";
-            fromNet ="";
-            toNet ="";
+/*		
+			cout << typeName << ":";
+			cout << ruleName << ":";
+			cout << fromPrefix << ":";
+			cout << fromInst << ":";
+			cout << fromNet << ":";
+			cout << toPrefix << ":";
+			cout << toInst << ":";
+			cout << toNet << ":";
+			cout << lyrName << ":";
+			cout << endl;
+            cout << "(" << tokens[0] << " " << tokens[1] << ") (" << tokens[2] << " " << tokens[3] <<")" << endl;
+			cout << endl;
+*/			
+			typeName ="";
+			ruleName ="";
+			lyrName ="";
+			fromPrefix = "";
+			toPrefix = "";
+			fromInst ="";
+			toInst ="";
+			fromNet ="";
+			toNet ="";
+			
+			drvNum++;
 
-        } else {
-                //cout << "exception case!" << endl;
-                //cout << str << endl;
-                //exit(0);
+        } else if (regex_search(str, m, DrvRex)) {
+			if(stoi(parseDrv(m[0].str())) != drvNum){
+				cout << "The number of DRVs is different." << endl;
+				cout << "parseNum: " << parseDrv(m[0].str()) << " OriginalNum: " << drvNum << endl;
+				exit(0);
+			}	
+		} else {
+            //cout << "exception case!" << endl;
+			//cout << str << endl;
+			//exit(0);
         }
-        /*
-        lineNum++;
-        if(lineNum < 10) continue;
-
-        std::smatch match;
-        if(regex_search(line, match, colon)) {
-            string head = match.prefix();
-            string tail = match.suffix();
-
-            if(head != "Bounds "){
-                if(head == "  Total Violations ") continue;
-
-                type = head;
-                string delim = "()";
-                vector<string> tokens = splitAsTokens(tail, delim);
-                ZASSERT(tokens.size() == 4);
-                for(int i = 0; i < tokens.size(); i++)
-                    tokens[i] = tokens[i].substr(1, tokens[i].size()-2);
-
-                detailed = tokens[1];
-                layer = atoi(tokens[3].substr(1).c_str());
-
-                delim = "&";
-                tokens = splitAsTokens(tokens[2], delim);
-                ZASSERT(tokens.size() < 3);
-
-                if(tokens[0].substr(0, 19) == "Regular Wire of Net")
-                    toNet = tokens[0].substr(20, tokens[0].size()-21);
-
-                else if(tokens[0].substr(0, 11) == "Pin of Cell")
-                    toInst = tokens[0].substr(12, tokens[0].size()-12);
-
-                else cout << "outlier: " << line << endl;
-
-                if(tokens.size() > 1){
-                    tokens[1] = tokens[1].substr(1, tokens[1].size()-2);
-                    if(tokens[1].substr(0, 19) == "Regular Wire of Net")
-                        fromNet = tokens[1].substr(20, tokens[1].size()-20);
-                }
-            } else{
-                string delim = " (),";
-                vector<string> tokens = splitAsTokens(tail, delim);
-                if(tokens.size() != 4) {			
-                    continue;
-                }
-
-                int lx = dbUnitMicron * atof(tokens[0].c_str());
-                int ly = dbUnitMicron * atof(tokens[1].c_str());
-                int ux = dbUnitMicron * atof(tokens[2].c_str());
-                int uy = dbUnitMicron * atof(tokens[3].c_str());
-
-                //cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << toInst << " " << layer << " ";
-                //cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
-
-                // TODO
-                Marker* mark = grid->createMarker(lx,ly,ux,uy);
-                mark->setType(type);
-                mark->setRule(detailed);
-                //mark->setBoundary(Rect(lx, ly, ux, uy));
-                
-                dbNet* net1 = block->findNet(fromNet.c_str());
-                dbNet* net2 = block->findNet(toNet.c_str());
-                
-                mark->setFromNet(grid->getRSMT(net1));
-                mark->setToNet(grid->getRSMT(net2));
-                mark->setToInst(block->findInst(toInst.c_str()));
-
-                if(mark->getFromNet() != NULL && mark->getToNet() != NULL) {
-                    mark->setTag(Marker::Tag::N2N);
-                }
-
-                if(mark->getFromNet() != NULL && mark->getToInst() != NULL) {
-                    mark->setTag(Marker::Tag::N2I);
-                }
-
-                rtree.insert(make_pair(mark->getQueryBox(), mark));
-                type = "0";
-                detailed = "0";
-                toNet = "0";
-                fromNet = "0";
-                toInst = "0";
-                layer = 0;
-            }
-        }
-        */
     }
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
@@ -350,7 +305,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 
 namespace feature_extractor {
-
 
 Marker* Grid::createMarker(int x1, int y1, int x2, int y2) {
     Marker* mark = new Marker();
@@ -378,30 +332,35 @@ void Grid::reportDRC() {
     int nI2I=0;
     int nSELF=0;
     int nERR=0;
-
     unordered_map<string,int> type2count;
 
     for(Marker* mark : markers_) {
         switch(mark->getCategory()) {
             case Marker::Category::L2L:
-                nL2L++; break;
+                nL2L++;
+				break;
             case Marker::Category::L2G:
-                nL2G++; break;
+                nL2G++;
+				break;
             case Marker::Category::L2I:
-                nL2I++; break;
+                nL2I++;
+				break;
             case Marker::Category::G2I:
-                nG2I++; break;
+                nG2I++;
+				break;
             case Marker::Category::G2G:
-                nL2L++; break;
+                nL2L++;
+				break;
             case Marker::Category::I2I:
-                nI2I++; break;
+                nI2I++;
+				break;
             case Marker::Category::SELF:
-                nSELF++; break;
-
-            default: nERR++; break;
+                nSELF++;
+				break;
+            default:
+				nERR++;
+				break;
         }
-
-
         type2count[mark->getType()]++;
     }
 
@@ -431,9 +390,4 @@ void Grid::reportDRC() {
 
 
 
-
-
-
-
 };
-
