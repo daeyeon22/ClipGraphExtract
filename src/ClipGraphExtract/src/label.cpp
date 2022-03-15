@@ -310,8 +310,8 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
 
-        //if(gcell->getNumMarkers() > 0)
-        //    gcell->print();
+        if(gcell->getNumMarkers() > 0)
+            gcell->print();
     
     }
 }
@@ -349,34 +349,32 @@ void Grid::reportDRC() {
     unordered_map<string,int> type2count;
 
     for(Marker* mark : markers_) {
-        switch(mark->getCategory()) {
+
+        Marker::Category ctgy = mark->getCategory();
+
+        switch(ctgy) {
             case Marker::Category::L2L:
-                nL2L++;
-				break;
+                nL2L++;	break;
             case Marker::Category::L2G:
-                nL2G++;
-				break;
+                nL2G++;	break;
             case Marker::Category::L2I:
-                nL2I++;
-				break;
+                nL2I++;	break;
             case Marker::Category::G2I:
-                nG2I++;
-				break;
+                nG2I++;	break;
             case Marker::Category::G2G:
-                nL2L++;
-				break;
+                nG2G++;break;
             case Marker::Category::I2I:
-                nI2I++;
-				break;
+                nI2I++;	break;
             case Marker::Category::SELF:
-                nSELF++;
-				break;
+                nSELF++;break;
             default:
-				nERR++;
-				break;
+				nERR++;	break;
         }
         type2count[mark->getType()]++;
     }
+
+    uint lnet, gnet, inst;
+
 
 
     cout << "= = = = Report DRC = = = =" << endl;
