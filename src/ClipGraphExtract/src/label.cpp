@@ -96,9 +96,9 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     regex DrvRex("\\s+Total Violations : \\d+ Viols\\.");
     regex typeRex("[\\w]+:");
     regex ruleRex("\\( [\\w\\s\\d-]+ \\)");
-    regex objRex1("Blockage of Cell [\\w\\d]+");
-    regex objRex2("Pin of Cell [\\w\\d]+");
-    regex objRex3("Regular Wire of Net [\\w\\d]+");
+    regex objRex1("Blockage of Cell [\\w\\d\\[\\]]+");
+    regex objRex2("Pin of Cell [\\w\\d\\[\\]]+");
+    regex objRex3("Regular Wire of Net [\\w\\d\\[\\]]+");
     regex boxRex("\\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\) \\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\)");
 
     string typeName ="";
@@ -227,6 +227,20 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
             dbNet* net2 = block->findNet(toNet.c_str());
             dbInst* inst1 = block->findInst(fromInst.c_str());
             dbInst* inst2 = block->findInst(toInst.c_str());
+
+            ///////////////////////////////////////////////////////////
+            if(fromNet != "") {
+                if(net1 == NULL) {
+                    cout << fromNet << " is NULL ptr" << endl;
+                    exit(0);
+                }else{
+                    if(grid->getRSMT(net1)==NULL) {
+                        cout << fromNet << " has no RSMT" << endl;
+                        exit(0);
+                    }
+                }
+            }
+            ///////////////////////////////////////////////////////////
 
             mark->setFromNet(grid->getRSMT(net1));
             mark->setToNet(grid->getRSMT(net2));

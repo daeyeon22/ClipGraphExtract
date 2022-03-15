@@ -122,7 +122,14 @@ bool Marker::isFromInst() {
 
 
 Marker::Category Marker::getCategory() {
-	if(isFromNet() && isToNet()) {
+    if(isFromNet() && isToNet()) {
+        //if(toNet_ == NULL)
+        //    cout << "tonet is nullptr" << endl;
+        //if(fromNet_ == NULL) 
+        //    cout << "fromnet is nullptr" << endl;
+       
+        //cout << fromTag_ << " " << toTag_ << endl;
+
         if(toNet_->isLocalNet() && fromNet_->isLocalNet()) {
             return Category::L2L;
         } else if (!toNet_->isLocalNet() && fromNet_->isLocalNet()) {
@@ -153,6 +160,7 @@ Marker::Category Marker::getCategory() {
             return Category::ERR;
         }
     }
+    
 }
 
 
