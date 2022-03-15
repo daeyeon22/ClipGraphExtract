@@ -138,57 +138,112 @@ cout << "WireCapacity   : " << wireCapacity << endl;
 
         // make wireRtree
         dbWire* wire = net->getWire();
-        
+       
         if( wire && wire->length() ) {
 
             //cout << net->getName() << " has wire" << endl;
-
+            int wl = wire->getLength();
+            int wl_ = 0;
+            int x,y, ext;
+            
             dbWireDecoder decoder;
             decoder.begin(wire);
             
             vector<odb::Point> points;
 
-            while(decoder.peek() != dbWireDecoder::END_DECODE) {
-                uint layerNum;
-                uint layerMinWidth;
-                uint layerMinSpacing;
+            dbWireDecoder::OpCode opcode = decoder.peek();
 
-                switch(decoder.peek()) {
+            while(opcode != dbWireDecoder::END_DECODE) {
+                bool hasPath=false;
+
+                switch(opcode) {
+                    case dbWireDecoder::PATH: {
+                        //cout << "PATH" << endl; 
+                        points.clear(); break;
+                    }
+                    case dbWireDecoder::JUNCTION: {
+                        //cout << "JUNcTION" << endl; 
+                        break;
+                    }
                     case dbWireDecoder::SHORT: {
-                        decoder.next();
-                        points.clear();            
+                        //cout << "SHORT" << endl;  points.clear();            
                         break;
                     }
                     case dbWireDecoder::TECH_VIA: {
-                        decoder.next();                   
+                        //cout << "TECH_VIA" << endl;
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        hasPath=true;
                         break;
                     }
-                    case dbWireDecoder::POINT: {
-                        decoder.next();                   
-                        int x,y;
-                        decoder.getPoint(x,y);
-                       // cout << "get point " << x << " " << y <<endl;
+                    case dbWireDecoder::VIA: 
+                        //cout << "VIA" << endl; 
+                        break;
+                    case dbWireDecoder::VWIRE:
+                        //cout << "VWIRE" << endl; 
+                        break;
+                    case dbWireDecoder::POINT_EXT:
+                        decoder.getPoint(x,y,ext);
+                        //cout << "POINT_EXT " << ext << endl; 
                         points.push_back(odb::Point(x,y));
-                        if(points.size() >1) {
-                            odb::Point pt1 = points[points.size()-2];
-                            odb::Point pt2 = points[points.size()-1];
-                            
-                            int xMin = min(pt1.getX(), pt2.getX());// - layerMinWidth[decoder.getLayer()]/2;
-                            int xMax = max(pt1.getX(), pt2.getX());// + layerMinWidth[decoder.getLayer()]/2;
-                            int yMin = min(pt1.getY(), pt2.getY());// - layerMinWidth[decoder.getLayer()]/2;
-                            int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
+                        hasPath=true;
+                        break;
 
-                            bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            drRtree.insert( make_pair( wireSeg, net ) );
-                        }
+                    case dbWireDecoder::BTERM:
+                        //cout <<"BTERM" << endl; 
+                        break;
+                    case dbWireDecoder::ITERM:
+                        //cout <<"ITERM" << endl; 
+                        break;
+                    case dbWireDecoder::RULE:
+                        //cout << "RULE" << endl; 
+                        break;
+                    case dbWireDecoder::POINT: {
+                        ////cout << "POINT" << endl;
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        hasPath=true;
+
                         break;
                     }
                     default:
-                        decoder.next();
+                        //cout << "DEFAULT" << endl; 
                         break;
                 }
 
+                if(hasPath && points.size() > 1) {
+                    odb::Point pt1 = points[points.size()-2];
+                    odb::Point pt2 = points[points.size()-1];
+
+                    int xMin = min(pt1.getX(), pt2.getX());// - layerMinWidth[decoder.getLayer()]/2;
+                    int xMax = max(pt1.getX(), pt2.getX());// + layerMinWidth[decoder.getLayer()]/2;
+                    int yMin = min(pt1.getY(), pt2.getY());// - layerMinWidth[decoder.getLayer()]/2;
+                    int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
+                    int dist = (xMax-xMin) + (yMax-yMin);
+                    
+                    if(dist != 0) {
+                        wl_ += dist;
+                        //if (xMin != xMax && yMin != yMax)
+                        //    cout <<"(" <<  xMin << " " << yMin << ") (" << xMax << " " << yMax << ")**" << endl;
+                        //else
+                        //    cout <<"(" <<  xMin << " " << yMin << ") (" << xMax << " " << yMax << ") " << dist << endl;
+
+                        bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                        drRtree.insert( make_pair( wireSeg, net ) );
+                    }
+                }
+
+                opcode = decoder.next();
             }
+
+
+            //if(wl != wl_) {
+            //    cout << "different wirelength..." << endl;
+            //    cout << wl << " " << wl_ << endl;
+            //    exit(0);
+            //}
+
+
         }
         // search overlapping gcells
         myRSMT->searchOverlaps(gcellRtree);
@@ -211,15 +266,22 @@ cout << "WireCapacity   : " << wireCapacity << endl;
     }
     ////// FOR DEBUG
     cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
+
     
-    
+    double maxWireDenDR = 0;
+    double maxWireDenPL = 0;
     double avgRUDY = 0;
-    for(Gcell* gcell : grid->getGcells()) 
-        avgRUDY += gcell->getRUDY();
+    for(Gcell* gcell : grid->getGcells()) { 
+       avgRUDY += gcell->getRUDY();
+        maxWireDenPL = max(maxWireDenPL, gcell->getWireDensity(ModelType::PL));
+        maxWireDenDR = max(maxWireDenDR, gcell->getWireDensity(ModelType::DR));
+    }
     avgRUDY /= grid->getGcells().size();
     cout << "[REP] Avg RUDY : " << avgRUDY << endl;
    
 
+    cout << "[REP] Max WireDen (PL) : " << maxWireDenPL << endl;
+    cout << "[REP] Max WireDen (DR) : " << maxWireDenDR << endl;
 
 
     cout << "Feature extraction finished" << endl;
@@ -232,6 +294,10 @@ void Grid::init() {
     assert(gcellWidth_ == 0);
     assert(gcellHeight_ == 0);
     assert(bbox_.dx() * bbox_.dy() == 0);
+
+
+    cout << "Initialize gcell grid (" << gcellWidth_ << " " << gcellHeight_ << ")" << endl;
+
 
     numCols_ = bbox_.dx() / gcellWidth_;
     numRows_ = bbox_.dy() / gcellHeight_;

@@ -493,6 +493,9 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
 
 void Gcell::print() {
 
+    uint lnet, gnet, inst;
+    getNumMarkers(lnet, gnet, inst);
+
     cout << "GCELL (" << bbox_.xMin() << " " << bbox_.yMin() << ") (" << bbox_.xMax() << " " << bbox_.yMax() << ")" << endl;
     cout << "   - CellDen   : " << getCellDensity() << endl;
     cout << "   - PinDen    : " << getPinDensity() << endl;
@@ -529,6 +532,9 @@ void Gcell::print() {
          << " (" << getTrackDemand(Orient::LEFT, ModelType::DR) << " " << getTrackSupply(Orient::LEFT, ModelType::DR) << ")" << endl;
  
     cout << "   - #DRVs     : " << getNumMarkers() << endl;
+    cout << "   -   due to local net = " << lnet << endl;
+    cout << "   -   due to global net = " << gnet << endl;
+    cout << "   -   due to instance = " << inst << endl;
 
 
     
