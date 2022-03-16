@@ -1,6 +1,7 @@
 #include "grid.h"
 #include "CImg.h"
 #include <iostream>
+#include <fstream>
 #include <tinycolormap.hpp>
 
 
@@ -291,6 +292,42 @@ void Grid::saveMapImages(string dirPath) {
     img6.save_jpeg(imgPath.c_str(), 200);
     */
 }
+
+void Grid::saveFile(const char* feaDir) {
+
+	ofstream cellAttr;
+	string attrFileName = string(feaDir) + "/feature.x";
+
+	cellAttr.open(attrFileName, std::ios_base::out);
+
+	uint lnet;
+	uint gnet;
+	uint inst;
+	
+    for(auto& gcell : gcells_) {
+		gcell->getNumMarkers(lnet, gnet, inst);
+
+        cellAttr << gcell->getRUDY() << ","
+        		 << gcell->getCellDensity() << ","
+        		 << gcell->getPinDensity() << ","
+    			 << gcell->getNumMarkers() << ","
+    			 << lnet << ","
+    			 << gnet << ","
+    			 << inst << ","
+	    		 << gcell->getLNetDensity(ModelType::PL) << ","
+        		 << gcell->getGNetDensity(ModelType::PL) << ","
+        		 << gcell->getChannelDensity(ModelType::PL) << ","
+        		 << gcell->getWireDensity(ModelType::PL) << ","
+        		 << gcell->getLNetDensity(ModelType::DR) << ","
+        		 << gcell->getGNetDensity(ModelType::DR) << ","
+        		 << gcell->getChannelDensity(ModelType::DR) << ","
+        		 << gcell->getWireDensity(ModelType::DR) << endl;
+	}
+	cellAttr.close();
+	cout << "End writing file." << endl;
+}
+
+
 
 
 

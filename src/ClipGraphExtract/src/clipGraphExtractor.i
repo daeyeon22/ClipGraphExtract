@@ -45,6 +45,12 @@ save_map_images_cmd(const char* imgDir) {
 }
 
 void
+save_file_cmd(const char* feaDir) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveFile(feaDir);
+}
+
+void
 read_routing_report_cmd(const char* file_name) {
 
     ClipGraphExtractor* graphExt = getClipGraphExtractor();

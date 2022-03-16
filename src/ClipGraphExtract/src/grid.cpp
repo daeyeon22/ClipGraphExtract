@@ -22,6 +22,11 @@ ClipGraphExtractor::saveMapImages( const char* imgDir ) {
     grid->saveMapImages(string(imgDir));
 }
 
+void
+ClipGraphExtractor::saveFile( const char* feaDir ) {
+    Grid* grid = (Grid*)(grid_);
+    grid->saveFile(feaDir);
+}
 
 
 void ClipGraphExtractor::initGcellGrid(int numRows, int maxLayer) {

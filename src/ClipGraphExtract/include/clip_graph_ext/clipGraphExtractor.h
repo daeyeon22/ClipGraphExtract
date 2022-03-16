@@ -50,6 +50,7 @@ class ClipGraphExtractor {
     void initGcellGrid(int numRows, int maxLayer);
     void readRoutingReport(const char* fileName);
     void saveMapImages(const char* dirPath);
+    void saveFile(const char* feaDir);
 
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }

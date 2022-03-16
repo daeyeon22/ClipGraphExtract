@@ -301,6 +301,7 @@ class Grid {
     void setTrackSupply(int tSup);
     void setNumLayers(int nLyr);
     void saveMapImages(std::string dirPath);
+    void saveFile(const char* feaDir);
 
 
     

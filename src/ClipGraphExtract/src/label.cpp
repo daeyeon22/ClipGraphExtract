@@ -99,7 +99,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     regex objRex1("Blockage of Cell [\\w\\d\\[\\]]+");
     regex objRex2("Pin of Cell [\\w\\d\\[\\]]+");
     regex objRex3("Regular Wire of Net [\\w\\d\\[\\]]+");
-    regex boxRex("\\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\) \\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\)");
+    regex boxRex("\\( \\-?[0-9]+\\.[0-9]+, \\-?[0-9]+\\.[0-9]+ \\) \\( \\-?[0-9]+\\.[0-9]+, \\-?[0-9]+\\.[0-9]+ \\)");
 
     string typeName ="";
     string ruleName ="";
@@ -121,7 +121,6 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
         smatch matStr; 
         string str = line;
         smatch m;
-
 		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
 			
@@ -268,7 +267,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
             }
 
             rtree.insert(make_pair(mark->getQueryBox(), mark));
-/*		
+/*	
 			cout << typeName << ":";
 			cout << ruleName << ":";
 			cout << fromPrefix << ":";
@@ -297,7 +296,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
         } else if (regex_search(str, m, DrvRex)) {
 			if(stoi(parseDrv(m[0].str())) != drvNum){
 				cout << "The number of DRVs is different." << endl;
-				cout << "parseNum: " << parseDrv(m[0].str()) << " OriginalNum: " << drvNum << endl;
+				cout << "rptNum: " << parseDrv(m[0].str()) << " parseNum: " << drvNum << endl;
 				exit(0);
 			}	
 		} else {

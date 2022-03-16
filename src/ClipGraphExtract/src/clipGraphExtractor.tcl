@@ -145,6 +145,18 @@ proc save_map_images { args } {
     save_map_images_cmd $save_dir
 }
 
+proc save_file { args } {
+    sta::parse_key_args "save_file" args \
+        keys { -save_dir } flags {}
+
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+    }
+
+    save_file_cmd $save_dir
+}
+
 
 proc analyze_congestion { } {
     analyze_congestion_cmd
