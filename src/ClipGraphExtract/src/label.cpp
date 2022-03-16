@@ -66,7 +66,8 @@ string parseDrv(string substr) {
 
 string parseNetName(string substr) {
     string str =substr;
-    str = regex_replace(substr, regex("Regular Wire of Net "), "");
+    str = regex_replace(str, regex("Regular Wire of Net "), "");
+    str = regex_replace(str, regex("Special Wire of Net "), "");
     str = regex_replace(str, regex("\\s"), "");
 	return str;
 }
@@ -99,6 +100,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     regex objRex1("Blockage of Cell [\\w\\d\\[\\]]+");
     regex objRex2("Pin of Cell [\\w\\d\\[\\]]+");
     regex objRex3("Regular Wire of Net [\\w\\d\\[\\]]+");
+    regex objRex4("Special Wire of Net [\\w\\d\\[\\]]+");
     regex boxRex("\\( \\-?[0-9]+\\.[0-9]+, \\-?[0-9]+\\.[0-9]+ \\) \\( \\-?[0-9]+\\.[0-9]+, \\-?[0-9]+\\.[0-9]+ \\)");
 
     string typeName ="";
@@ -166,10 +168,20 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
                 //cout << tokens[0] << endl;
             } else if(regex_search(tokens[0], m, objRex3)) {
                 fromNet = parseNetName(m[0].str());
-                fromPrefix = "Regular Wire of Net";
+			    fromPrefix = "Regular Wire of Net";
+				if(fromNet == "null") {
+					fromNet = ""; // In case there is no any inst/net/pin...
+			    	fromPrefix = "";
+				}
+
                 tokens[0] = regex_replace(tokens[0], objRex3, "");
                 //cout << tokens[0] << endl;
-            } else {
+            } else if(regex_search(tokens[0], m, objRex4)) {
+                //fromNet = parseNetName(m[0].str()); // Special net cannot convert RSMT.
+                fromPrefix = "Special Wire of Net";
+                tokens[0] = regex_replace(tokens[0], objRex4, "");
+                //cout << tokens[0] << endl;
+			} else {
                 cout << "exception case! here!" << endl;
                 cout << tokens[0] << endl;
                 exit(0);
@@ -192,6 +204,11 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 					toPrefix = "Regular Wire of Net";
 					tokens[1] = regex_replace(tokens[1], objRex3, "");
 					//cout << tokens[1] << endl;
+				} else if(regex_search(tokens[0], m, objRex4)) {
+					//toNet = parseNetName(m[0].str()); // Special net cannot convert RSMT.
+					toPrefix = "Special Wire of Net";
+					tokens[0] = regex_replace(tokens[0], objRex4, "");
+					//cout << tokens[0] << endl;
 				} else {
 					//cout << "There is only object1" << endl;
 				}
@@ -280,7 +297,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 			cout << endl;
             cout << "(" << tokens[0] << " " << tokens[1] << ") (" << tokens[2] << " " << tokens[3] <<")" << endl;
 			cout << endl;
-*/			
+*/		
 			typeName ="";
 			ruleName ="";
 			lyrName ="";

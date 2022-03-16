@@ -307,6 +307,22 @@ void Grid::saveFile(const char* feaDir) {
     for(auto& gcell : gcells_) {
 		gcell->getNumMarkers(lnet, gnet, inst);
 
+		cellAttr << "RUDY" << ","
+				 << "Cell_Den" << ","
+				 << "Pin_Den" << ","
+				 << "T_DRV" << ","
+				 << "L_DRV" << ","
+				 << "G_DRV" << ","
+				 << "I_DRV" << ","
+				 << "L_Net_Den_PL" << ","
+				 << "G_Net_Den_PL" << ","
+				 << "Channel_Den_PL" << ","
+				 << "Wire_Den_PL" << ","
+				 << "L_Net_Den_DR" << ","
+				 << "G_Net_Den_DR" << ","
+				 << "Channel_Den_DR" << ","
+				 << "Wire_Den_DR" << endl;
+
         cellAttr << gcell->getRUDY() << ","
         		 << gcell->getCellDensity() << ","
         		 << gcell->getPinDensity() << ","
