@@ -1,4 +1,9 @@
 #include "opendb/db.h"
+#include "sta/Sta.hh"
+#include "sta/Network.hh"
+#include "db_sta/dbSta.hh"
+#include "db_sta/dbNetwork.hh"
+#
 #include "instGraph.h"
 #include <set>
 #include <cmath>
@@ -79,6 +84,26 @@ Graph::~Graph() {
   vector<Vertex>().swap(vertices_);
   vector<Edge>().swap(edges_);
   vertexMap_.clear();
+}
+
+
+void Graph::setSta(sta::dbSta* sta) {
+    sta_ = sta;
+}
+
+
+void Graph::setGraphModel(GraphModel graphModel) {
+    graphModel_ = graphModel;
+}
+
+void Graph::setEdgeWeightModel(EdgeWeightModel edgeWeightModel) {
+    edgeWeightModel_ = edgeWeightModel;
+}
+
+
+
+void Graph::init(std::set<odb::dbInst*> &insts) {
+    init(insts, graphModel_, edgeWeightModel_);
 }
 
 

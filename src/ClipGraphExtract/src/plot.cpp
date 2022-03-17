@@ -5,7 +5,7 @@
 #include <tinycolormap.hpp>
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 using namespace std;
 using namespace cimg_library;
 using namespace odb;
@@ -167,7 +167,7 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
 
 
 
-void Grid::saveMapImages(string dirPath) {
+void Grid::saveGridImages(string dirPath) {
 
    
     saveMapImage(this, ValueType::RUDY, "RUDY", dirPath);

@@ -54,13 +54,15 @@ add_library( ClipGraphExtractor
   src/clipGraphExtractor.cpp
   src/MakeClipGraphExtractor.cpp
   src/instGraph.cpp
-  src/binGraph.cpp
+  #src/binGraph.cpp
   src/grid.cpp
   src/gcell.cpp
   src/rsmt.cpp
   src/plot.cpp
   src/marker.cpp
   src/label.cpp
+  src/writer.cpp  
+#src/graphExt.cpp
   ${GRAPHEXT_WRAP}
   ${GRAPHEXT_TCL_INIT}
 )

@@ -7,9 +7,8 @@
 #include "flute.h"
 #include "opendb/db.h"
 #include "opendb/geom.h"
+#include "instGraph.h"
 
-//#include "bgTypedef.h"
-//#include "opendb/geom.h"
 
 // Typedef for boost geometry
 namespace bg = boost::geometry;
@@ -23,19 +22,7 @@ using BoxRtree = bgi::rtree<std::pair<bgBox, A>, bgi::quadratic<6>>;
 template<typename A>
 using SegRtree = bgi::rtree<std::pair<bgSeg, A>, bgi::quadratic<6>>;
 
-//namespace Flute {
-//    class Tree;
-//};
-
-//namespace odb {
-//    class dbDatabase;
-//    class dbNet;
-//    class dbInst;
-//    class Rect;
-//    class Point;
-//};
-
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 class Marker;
 class Gcell;
@@ -101,6 +88,13 @@ class Gcell {
     double cellDensity_;
     double pinDensity_;
     double RUDY_;
+    double lnetRUDY_;
+    double gnetRUDY_;
+    double snetRUDY_;
+
+
+
+    Graph* graph_;
 
     std::vector<odb::dbInst*> insts_;
     std::vector<Marker*> markers_;
@@ -117,6 +111,8 @@ class Gcell {
     //void addInst(odb::dbInst* inst);
     void createTree();
     std::vector<odb::Rect> getSegments(); // available after createTree()
+    std::vector<odb::dbInst*> getInsts();
+    std::set<odb::dbInst*> getInstSet();
 
     //
     void extractFeaturePL(BoxRtree<odb::dbInst*> &rtree);
@@ -125,8 +121,6 @@ class Gcell {
 
     // 
     void annotateLabel(BoxRtree<Marker*> &rtree);
-
-
 
     //void extractFeature((void*)rtree, ModelType type);
 
@@ -144,15 +138,19 @@ class Gcell {
     void getNumMarkers(uint &lnet, uint &gnet, uint &inst);
 
     double getRUDY();
+    double getLNetRUDY();
+    double getSNetRUDY();
+    double getGNetRUDY();
     double getPinDensity();
     double getCellDensity();
     double getLNetDensity(ModelType type);
     double getGNetDensity(ModelType type);
     double getWireDensity(ModelType type);
     double getChannelDensity(ModelType type);
+    double getChannelDensityV(ModelType type);
+    double getChannelDensityH(ModelType type);
     double getChannelDensity(Orient orient, ModelType = ModelType::PL);
 
-    
     uint getTrackDemand(Orient orient, ModelType type = ModelType::PL);
     uint getTrackSupply(Orient orient, ModelType type = ModelType::PL);
     uint getWireCapacity(ModelType type = ModelType::PL);
@@ -162,6 +160,8 @@ class Gcell {
     void setBoundary(odb::Rect rect);
     void print();
 
+    // initGraph() in ClipGraphExtractor
+    void setGraph(Graph* graph);
 };
 
 class Marker {
@@ -300,8 +300,7 @@ class Grid {
     void setWireCapacity(int wCap);
     void setTrackSupply(int tSup);
     void setNumLayers(int nLyr);
-    void saveMapImages(std::string dirPath);
-    void saveFile(const char* feaDir);
+    void saveGridImages(std::string dirPath);
 
 
     

@@ -4,7 +4,7 @@
 #include <cassert>
 #include <iostream>
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 using namespace std;
 using namespace odb;

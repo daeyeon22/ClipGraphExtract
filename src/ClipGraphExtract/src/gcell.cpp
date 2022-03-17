@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 using namespace std;
 using namespace odb;
@@ -11,9 +11,10 @@ using namespace odb;
 Gcell::Gcell() :
     numInstances_(0), numTerminals_(0), 
     //numLocalNets_(0), numGlobalNets_(0), 
-    numLayers_(1),
+    numLayers_(1), graph_(nullptr),
     totalCellArea_(0), totalPinArea_(0),
-    cellDensity_(0), pinDensity_(0), RUDY_(0) {}
+    cellDensity_(0), pinDensity_(0), RUDY_(0),
+    lnetRUDY_(0), gnetRUDY_(0), snetRUDY_(0) {}
 
 
 void Gcell::setBoundary(Rect rect) { 
@@ -37,6 +38,15 @@ void Gcell::setNumLayers(int nLyr) {
 }
 
 
+set<dbInst*> Gcell::getInstSet() {
+    return set<dbInst*>(insts_.begin(), insts_.end());
+}
+
+void Gcell::setGraph(Graph* graph) {
+    graph_ = graph;
+}
+
+
 
 bgBox Gcell::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -56,6 +66,18 @@ double Gcell::getPinDensity() {
 
 double Gcell::getRUDY() {
     return RUDY_;
+}
+
+double Gcell::getLNetRUDY() {
+    return lnetRUDY_;
+}
+
+double Gcell::getGNetRUDY() {
+    return gnetRUDY_;
+}
+
+double Gcell::getSNetRUDY() {
+    return snetRUDY_;
 }
 
 uint Gcell::getTrackDemand(Orient orient, ModelType type) {
@@ -239,6 +261,21 @@ double Gcell::getChannelDensity(Orient orient, ModelType type) {
         default:
             return 0.0; 
     }
+}
+
+double Gcell::getChannelDensityV(ModelType type) {
+    double chanDenU = getChannelDensity(Orient::TOP, type);
+    double chanDenB = getChannelDensity(Orient::BOTTOM, type);
+    double chanDen = (chanDenU + chanDenB) / 2;
+    return chanDen;
+}
+
+
+double Gcell::getChannelDensityH(ModelType type) {
+    double chanDenL = getChannelDensity(Orient::LEFT, type);
+    double chanDenR = getChannelDensity(Orient::RIGHT, type);
+    double chanDen = (chanDenL + chanDenR) / 2;
+    return chanDen;
 }
 
 
@@ -474,6 +511,18 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
 
         //
         rsmts_.push_back(myRSMT);
+
+        if(myRSMT->getNet()->isSpecial()) {
+            snetRUDY_ += partialRUDY;
+        } else {
+            if(myRSMT->isLocalNet()) {
+                lnetRUDY_ += partialRUDY;
+            } else {
+                gnetRUDY_ += partialRUDY;
+            }
+        }
+
+
         //if(myRSMT->isLocalNet())
         //    numLocalNets_++;
         //else

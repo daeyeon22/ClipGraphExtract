@@ -12,8 +12,6 @@ sta::define_cmd_args "bin_graph_extract" {
 
 
 
-
-
 proc graph_extract { args } {
   sta::parse_key_args "graph_extract" args \
     keys {-graph_model -edge_weight_model -out_file} flags {}
@@ -51,89 +49,48 @@ proc graph_extract { args } {
 }
 
 
-proc bin_graph_extract { args } {
-    sta::parse_key_args "bin_graph_extract" args \
-        keys { -num_rows -max_layer } flags {}
-
-    
-   
-
-
-    if { ![info exists keys(-num_rows)]} {
-        puts "ERROR: -num_rows must be used"
-        return
-    } else {
-        set num_rows $keys(-num_rows)
-    }
-
-    if { ![info exists keys(-max_layer)] } {
-        puts "ERROR: -max_layer must be used"
-        return
-    } else {
-        set max_layer $keys(-max_layer)
-    }
-
-    graph_extract_init_cmd 
-    bin_graph_extract_cmd $num_rows $max_layer
-
-}
-
-proc bin_graph_labeling { args } {
-    sta::parse_key_args "bin_graph_labeling" args \
-        keys { -drc_rpt_file } flags {}
-
-    
-    if { ![info exists keys(-drc_rpt_file)] } {
-	} else {
-        set drc_rpt_file $keys(-drc_rpt_file)
-		if {[file exists $drc_rpt_file]} {
-        	bin_graph_labeling_cmd $drc_rpt_file
-		}
-    }
-}
-
-proc save_bin_graph_file { args } {
-    sta::parse_key_args "save_bin_graph_file" args \
-        keys { -prefix } flags {}
-
-    if { ![info exists keys(-prefix)] } {
-    
-    } else {
-        set prefix $keys(-prefix)
-        set_graph_extract_save_file_prefix_cmd $prefix
-    }
-    save_bin_graph_file_cmd
-}
-
 ########################################################
-proc read_routing_report { args } {
-    sta::parse_key_args "read_routing_report" args \
+
+
+proc parse_drc_report { args } {
+    sta::parse_key_args "parse_drc_report" args \
         keys { -in_file }  flags {}
 
     if { [info exists keys(-in_file)] } {
         set in_file $keys(-in_file)
-        read_routing_report_cmd $in_file
+        parse_drc_report_cmd $in_file
     }
 }
 
-proc construct_gcell_grid { args } {
-    sta::parse_key_args "construct_gcell_grid" args \
-        keys { -num_rows -max_route_layer } flags {}
+proc graph_extract_init { args } {
+    sta::parse_key_args "graph_extract_init" args \
+        keys { -num_rows -max_route_layer -graph_model -edge_weight_model } flags {}
 
-    set num_rows 5 
-    set max_route_layer 7
-
+    
     if { [info exists keys(-num_rows)] } {
         set num_rows $keys(-num_rows)
+        set_gcell_size_cmd $num_rows
     } 
     if { [info exists keys(-max_route_layer)]} {
         set max_route_layer $keys(-max_route_layer)
+        set_max_route_layer_cmd $max_route_layer
     }
 
-    construct_gcell_grid_cmd $num_rows $max_route_layer
+    if { [info exists keys(-graph_model)] } {
+        set graph_model $keys(-graph_model)
+        set_graph_model_cmd $graph_model
+    }
+
+    if { [info exists keys(-edge_weight_model)] } {
+        set edge_weight_model $keys(-edge_weight_model)
+        set_edge_weight_model_cmd $edge_weight_model
+    }
+
+
+    graph_extract_init_cmd
 }
 
-proc save_map_images { args } {
+proc save_grid_images { args } {
     sta::parse_key_args "save_map_imges" args \
         keys { -save_dir } flags {}
 
@@ -142,7 +99,7 @@ proc save_map_images { args } {
         set save_dir $keys(-save_dir)
     }
 
-    save_map_images_cmd $save_dir
+    save_grid_images_cmd $save_dir
 }
 
 proc save_file { args } {
@@ -157,8 +114,4 @@ proc save_file { args } {
     save_file_cmd $save_dir
 }
 
-
-proc analyze_congestion { } {
-    analyze_congestion_cmd
-}
 
