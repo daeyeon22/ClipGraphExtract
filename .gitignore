@@ -1,4 +1,6 @@
 build
+include/openroad/Version.hh
+src/ClipGraphExtract/src/dontuse
 src/ClipGraphExtract/test
 src/ClipGraphExtract/test/**
 src/ClipGraphExtract/test/*.py

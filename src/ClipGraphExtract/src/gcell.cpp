@@ -11,7 +11,7 @@ using namespace odb;
 Gcell::Gcell() :
     numInstances_(0), numTerminals_(0), 
     //numLocalNets_(0), numGlobalNets_(0), 
-    numLayers_(1),
+    numLayers_(1), graph_(nullptr),
     totalCellArea_(0), totalPinArea_(0),
     cellDensity_(0), pinDensity_(0), RUDY_(0),
     lnetRUDY_(0), gnetRUDY_(0), snetRUDY_(0) {}
@@ -35,6 +35,15 @@ void Gcell::setWireCapacity(int wCap) {
 
 void Gcell::setNumLayers(int nLyr) {
     numLayers_ = nLyr;
+}
+
+
+set<dbInst*> Gcell::getInstSet() {
+    return set<dbInst*>(insts_.begin(), insts_.end());
+}
+
+void Gcell::setGraph(Graph* graph) {
+    graph_ = graph;
 }
 
 

@@ -94,7 +94,7 @@ class Gcell {
 
 
 
-    Graph* instGraph_;
+    Graph* graph_;
 
     std::vector<odb::dbInst*> insts_;
     std::vector<Marker*> markers_;
