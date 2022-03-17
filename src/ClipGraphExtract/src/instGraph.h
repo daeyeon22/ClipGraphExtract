@@ -10,6 +10,10 @@ namespace odb {
   class dbDatabase;
 }
 
+namespace sta {
+  class dbSta;
+};
+
 // only consider two-way connections
 namespace ClipGraphExtract{
 
@@ -101,25 +105,35 @@ inline float Edge::weight() const {
 }
 
 class Graph {
-public:
-  Graph();
-  ~Graph();
+  public:   
+    Graph();
+    ~Graph();
 
-  void saveFile(std::string fileName);
-  void setDb(odb::dbDatabase* db);
+    void saveFile(std::string fileName);
+    void setDb(odb::dbDatabase* db);
+    void setSta(sta::dbSta* sta);
 
-  void init(std::set<odb::dbInst*> & insts, GraphModel gModel,
-      EdgeWeightModel eModel);
-  void printEdgeList();
-  
-  Vertex* dbToGraph(odb::dbInst* inst);
 
-private:
-  odb::dbDatabase* db_;
-  std::vector<Vertex> vertices_;
-  std::vector<Edge> edges_;
-  std::map<odb::dbInst*, Vertex*> vertexMap_;
-  void updateVertsFromEdges();
+    void init(std::set<odb::dbInst*> &insts);
+
+    void init(std::set<odb::dbInst*> & insts, GraphModel gModel,
+            EdgeWeightModel eModel);
+    void printEdgeList();
+    void setGraphModel(GraphModel graphModel);
+    void setEdgeWeightModel(EdgeWeightModel edgeWeightModel);
+    Vertex* dbToGraph(odb::dbInst* inst);
+
+  private:
+
+    GraphModel graphModel_;
+    EdgeWeightModel edgeWeightModel_;
+
+    odb::dbDatabase* db_;
+    sta::dbSta* sta_;
+    std::vector<Vertex> vertices_;
+    std::vector<Edge> edges_;
+    std::map<odb::dbInst*, Vertex*> vertexMap_;
+    void updateVertsFromEdges();
 };
 
 }

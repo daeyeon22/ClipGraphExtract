@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 using namespace std;
 using namespace odb;
@@ -13,7 +13,8 @@ Gcell::Gcell() :
     //numLocalNets_(0), numGlobalNets_(0), 
     numLayers_(1),
     totalCellArea_(0), totalPinArea_(0),
-    cellDensity_(0), pinDensity_(0), RUDY_(0) {}
+    cellDensity_(0), pinDensity_(0), RUDY_(0),
+    lnetRUDY_(0), gnetRUDY_(0), snetRUDY_(0) {}
 
 
 void Gcell::setBoundary(Rect rect) { 
@@ -56,6 +57,18 @@ double Gcell::getPinDensity() {
 
 double Gcell::getRUDY() {
     return RUDY_;
+}
+
+double Gcell::getLNetRUDY() {
+    return lnetRUDY_;
+}
+
+double Gcell::getGNetRUDY() {
+    return gnetRUDY_;
+}
+
+double Gcell::getSNetRUDY() {
+    return snetRUDY_;
 }
 
 uint Gcell::getTrackDemand(Orient orient, ModelType type) {
@@ -239,6 +252,21 @@ double Gcell::getChannelDensity(Orient orient, ModelType type) {
         default:
             return 0.0; 
     }
+}
+
+double Gcell::getChannelDensityV(ModelType type) {
+    double chanDenU = getChannelDensity(Orient::TOP, type);
+    double chanDenB = getChannelDensity(Orient::BOTTOM, type);
+    double chanDen = (chanDenU + chanDenB) / 2;
+    return chanDen;
+}
+
+
+double Gcell::getChannelDensityH(ModelType type) {
+    double chanDenL = getChannelDensity(Orient::LEFT, type);
+    double chanDenR = getChannelDensity(Orient::RIGHT, type);
+    double chanDen = (chanDenL + chanDenR) / 2;
+    return chanDen;
 }
 
 
@@ -474,6 +502,18 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
 
         //
         rsmts_.push_back(myRSMT);
+
+        if(myRSMT->getNet()->isSpecial()) {
+            snetRUDY_ += partialRUDY;
+        } else {
+            if(myRSMT->isLocalNet()) {
+                lnetRUDY_ += partialRUDY;
+            } else {
+                gnetRUDY_ += partialRUDY;
+            }
+        }
+
+
         //if(myRSMT->isLocalNet())
         //    numLocalNets_++;
         //else

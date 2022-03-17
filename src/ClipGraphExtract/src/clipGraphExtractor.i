@@ -31,38 +31,30 @@ using ClipGraphExtract::EdgeWeightModel;
 %inline %{
 
 void
-construct_gcell_grid_cmd(int num_rows, int max_layer) 
-{
+save_grid_images_cmd(const char* imgDir) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->setDb(getDb());
-    graphExt->initGcellGrid(num_rows, max_layer);
+    graphExt->saveGridImages(imgDir);
 }
 
 void
-save_map_images_cmd(const char* imgDir) {
+parse_drc_report_cmd(const char* file_name) {
+
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->saveMapImages(imgDir);
+    graphExt->parseDrcReport(file_name);
+
 }
 
 void
-read_routing_report_cmd(const char* file_name) {
-
+set_gcell_size_cmd(int numRows) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->readRoutingReport(file_name);
-
+    graphExt->setGcellSize(numRows);
 }
-
-
-
 
 void
-analyze_congestion_cmd() 
-{
+set_max_route_layer_cmd(int maxRouteLayer) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->showCongestionMap();
-
+    graphExt->setMaxRouteLayer(maxRouteLayer);
 }
-
 
 
 void
@@ -104,35 +96,31 @@ graph_extract_init_cmd()
   graphExt->init();
 }
 
+
+void
+save_features_cmd(const char* dirPath) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveFeatures(dirPath);
+}
+
+void
+save_graphs_cmd(const char* dirPath) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveGraphs(dirPath);
+}
+
+void
+save_labels_cmd(const char* dirPath) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveLabels(dirPath);
+}
+
 void
 graph_extract_cmd(int lx, int ly, int ux, int uy) 
 {
   ClipGraphExtractor* graphExt = getClipGraphExtractor();
   graphExt->extract(lx, ly, ux, uy);
 }
-
-void
-
-bin_graph_extract_cmd(int num_rows, int max_layer) 
-{
-    ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->extractBinGraph(num_rows, max_layer);
-}
-
-void
-bin_graph_labeling_cmd(const char* inv_rpt_file) 
-{
-    ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->labelingBinGraph(inv_rpt_file);
-}
-
-void
-save_bin_graph_file_cmd()
-{
-    ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->saveBinGraph();
-}
-
 
 void
 graph_extract_clear_cmd() 

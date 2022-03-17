@@ -30,26 +30,29 @@ class ClipGraphExtractor {
     void setDb(odb::dbDatabase* db);
     void setSta(sta::dbSta* sta);
     void init();
+    
     void clear();
-	void updateCongRUDY(rudy_value& rudyValue);
+    void extract();
     void extract(int lx, int ly, int ux, int uy);
     void setSaveFileName (const char* fileName);
     void setSaveFilePrefix(const char* prefix);
+    
+    // 
+    void setGcellSize(int numRows);
+    void setMaxRouteLayer(int maxLayer);
 
     void setGraphModel(const char* graphModel);
     void setEdgeWeightModel(const char* edgeWeightModel);
 
-    void extractBinGraph(int numRows);
-    void extractBinGraph(int numRows, int maxLayer);
-    void labelingBinGraph(const char* invRoutingReport);
-    void saveBinGraph();
+    // defined in label.cpp
+    void parseDrcReport(const char* fileName);
+    // defined in plot.cpp
+    void saveGridImages(const char* dirPath);
+    // defined in writer.cpp
+    void saveGraphs(const char* dirPath);
+    void saveFeatures(const char* dirPath);
+    void saveLabels(const char* dirPath);
 
-    void showCongestionMap();
-
-    // defined in grid.cpp
-    void initGcellGrid(int numRows, int maxLayer);
-    void readRoutingReport(const char* fileName);
-    void saveMapImages(const char* dirPath);
 
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
@@ -61,22 +64,19 @@ class ClipGraphExtractor {
   private:
     odb::dbDatabase* db_;
     sta::dbSta* sta_;
-    void* rTree_;
-    void* inst_rTree_;
-    void* wire_rTree_;
-    void* via_rTree_;
-    void* pin_rTree_;
-    void* rudy_rTree_;
-    void* drc_rTree_;
-    
     GraphModel graphModel_;
     EdgeWeightModel edgeWeightModel_;
     std::string fileName_;
     std::string prefix_;
-    void* binGraph_;
-   
+    
+    int numRows_;       // GCELL SIZE (= n * height of site row)
+    int maxRouteLayer_; // MAX ROUTE LAYER (need to figure out routing capacity)
+
+
     void* grid_;
 
+    void initGrid();
+    void initGraph();
 
 
 

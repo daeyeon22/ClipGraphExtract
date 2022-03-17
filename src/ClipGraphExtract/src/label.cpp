@@ -16,7 +16,7 @@
 
 using namespace std;
 using namespace odb;
-using namespace feature_extractor;
+using namespace ClipGraphExtract;
 using namespace ClipGraphExtract;
 
 vector<string> splitAsTokens(string str, string delim){
@@ -78,7 +78,7 @@ string parseLayerName(string substr) {
 
 
 
-void ClipGraphExtractor::readRoutingReport(const char* fileName) {
+void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 
     cout << "Start to read routing report (" << fileName << ")" << endl;
 
@@ -318,7 +318,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 Marker* Grid::createMarker(int x1, int y1, int x2, int y2) {
     Marker* mark = new Marker();
