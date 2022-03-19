@@ -301,7 +301,7 @@ class Grid {
     void setTrackSupply(int tSup);
     void setNumLayers(int nLyr);
     void saveGridImages(std::string dirPath);
-
+	void saveFile(const char* dirPath);
 
     
     //

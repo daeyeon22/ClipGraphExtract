@@ -16,7 +16,8 @@ void ClipGraphExtractor::saveGraphs(const char* dirPath) {
 }
 
 void ClipGraphExtractor::saveFeatures(const char* dirPath) {
-    // TODO
+    Grid* grid = (Grid*)(grid_);
+	grid->saveFile(dirPath);
 }
 
 void ClipGraphExtractor::saveLabels(const char* dirPath) {

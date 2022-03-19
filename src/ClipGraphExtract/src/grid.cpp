@@ -22,13 +22,6 @@ ClipGraphExtractor::saveGridImages( const char* imgDir ) {
     grid->saveGridImages(string(imgDir));
 }
 
-void
-ClipGraphExtractor::saveFile( const char* feaDir ) {
-    Grid* grid = (Grid*)(grid_);
-    grid->saveFile(feaDir);
-}
-
-
 
 namespace ClipGraphExtract {
 
