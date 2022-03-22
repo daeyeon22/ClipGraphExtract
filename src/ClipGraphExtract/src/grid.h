@@ -37,37 +37,40 @@ enum Orient {
 };
 
 enum ModelType {
-    DR,EGR,PL
+    TREE, ROUTE, DR,EGR,PL
 };
 
 class Resource {
   private:
-    uint trackSupply_[4] = {0};
-    uint trackDemand_[4] = {0};
-    uint wireCapacity_;
-    uint wireLength_;
+    int trackSupply_[4] = {0};
+    int trackDemand_[4] = {0};
+    int wireCapacity_;
+    int wireLength_;
 
   public:
     
     Resource() : wireCapacity_(0), wireLength_(0) {}
 
-    double getChannelDensity(Orient type) { return 1.0 * trackDemand_[type] / trackSupply_[type]; }
-    double getWireDensity() { return 1.0 * wireLength_ / wireCapacity_; }
-    uint getTrackSupply(Orient type) { return trackSupply_[type]; }
-    uint getTrackDemand(Orient type) { return trackDemand_[type]; }
-    uint getWireCapacity() { return wireCapacity_; }
-    uint getWireLength() { return wireLength_; }
+    double getChanUtil(Orient type) { return 1.0 * trackDemand_[type] / trackSupply_[type]; }
+    double getWireUtil() { return 1.0 * wireLength_ / wireCapacity_; }
+    int getTrackSupply(Orient type) { return trackSupply_[type]; }
+    int getTrackDemand(Orient type) { return trackDemand_[type]; }
+    int getWireCapacity() { return wireCapacity_; }
+    int getWireLength() { return wireLength_; }
     void incrTrackDemand(Orient type) { trackDemand_[type]++; }
-    void addTrackDemand(Orient type, uint dem) { trackDemand_[type] += dem; }
-    void setTrackSupply(uint tSup) {  for(int i=0; i < 4; i++) trackSupply_[i] = tSup; }
-    void setWireCapacity(uint wCap) {  wireCapacity_ = wCap;  }
-    void setWireLength(uint wl) { wireLength_ = wl; }
-    void addWireLength(uint wl) { wireLength_ += wl; }
+    void addTrackDemand(Orient type, int dem) { trackDemand_[type] += dem; }
+    void setTrackSupply(int tSup) {  for(int i=0; i < 4; i++) trackSupply_[i] = tSup; }
+    void setWireCapacity(int wCap) {  wireCapacity_ = wCap;  }
+    void setWireLength(int wl) { wireLength_ = wl; }
+    void addWireLength(int wl) { wireLength_ += wl; }
 };
 
 
 class Gcell {
   private:   
+
+    int col_, row_;
+
     // Gcell features
     odb::Rect bbox_;
 
@@ -76,21 +79,21 @@ class Gcell {
     Resource rmPL_; // using PLACE results
 
     // using placement, RSMT results
-    uint numInstances_;
-    uint numTerminals_;
-    //uint numLocalNets_;
-    //uint numGlobalNets_;
+    int numInsts_;
+    int numTerms_;
+    //int numLocalNets_;
+    //int numGlobalNets_;
 
-    uint totalCellArea_;
-    uint totalPinArea_;
-    uint numLayers_;
+    int totalCellArea_;
+    int totalPinArea_;
+    int numLayers_;
 
-    double cellDensity_;
-    double pinDensity_;
+    double cellUtil_;
+    double pinUtil_;
     double RUDY_;
-    double lnetRUDY_;
-    double gnetRUDY_;
-    double snetRUDY_;
+    double lNetRUDY_;
+    double gNetRUDY_;
+    double sNetRUDY_;
 
 
 
@@ -102,7 +105,7 @@ class Gcell {
 
 
   public:
-    Gcell();
+    Gcell(int col, int row);
     
     bgBox getQueryBox();
     odb::Rect getBBox(){ return bbox_; }
@@ -115,9 +118,9 @@ class Gcell {
     std::set<odb::dbInst*> getInstSet();
 
     //
-    void extractFeaturePL(BoxRtree<odb::dbInst*> &rtree);
-    void extractFeatureDR(SegRtree<odb::dbNet*> &rtree);
-    void extractFeatureRSMT(SegRtree<RSMT*> &rtree);
+    void extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree);
+    void extractPlaceFeature(SegRtree<RSMT*> *rtree);
+    void extractRouteFeature(SegRtree<odb::dbNet*> *rtree);
 
     // 
     void annotateLabel(BoxRtree<Marker*> &rtree);
@@ -125,35 +128,43 @@ class Gcell {
     //void extractFeature((void*)rtree, ModelType type);
 
     // helper
-    uint getNumInstances();
-    uint getNumTerminals();
-    uint getNumNets();
-    uint getNumGlobalNets();
-    uint getNumLocalNets();
+    int getCol();
+    int getRow();
+    int getNumInsts();
+    int getNumTerms();
+    int getNumNets();
+    int getNumGNets();
+    int getNumLNets();
     uint getArea();
     uint getCellArea();
     uint getPinArea();
-    uint getNumMarkers();
+    int getNumMarkers();
 
-    void getNumMarkers(uint &lnet, uint &gnet, uint &inst);
+    void getNumMarkers(int &lnet, int &gnet, int &inst);
+
+    double getAvgTerms();
 
     double getRUDY();
     double getLNetRUDY();
     double getSNetRUDY();
     double getGNetRUDY();
-    double getPinDensity();
-    double getCellDensity();
-    double getLNetDensity(ModelType type);
-    double getGNetDensity(ModelType type);
-    double getWireDensity(ModelType type);
-    double getChannelDensity(ModelType type);
-    double getChannelDensityV(ModelType type);
-    double getChannelDensityH(ModelType type);
-    double getChannelDensity(Orient orient, ModelType = ModelType::PL);
+    double getPinUtil();
+    double getCellUtil();
+    double getLNetUtil(ModelType type);
+    double getGNetUtil(ModelType type);
+    double getWireUtil(ModelType type);
+    double getChanUtil(ModelType type);
+    double getChanUtilV(ModelType type);
+    double getChanUtilH(ModelType type);
+    double getChanUtil(Orient orient, ModelType = ModelType::TREE);
+    double getBufferUtil();
+    double getTNS();
+    double getClkRatio();
 
-    uint getTrackDemand(Orient orient, ModelType type = ModelType::PL);
-    uint getTrackSupply(Orient orient, ModelType type = ModelType::PL);
-    uint getWireCapacity(ModelType type = ModelType::PL);
+
+    int getTrackDemand(Orient orient, ModelType type = ModelType::TREE);
+    int getTrackSupply(Orient orient, ModelType type = ModelType::TREE);
+    int getWireCapacity(ModelType type = ModelType::TREE);
     void setTrackSupply(int tSup);
     void setWireCapacity(int wCap);
     void setNumLayers(int nLyr);
@@ -162,6 +173,7 @@ class Gcell {
 
     // initGraph() in ClipGraphExtractor
     void setGraph(Graph* graph);
+    void saveGraph(std::string dirPath, std::string fileName);
 };
 
 class Marker {
@@ -245,7 +257,7 @@ class RSMT {
     bgBox getQueryBox();
     odb::Rect getBBox();
     void addTerminal(int x, int y);
-    void searchOverlaps(BoxRtree<Gcell*> &tree);
+    void searchOverlaps(BoxRtree<Gcell*> *tree);
     void setWireWidth(int width);
     
 
@@ -253,10 +265,10 @@ class RSMT {
     bool isGlobalNet();
     bool hasDRV();
     void createTree();
-    uint getNumTerminals();
-    uint getWireLengthRSMT();
-    uint getWireLengthHPWL();
-    double getWireUniformDensity();
+    int getNumTerms();
+    int getWireLengthRSMT();
+    int getWireLengthHPWL();
+    double getWireUniformUtil();
 
 };
 
@@ -284,13 +296,15 @@ class Grid {
     odb::Rect getBoundary();
     std::vector<Gcell*> getGcells();
 
-    Gcell* createGcell(int x1, int y1, int x2, int y2);
+    Gcell* createGcell(int col, int row, int width, int height); //int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     Marker* createMarker(int x1, int y1, int x2, int y2);
     
     
     RSMT* getRSMT(odb::dbNet* net);
 
+    int getNumRows() { return numCols_; }
+    int getNumCols() { return numRows_; }
     void init();
     void setWireMinWidth(int width);
     void setDb(odb::dbDatabase* db);
@@ -302,16 +316,18 @@ class Grid {
     void setNumLayers(int nLyr);
     void saveGridImages(std::string dirPath);
 
+    
+    
+
 
     
     //
     double getMaxRUDY();
-    double getMaxCellDensity();
+    double getMaxCellUtil();
 
     void reportDRC();
 
 };
-
 
 
 };

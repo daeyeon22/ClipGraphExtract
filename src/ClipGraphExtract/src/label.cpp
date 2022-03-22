@@ -115,16 +115,17 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
     
 	Grid* grid = (Grid*)grid_;
 	
-	uint drvNum = 0;
+	int drvNum = 0;
 
 	while(getline(inFile, line)) {
         smatch matStr; 
         string str = line;
         smatch m;
 
+
 		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
-			
+
 			// Detect type and delete the corresponding part
             if(regex_search(str, m, typeRex)) {
                 //cout << "1" << str << endl;
@@ -306,6 +307,9 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 			//exit(0);
         }
     }
+
+    cout << "# of Markers : " <<  rtree.size() << endl;
+
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
@@ -373,7 +377,7 @@ void Grid::reportDRC() {
         type2count[mark->getType()]++;
     }
 
-    uint lnet, gnet, inst;
+    int lnet, gnet, inst;
 
 
 

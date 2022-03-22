@@ -1,7 +1,7 @@
 #include "grid.h"
 #include <set>
 #include <vector>
-#include <cassert>
+#include <assert.h>
 #include <iostream>
 
 namespace ClipGraphExtract {
@@ -43,8 +43,8 @@ void RSMT::setWireWidth(int width) {
     width_ = width;
 }
 
-uint RSMT::getNumTerminals() {
-    return (uint)terminals_.size();
+int RSMT::getNumTerms() {
+    return (int)terminals_.size();
 }
 
 
@@ -120,12 +120,12 @@ void RSMT::createTree() {
 }
 
 
-uint 
+int 
 RSMT::getWireLengthRSMT() {
 
    
     //////////////////////////////////////////////////
-    //uint wl = 0;
+    //int wl = 0;
     //for(Rect& seg : getSegments())  {
     //    wl += seg.dx() + seg.dy();
     //}
@@ -142,14 +142,13 @@ RSMT::getWireLengthRSMT() {
 }
 
 
-uint
+int
 RSMT::getWireLengthHPWL() {
     return bbox_.dx() + bbox_.dy(); 
 }
 
 double
-RSMT::getWireUniformDensity() {
-    //cout << bbox_.dx() << " " << bbox_.dy() << endl;
+RSMT::getWireUniformUtil() {
     uint totalArea = bbox_.dx() * bbox_.dy();
     uint wireArea = width_ * getWireLengthRSMT();
     double u_den = (totalArea == 0)? 1.0 : min(1.0, 1.0*wireArea/totalArea);
@@ -160,7 +159,7 @@ RSMT::getWireUniformDensity() {
 
 
 void
-RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
+RSMT::searchOverlaps(BoxRtree<Gcell*> *tree) {
     
     //
     vector<pair<bgBox, Gcell*>> queryResults;
@@ -171,7 +170,7 @@ RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
         queryResults.clear();
         bgSeg bg_seg ( bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()) );
         
-        tree.query(bgi::intersects(bg_seg), back_inserter(queryResults));
+        tree->query(bgi::intersects(bg_seg), back_inserter(queryResults));
         for(auto& val : queryResults) {
             Gcell* gcell = val.second;
             overlaps.insert(gcell);
@@ -184,7 +183,7 @@ RSMT::searchOverlaps(BoxRtree<Gcell*> &tree) {
     // BBox
     overlaps.clear();
     queryResults.clear();
-    tree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
+    tree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
 	
     for(auto& val : queryResults) {
         Gcell* gcell = val.second;

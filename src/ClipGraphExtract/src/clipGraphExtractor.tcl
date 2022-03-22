@@ -102,4 +102,45 @@ proc save_grid_images { args } {
     save_grid_images_cmd $save_dir
 }
 
+proc save_features { args } {
+    sta::parse_key_args "save_features" args \
+        keys { -save_dir } flags {}
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+        if { ![file isdirectory $save_dir] } {
+            puts "ERROR: -save_dir ${save_dir} does not exist"
+            return
+        }       
+    }
+    save_features_cmd $save_dir
+}
+
+proc save_graphs { args } {
+    sta::parse_key_args "save_graphs" args \
+        keys { -save_dir } flags {}
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+        if { ![file isdirectory $save_dir] } {
+            puts "ERROR: -save_dir ${save_dir} does not exist"
+            return
+        }       
+    }
+    save_graphs_cmd $save_dir
+}
+
+proc save_labels { args } {
+    sta::parse_key_args "save_labels" args \
+        keys { -save_dir } flags {}
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+        if { ![file isdirectory $save_dir] } {
+            puts "ERROR: -save_dir ${save_dir} does not exist"
+            return
+        }       
+    }
+    save_labels_cmd $save_dir
+}
 

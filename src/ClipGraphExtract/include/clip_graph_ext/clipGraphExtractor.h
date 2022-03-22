@@ -3,8 +3,6 @@
 
 #include <iostream>
 
-struct rudy_value; // This struct is already described in ../src/bingraph.h
-
 namespace odb {
 class dbDatabase;
 class dbInst;
@@ -30,13 +28,17 @@ class ClipGraphExtractor {
     void setDb(odb::dbDatabase* db);
     void setSta(sta::dbSta* sta);
     void init();
-    
+   
+
     void clear();
     void extract();
     void extract(int lx, int ly, int ux, int uy);
     void setSaveFileName (const char* fileName);
     void setSaveFilePrefix(const char* prefix);
+
     
+
+
     // 
     void setGcellSize(int numRows);
     void setMaxRouteLayer(int maxLayer);
@@ -72,11 +74,22 @@ class ClipGraphExtractor {
     int numRows_;       // GCELL SIZE (= n * height of site row)
     int maxRouteLayer_; // MAX ROUTE LAYER (need to figure out routing capacity)
 
+    // for Def
+    void* wireRtree_;
+    void* instRtree_;
+    // for Grid
+    void* rsmtRtree_;
+    void* gcellRtree_;
+    // for Drc
+    void* markerRtree_;
 
     void* grid_;
 
+    // for initialization
     void initGrid();
     void initGraph();
+    void initRtree1();
+    void initRtree2();
 
 
 

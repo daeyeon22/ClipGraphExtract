@@ -31,25 +31,33 @@ void Grid::init() {
     assert(gcellWidth_ == 0);
     assert(gcellHeight_ == 0);
     assert(bbox_.dx() * bbox_.dy() == 0);
-
-
     cout << "Initialize gcell grid (" << gcellWidth_ << " " << gcellHeight_ << ")" << endl;
-
-
     numCols_ = bbox_.dx() / gcellWidth_;
     numRows_ = bbox_.dy() / gcellHeight_;
 
+    // init gcell
+
+    //for(x1=0; x1 < bbox_.xMax()-gcellWidth_; x1+= gcellWidth_) {
+        //for(y1=0; y1 < bbox_.yMax()-gcellHeight_; y1+=gcellHeight_) {
     int x1, y1, x2, y2;
-    for(x1=0; x1 < bbox_.xMax()-gcellWidth_; x1+= gcellWidth_) {
-        for(y1=0; y1 < bbox_.yMax()-gcellHeight_; y1+=gcellHeight_) {
+    for(int col=0; (col-1)*gcellWidth_ < bbox_.xMax(); col++) {
+        for(int row=0; (row-1)*gcellHeight_ < bbox_.yMax(); row++) {
             x2 = min(bbox_.xMax(), x1 + gcellWidth_);
             y2 = min(bbox_.yMax(), y1 + gcellHeight_);
-            Gcell* gcell = createGcell(x1,y1,x2,y2);
+            Gcell* gcell = createGcell(col, row, gcellWidth_, gcellHeight_); //x1,y1,x2,y2);
             gcell->setTrackSupply(trackSupply_);
             gcell->setWireCapacity(wireCapacity_);
             gcell->setNumLayers(numLayers_);
         }
     }
+
+    // init rsmt
+    for(dbNet* net : db_->getChip()->getBlock()->getNets()) {
+        createRSMT(net);
+    }
+
+
+
 }
 
 
@@ -67,8 +75,14 @@ vector<Gcell*> Grid::getGcells() {
     return gcells_;
 }
 
-Gcell* Grid::createGcell(int x1, int y1, int x2, int y2) {
-    Gcell* gcell = new Gcell();
+Gcell* Grid::createGcell(int col, int row, int width, int height) {
+    //int x1, int y1, int x2, int y2) {
+    int x1 = width * col;
+    int x2 = width * (col+1);
+    int y1 = height * row;
+    int y2 = height * (row+1);
+    
+    Gcell* gcell = new Gcell(col, row);
     gcell->setBoundary(Rect(x1,y1, x2,y2));
     gcells_.push_back(gcell);
     return gcell;
@@ -109,7 +123,7 @@ RSMT* Grid::createRSMT(odb::dbNet* net) {
 
 
     // DEBUG
-    //double w_den = myRSMT->getWireUniformDensity();
+    //double w_den = myRSMT->getWireUniformUtil();
     //cout << net->getName() << endl;
     //cout << "   - wire length (RSMT) : " << myRSMT->getWireLengthRSMT() << endl;
     //cout << "   - wire area (RSMT)   : " << myRSMT->getWireLengthRSMT() * minWidth_ << endl;
@@ -204,10 +218,10 @@ Rect Grid::getBoundary() {
             odb::Rect netBBox = myRSMT->getBBox();
             
             
-            uint64 gcellArea = gcellBBox.area();
-            uint64 intersectArea = gcellBBox.intersect(netBBox);
+            int64 gcellArea = gcellBBox.area();
+            int64 intersectArea = gcellBBox.intersect(netBBox);
 
-            double dn = myRSMT->getWireUniformDensity();
+            double dn = myRSMT->getWireUniformUtil();
             double R = 1.0 * intersectArea / gcellArea;
             double partial_RUDY = dn*R;
 

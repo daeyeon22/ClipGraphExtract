@@ -21,14 +21,14 @@ enum ValueType {
   RUDY,
   CELL_DEN,
   PIN_DEN,
-  PL_WIRE_DEN,
-  PL_CHAN_DEN,
-  PL_LNET_DEN,
-  PL_GNET_DEN,
-  DR_WIRE_DEN,
-  DR_CHAN_DEN,
-  DR_LNET_DEN,
-  DR_GNET_DEN,
+  RSMT_WIRE_DEN,
+  RSMT_CHAN_DEN,
+  RSMT_LNET_DEN,
+  RSMT_GNET_DEN,
+  ROUTE_WIRE_DEN,
+  ROUTE_CHAN_DEN,
+  ROUTE_LNET_DEN,
+  ROUTE_GNET_DEN,
   MARKER_ALL,
   MARKER_LNET,
   MARKER_GNET,
@@ -36,16 +36,16 @@ enum ValueType {
 };
 
 double getValue(Gcell* gcell, ValueType valType) {
-    uint lnet;
-    uint gnet;
-    uint inst;
+    int lnet;
+    int gnet;
+    int inst;
     switch(valType) {
         case ValueType::RUDY:
             return min(1.0, gcell->getRUDY());
         case ValueType::CELL_DEN:
-            return min(1.0, gcell->getCellDensity());
+            return min(1.0, gcell->getCellUtil());
         case ValueType::PIN_DEN:
-            return min(1.0, gcell->getPinDensity());
+            return min(1.0, gcell->getPinUtil());
         case ValueType::MARKER_ALL:
             return min(1.0, 0.3 * gcell->getNumMarkers());
         case ValueType::MARKER_LNET:
@@ -57,22 +57,22 @@ double getValue(Gcell* gcell, ValueType valType) {
         case ValueType::MARKER_INST:
             gcell->getNumMarkers(lnet, gnet, inst);
             return min(1.0, 0.3*inst);
-        case ValueType::PL_WIRE_DEN:
-            return min(1.0, gcell->getWireDensity(ModelType::PL));
-        case ValueType::PL_CHAN_DEN:
-            return min(1.0, gcell->getChannelDensity(ModelType::PL));
-        case ValueType::PL_LNET_DEN:
-            return min(1.0, gcell->getLNetDensity(ModelType::PL));
-        case ValueType::PL_GNET_DEN:
-            return min(1.0, gcell->getGNetDensity(ModelType::PL));
-        case ValueType::DR_WIRE_DEN:
-            return min(1.0, gcell->getWireDensity(ModelType::DR));
-        case ValueType::DR_CHAN_DEN:
-            return min(1.0, gcell->getChannelDensity(ModelType::DR));
-        case ValueType::DR_LNET_DEN:
-            return min(1.0, gcell->getLNetDensity(ModelType::DR));
-        case ValueType::DR_GNET_DEN:
-            return min(1.0, gcell->getGNetDensity(ModelType::DR));
+        case ValueType::RSMT_WIRE_DEN:
+            return min(1.0, gcell->getWireUtil(ModelType::TREE));
+        case ValueType::RSMT_CHAN_DEN:
+            return min(1.0, gcell->getChanUtil(ModelType::TREE));
+        case ValueType::RSMT_LNET_DEN:
+            return min(1.0, gcell->getLNetUtil(ModelType::TREE));
+        case ValueType::RSMT_GNET_DEN:
+            return min(1.0, gcell->getGNetUtil(ModelType::TREE));
+        case ValueType::ROUTE_WIRE_DEN:
+            return min(1.0, gcell->getWireUtil(ModelType::ROUTE));
+        case ValueType::ROUTE_CHAN_DEN:
+            return min(1.0, gcell->getChanUtil(ModelType::ROUTE));
+        case ValueType::ROUTE_LNET_DEN:
+            return min(1.0, gcell->getLNetUtil(ModelType::ROUTE));
+        case ValueType::ROUTE_GNET_DEN:
+            return min(1.0, gcell->getGNetUtil(ModelType::ROUTE));
         default:
             return 0.0;
     }
@@ -94,21 +94,21 @@ double getDenom(Grid* grid, ValueType valType) {
             return 1.0;
         case ValueType::MARKER_INST:
             return 1.0;
-        case ValueType::PL_WIRE_DEN:
+        case ValueType::RSMT_WIRE_DEN:
             return 1.0;
-        case ValueType::PL_CHAN_DEN:
+        case ValueType::RSMT_CHAN_DEN:
             return 1.0;
-        case ValueType::PL_LNET_DEN:
+        case ValueType::RSMT_LNET_DEN:
             return 1.0;
-        case ValueType::PL_GNET_DEN:
+        case ValueType::RSMT_GNET_DEN:
             return 1.0;
-        case ValueType::DR_WIRE_DEN:
+        case ValueType::ROUTE_WIRE_DEN:
             return 1.0;
-        case ValueType::DR_CHAN_DEN:
+        case ValueType::ROUTE_CHAN_DEN:
             return 1.0;
-        case ValueType::DR_LNET_DEN:
+        case ValueType::ROUTE_LNET_DEN:
             return 1.0;
-        case ValueType::DR_GNET_DEN:
+        case ValueType::ROUTE_GNET_DEN:
             return 1.0;
         default:
             return 1.0;
@@ -176,14 +176,14 @@ void Grid::saveGridImages(string dirPath) {
     saveMapImage(this, ValueType::MARKER_LNET, "DRV_LNET", dirPath);
     saveMapImage(this, ValueType::MARKER_GNET, "DRV_GNET", dirPath);
     saveMapImage(this, ValueType::MARKER_INST, "DRV_INST", dirPath);
-    saveMapImage(this, ValueType::PL_LNET_DEN, "PL_LNetDen", dirPath);
-    saveMapImage(this, ValueType::PL_GNET_DEN, "PL_GNetDen", dirPath);
-    saveMapImage(this, ValueType::PL_CHAN_DEN, "PL_ChanDen", dirPath);
-    saveMapImage(this, ValueType::PL_WIRE_DEN, "PL_WireDen", dirPath);
-    saveMapImage(this, ValueType::DR_LNET_DEN, "DR_LNetDen", dirPath);
-    saveMapImage(this, ValueType::DR_GNET_DEN, "DR_GNetDen", dirPath);
-    saveMapImage(this, ValueType::DR_CHAN_DEN, "DR_ChanDen", dirPath);
-    saveMapImage(this, ValueType::DR_WIRE_DEN, "DR_WireDen", dirPath);
+    saveMapImage(this, ValueType::RSMT_LNET_DEN, "RSMT_LNetDen", dirPath);
+    saveMapImage(this, ValueType::RSMT_GNET_DEN, "RSMT_GNetDen", dirPath);
+    saveMapImage(this, ValueType::RSMT_CHAN_DEN, "RSMT_ChanDen", dirPath);
+    saveMapImage(this, ValueType::RSMT_WIRE_DEN, "RSMT_WireDen", dirPath);
+    saveMapImage(this, ValueType::ROUTE_LNET_DEN, "ROUTE_LNetDen", dirPath);
+    saveMapImage(this, ValueType::ROUTE_GNET_DEN, "ROUTE_GNetDen", dirPath);
+    saveMapImage(this, ValueType::ROUTE_CHAN_DEN, "ROUTE_ChanDen", dirPath);
+    saveMapImage(this, ValueType::ROUTE_WIRE_DEN, "ROUTE_WireDen", dirPath);
 
 
 
@@ -221,15 +221,15 @@ void Grid::saveGridImages(string dirPath) {
     for(Gcell* gcell : gcells_) {
 
         //gcell->getBBox().print();
-        //cout << "   - cell density  : " << gcell->getCellDensity() << endl;
-        //cout << "   - pin density   : " << gcell->getPinDensity() << endl;
+        //cout << "   - cell density  : " << gcell->getCellUtil() << endl;
+        //cout << "   - pin density   : " << gcell->getPinUtil() << endl;
         //cout << "   - RUDY          : " << gcell->getRUDY() << endl;
 
         RUDY = min(1.0, gcell->getRUDY());
-        WireDen = min(1.0, gcell->getWireDensity(ModelType::PL));
-        CellDen = min(1.0, gcell->getCellDensity());
-        PinDen = min(1.0, gcell->getPinDensity());
-        ChanDen = min(1.0, gcell->getChannelDensity(ModelType::PL));
+        WireDen = min(1.0, gcell->getWireUtil(ModelType::TREE));
+        CellDen = min(1.0, gcell->getCellUtil());
+        PinDen = min(1.0, gcell->getPinUtil());
+        ChanDen = min(1.0, gcell->getChanUtil(ModelType::TREE));
         HasMarker = (gcell->getNumMarkers() > 0) ? 1.0 : 0.0;
         
         //const unsigned char *color = RLEV[lev];

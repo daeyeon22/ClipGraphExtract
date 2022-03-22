@@ -10,47 +10,25 @@
 #include <fstream>
 #include <queue>
 #include <string>
+#include <unordered_map>
 
-using std::set;
-using std::vector;
-using std::cout;
-using std::endl;
-using std::make_pair;
-using std::queue;
+
+//using std::set;
+//using std::vector;
+//using std::cout;
+//using std::endl;
+//using std::make_pair;
+//using std::queue;
 
 namespace ClipGraphExtract {
+
+using namespace std;
+using namespace odb;
 
 static float 
 getEdgeWeight(int fanout, EdgeWeightModel eModel);
 
-Vertex::Vertex() : 
-  inst_(nullptr), 
-  weight_(0),
-  id_(0) {};
 
-Vertex::Vertex(odb::dbInst* inst, 
-    int id, float weight) 
-  : Vertex() {
-  inst_ = inst;
-  id_ = id;
-  weight_ = weight;
-} 
-
-void Vertex::setInst(odb::dbInst* inst) {
-  inst_ = inst;
-}
-
-void Vertex::setWeight(float weight) {
-  weight_ = weight;
-}
-
-void Vertex::addInEdge(Edge* edge) {
-  inEdges_.push_back(edge);
-}
-
-void Vertex::addOutEdge(Edge* edge) { 
-  outEdges_.push_back(edge);
-}
 
 
 Edge::Edge() : 
@@ -100,8 +78,6 @@ void Graph::setEdgeWeightModel(EdgeWeightModel edgeWeightModel) {
     edgeWeightModel_ = edgeWeightModel;
 }
 
-
-
 void Graph::init(std::set<odb::dbInst*> &insts) {
     init(insts, graphModel_, edgeWeightModel_);
 }
@@ -113,6 +89,7 @@ void Graph::init(std::set<odb::dbInst*> & insts,
   // extract iTerm
   set<odb::dbInst*> instSet;
   set<odb::dbITerm*> iTermSet;
+
 
   // init instSet, vertexMap_, and vertices_
   int vertexId = 0;
@@ -250,9 +227,9 @@ void Graph::init(std::set<odb::dbInst*> & insts,
     netModelName = "Star";
   }
 
-  cout << "TotalVertices: " << vertices_.size() << endl;
-  cout << "NetModel: " << netModelName << endl; 
-  cout << "TotalEdges: " << edges_.size() << endl;
+  //cout << "TotalVertices: " << vertices_.size() << endl;
+  //cout << "NetModel: " << netModelName << endl; 
+  //cout << "TotalEdges: " << edges_.size() << endl;
   // vertex' inEdge/outEdge update
   updateVertsFromEdges();
 }
@@ -282,6 +259,53 @@ void Graph::printEdgeList() {
   }
 }
 
+
+void Graph::saveNodeFeaFile(std::string fileName) {
+
+    std::ofstream outFile;
+    outFile.open(fileName, std::ios_base::out);
+    for(auto &tarVertex : vertices_) {
+        outFile << tarVertex.id() << " " 
+                << tarVertex.getMinSlack() << " "
+                << tarVertex.getNumAccPoints() << " "
+                << tarVertex.getNumBlkPoints() << " " 
+                << tarVertex.getWhiteSpaceL() << " "
+                << tarVertex.getWhiteSpaceR() << " "
+                << tarVertex.getSize() << " "
+                << tarVertex.getDegree() << " "
+                << tarVertex.getNumInEdges() << " "
+                << tarVertex.getNumOutEdges() << " "
+                << tarVertex.isClocked() << endl;
+    }
+    outFile.close();
+}
+
+void Graph::saveEdgeIdxFile(std::string fileName) {
+
+    std::ofstream outFile;
+    outFile.open(fileName, std::ios_base::out);
+	for(auto& edge: edges_) {
+		outFile << edge.from()->id() << " " 
+                << edge.to() << endl;
+	}
+	outFile.close();
+
+}
+
+void Graph::saveEdgeAttFile(std::string fileName) {
+    std::ofstream outFile;
+    outFile.open(fileName, std::ios_base::out);
+	for(auto& edge: edges_) {
+		outFile << edge.weight() << endl;
+	}
+	outFile.close();
+}
+
+
+
+
+
+
 void Graph::saveFile(std::string fileName) {
   std::ofstream outFile;
   outFile.open(fileName, std::ios_base::out); // overwrite
@@ -292,6 +316,70 @@ void Graph::saveFile(std::string fileName) {
 	}
 	outFile.close();
 }
+
+void Graph::setMinSlack(std::unordered_map<dbInst*, double> &minSlack) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        double slack = minSlack[tarInst];
+        
+        if(tarVertex == NULL) {
+            cout << tarInst->getName() << " ??? nullptr" << endl;
+            exit(0);
+        }
+        tarVertex->setMinSlack(slack);
+    }
+}
+
+void Graph::setNumAccPoints(std::unordered_map<dbInst*, int> &numAccPoints) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        int numPoints = numAccPoints[tarInst];
+        tarVertex->setNumAccPoints(numPoints);
+    }
+}
+
+void Graph::setNumBlkPoints(std::unordered_map<dbInst*, int> &numBlkPoints) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        int numPoints = numBlkPoints[tarInst];
+        tarVertex->setNumBlkPoints(numPoints);
+    }
+}
+
+void Graph::setNumBndPoints(std::unordered_map<dbInst*, int> &numBndPoints) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        int numPoints = numBndPoints[tarInst];
+        tarVertex->setNumBndPoints(numPoints);
+    }
+}
+
+
+void Graph::setWhiteSpaceL(std::unordered_map<dbInst*, int> &whiteSpaceL) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        int whiteSpace = whiteSpaceL[tarInst];
+        tarVertex->setWhiteSpaceL(whiteSpace);
+    }
+}
+
+void Graph::setWhiteSpaceR(std::unordered_map<dbInst*, int> &whiteSpaceR) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        int whiteSpace = whiteSpaceR[tarInst];
+        tarVertex->setWhiteSpaceR(whiteSpace);
+    }
+}
+
+
+
+
 
 Vertex* Graph::dbToGraph(odb::dbInst* inst) {
   auto vertPtr = vertexMap_.find(inst);

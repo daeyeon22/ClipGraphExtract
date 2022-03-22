@@ -4,6 +4,8 @@
 #include <clip_graph_ext/clipGraphExtractor.h>
 #include <map>
 #include <set>
+#include <unordered_map>
+
 
 namespace odb {
   class dbInst;
@@ -40,37 +42,47 @@ public:
   void setId(int id);
   int id() const;
 
+
+    // 
+
+    void setMinSlack(double slack);
+    void setNumAccPoints(int numAccPoints);
+    void setNumBlkPoints(int numBlkPoints);
+    void setNumBndPoints(int numBndPoints);
+    void setWhiteSpaceL(int whiteSpaceL);
+    void setWhiteSpaceR(int whiteSpaceL);
+
+
+    // For node feature
+    double getMinSlack();
+    int getNumAccPoints();
+    int getNumBlkPoints();
+    int getNumBndPoints();
+    int getWhiteSpaceL();
+    int getWhiteSpaceR();
+
+    bool isClocked();
+    int getSize();
+    int getDegree();
+    int getNumInEdges();
+    int getNumOutEdges();
 private:
   odb::dbInst* inst_;
   std::vector<Edge*> inEdges_;
   std::vector<Edge*> outEdges_;
   int id_;
   float weight_;
+
+    double minSlack_;
+    int numAccPoints_;
+    int numBlkPoints_;
+    int numBndPoints_;
+
+    int whiteSpaceL_;
+    int whiteSpaceR_;
+
 };
 
-inline odb::dbInst* Vertex::inst() const {
-  return inst_;
-}
-
-inline const std::vector<Edge*> & Vertex::inEdges() const {
-  return inEdges_;
-}
-
-inline const std::vector<Edge*> & Vertex::outEdges() const {
-  return outEdges_;
-}
-
-inline float Vertex::weight() const {
-  return weight_;
-}
-
-inline void Vertex::setId(int id) {
-  id_ = id;
-}
-
-inline int Vertex::id() const {
-  return id_;
-}
 
 // edge is inst1-inst2 connections
 class Edge {
@@ -110,8 +122,25 @@ class Graph {
     ~Graph();
 
     void saveFile(std::string fileName);
+    
+    void saveNodeFeaFile(std::string fileName);
+    void saveEdgeIdxFile(std::string fileName);
+    void saveEdgeAttFile(std::string fileName);
+    
     void setDb(odb::dbDatabase* db);
     void setSta(sta::dbSta* sta);
+
+
+
+    // 
+    void setMinSlack(std::unordered_map<odb::dbInst*, double> &minSlack);
+    void setNumAccPoints(std::unordered_map<odb::dbInst*, int> &numAccPoints);
+    void setNumBlkPoints(std::unordered_map<odb::dbInst*, int> &numBlkPoints);
+    void setNumBndPoints(std::unordered_map<odb::dbInst*, int> &numBndPoints);
+
+    void setWhiteSpaceL(std::unordered_map<odb::dbInst*, int> &whiteSpaceL);
+    void setWhiteSpaceR(std::unordered_map<odb::dbInst*, int> &whiteSpaceL);
+
 
 
     void init(std::set<odb::dbInst*> &insts);
@@ -133,6 +162,11 @@ class Graph {
     std::vector<Vertex> vertices_;
     std::vector<Edge> edges_;
     std::map<odb::dbInst*, Vertex*> vertexMap_;
+
+    
+
+
+    
     void updateVertsFromEdges();
 };
 
