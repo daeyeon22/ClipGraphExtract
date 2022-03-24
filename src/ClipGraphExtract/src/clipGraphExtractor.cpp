@@ -1,55 +1,26 @@
 #include "clip_graph_ext/clipGraphExtractor.h"
 #include "opendb/db.h"
 #include "opendb/dbWireCodec.h"
-
-#include "sta/Graph.hh"
+#include "opendb/geom.h"
 #include "sta/Sta.hh"
 #include "sta/Network.hh"
-#include "sta/Liberty.hh"
-#include "sta/Sdc.hh"
-#include "sta/PortDirection.hh"
-#include "sta/Corner.hh"
-#include "sta/PathExpanded.hh"
-#include "sta/PathEnd.hh"
-#include "sta/PathRef.hh"
-#include "sta/Search.hh"
-#include "sta/Bfs.hh"
-
+#include "sta/DelayFloat.hh"
+#include "sta/Graph.hh"
 #include "db_sta/dbSta.hh"
 #include "db_sta/dbNetwork.hh"
-
-
-#include "CImg.h"
-#include "flute.h"
 #include "instGraph.h"
-#include "binGraph.h"
+#include "grid.h"
+#include "opendb/dbTransform.h"
+
 #include <algorithm>
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <regex>
 #include <fstream>
+#include <vector>
+#include <cassert>
 
-namespace bg = boost::geometry;
-namespace bgi = boost::geometry::index;
-
-typedef bgi::rtree< std::pair<box, inst_value>, 
-                    bgi::quadratic<6> > inst_RTree;
-
-typedef bgi::rtree< std::pair<box, wire_value>, 
-                    bgi::quadratic<6> > wire_RTree;
-
-typedef bgi::rtree< std::pair<box, via_value>, 
-                    bgi::quadratic<6> > via_RTree;
-
-typedef bgi::rtree< std::pair<box, pin_value>, 
-                    bgi::quadratic<6> > pin_RTree;
-
-typedef bgi::rtree< std::pair<box, drc_value>,
-					bgi::quadratic<6> > drc_RTree;
-
-typedef bgi::rtree< std::pair<box, rudy_value>,
-					bgi::quadratic<6> > rudy_RTree;
 
 using namespace odb;
 using namespace std;
@@ -64,10 +35,10 @@ using std::set;
 
 
 namespace ClipGraphExtract {
-
 ClipGraphExtractor::ClipGraphExtractor() : db_(nullptr), sta_(nullptr),
-    inst_rTree_(nullptr), wire_rTree_(nullptr), via_rTree_(nullptr), pin_rTree_(nullptr),
-	drc_rTree_(nullptr), rudy_rTree_(nullptr),graphModel_(Star), edgeWeightModel_(A), fileName_("") {};
+    numRows_(5), maxRouteLayer_(7),
+    grid_(nullptr),
+    graphModel_(Star), edgeWeightModel_(A), fileName_("") {};
 
 ClipGraphExtractor::~ClipGraphExtractor() {
   clear(); 
@@ -77,42 +48,8 @@ void
 ClipGraphExtractor::clear() {
   db_ = nullptr; 
   sta_ = nullptr;
-  if( inst_rTree_ ) {
-    delete (inst_RTree*) inst_rTree_;
-  }
-
-  if( wire_rTree_ ) {
-    delete (wire_RTree*) wire_rTree_;
-  }
-
-  if( via_rTree_ ) {
-    delete (via_RTree*) via_rTree_;
-  }
-
-  if( pin_rTree_ ) {
-    delete (pin_RTree*) pin_rTree_;
-  }
-
-  if( rudy_rTree_ ) {
-    delete (rudy_RTree*) rudy_rTree_;
-  }
-
-  if( drc_rTree_ ) {
-    delete (pin_RTree*) drc_rTree_;
-  }
-
-  if( binGraph_ ) {
-    delete (bingraph::Graph*) binGraph_;
-  }
-
-  binGraph_ = nullptr;
-  rTree_ = nullptr;
-  inst_rTree_ = nullptr;
-  wire_rTree_ = nullptr;
-  via_rTree_ = nullptr;
-  pin_rTree_ = nullptr;
-  rudy_rTree_ = nullptr;
-  drc_rTree_ = nullptr;
+  numRows_ =5;          // default: x5
+  maxRouteLayer_ = 7;  // default: Metal7
   graphModel_ = Star;
   edgeWeightModel_ = A;
   fileName_ = "";
@@ -120,593 +57,458 @@ ClipGraphExtractor::clear() {
 
 
 
-void 
-ClipGraphExtractor::init() {  
-    using namespace odb;
-    inst_rTree_ = (void*) (new inst_RTree);
-    wire_rTree_ = (void*) (new wire_RTree);
-    via_rTree_ = (void*) (new via_RTree);
-    pin_rTree_ = (void*) (new pin_RTree);
-    rudy_rTree_ = (void*) (new rudy_RTree);
-    drc_rTree_ = (void*) (new drc_RTree);
+void ClipGraphExtractor::initRtree1() {
+
+
+    wireRtree_ = (void*) (new SegRtree<dbNet*>);
+    instRtree_ = (void*) (new BoxRtree<dbInst*>);
+    SegRtree<dbNet*> *wireRtree = (SegRtree<dbNet*>*) wireRtree_;
+    BoxRtree<dbInst*>* instRtree = (BoxRtree<dbInst*>*) instRtree_;
     
-    binGraph_ = (void*) (new bingraph::Graph); 
- 
-	inst_RTree* inst_rTree = (inst_RTree*) inst_rTree_;
-    wire_RTree* wire_rTree = (wire_RTree*) wire_rTree_;
-    via_RTree* via_rTree = (via_RTree*) via_rTree_;
-    pin_RTree* pin_rTree = (pin_RTree*) pin_rTree_;
-    rudy_RTree* rudy_rTree = (rudy_RTree*) rudy_rTree_;
-    drc_RTree* drc_rTree = (drc_RTree*) drc_rTree_;
+    // make wireRtree
+    int x, y, ext;
+    dbBlock* block = db_->getChip()->getBlock();
+    for(dbNet* net : block->getNets()) {
+        dbWire* wire = net->getWire();
+        if( wire && wire->length() ) {
+            int wl = wire->getLength();
+            int wl_ = 0;
+            dbWireDecoder decoder;
+            decoder.begin(wire);
+            vector<odb::Point> points;
+            dbWireDecoder::OpCode opcode = decoder.peek();
+            while(opcode != dbWireDecoder::END_DECODE) {
+                bool hasPath=false;
+                switch(opcode) {
+                    case dbWireDecoder::PATH: 
+                        points.clear(); break;
+                    case dbWireDecoder::JUNCTION: break;
+                    case dbWireDecoder::SHORT: break;
+                    
+                    case dbWireDecoder::TECH_VIA: {
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        hasPath=true;
+                        break;
+                    }
+                    case dbWireDecoder::VIA: break;
+                    case dbWireDecoder::VWIRE: break;
+                    case dbWireDecoder::POINT_EXT:
+                        decoder.getPoint(x,y,ext);
+                        points.push_back(odb::Point(x,y));
+                        hasPath=true;
+                        break;
+                    case dbWireDecoder::BTERM: break;
+                    case dbWireDecoder::ITERM: break;
+                    case dbWireDecoder::RULE: break;
+                    case dbWireDecoder::POINT: {
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        hasPath=true;
+                        break;
+                    }
+                    default: break;
+                }
 
-    unordered_map<unsigned int, int> layerPitches;
-    dbSet<dbTechLayer> layers = db_->getTech()->getLayers();
-    for(dbTechLayer* layer : layers){
-        if(layer->getName()[0] == 'M' || layer->getName()[0] == 'm'){
-            unsigned int layerNum = (unsigned int) layer->getName()[1] - '0';
-            unsigned int layerWidth = layer->getWidth();
-            unsigned int layerSpacing = layer->getSpacing();
+                if(hasPath && points.size() > 1) {
+                    odb::Point pt1 = points[points.size()-2];
+                    odb::Point pt2 = points[points.size()-1];
 
-            layerPitches[layerNum] = layerWidth + layerSpacing;
+                    int xMin = min(pt1.getX(), pt2.getX());// - layerMinWidth[decoder.getLayer()]/2;
+                    int xMax = max(pt1.getX(), pt2.getX());// + layerMinWidth[decoder.getLayer()]/2;
+                    int yMin = min(pt1.getY(), pt2.getY());// - layerMinWidth[decoder.getLayer()]/2;
+                    int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
+                    int dist = (xMax-xMin) + (yMax-yMin);
+                    
+                    if(dist != 0) {
+                        wl_ += dist;
+                        bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                        wireRtree->insert( make_pair( wireSeg, net ) );
+                    }
+                }
+                opcode = decoder.next();
+            }
         }
     }
-
-    // DB Query to fill in inst_RTree
-	dbBlock* block = db_->getChip()->getBlock();
+    // make instRtree
     for( dbInst* inst : block->getInsts() ) {
         dbBox* bBox = inst->getBBox();
-        box b (point(bBox->xMin(), bBox->yMin()), 
-            point(bBox->xMax(), bBox->yMax()));
-        inst_value temp{inst, b};
-        inst_rTree->insert( make_pair(b, temp) );
+        bgBox b (bgPoint(bBox->xMin(), bBox->yMin()),
+                    bgPoint(bBox->xMax(), bBox->yMax()));
+        instRtree->insert( make_pair(b, inst) );
     }
+
+
+}
+
+void ClipGraphExtractor::initRtree2() {
+
+    Grid* grid = (Grid*) grid_;
+    rsmtRtree_ = (void*) (new SegRtree<RSMT*>);
+    gcellRtree_ = (void*) (new BoxRtree<Gcell*>);
+    BoxRtree<Gcell*>* gcellRtree = (BoxRtree<Gcell*>*) gcellRtree_;
+    SegRtree<RSMT*>* rsmtRtree = (SegRtree<RSMT*>*) rsmtRtree_;
+
+ 
+    // make gcellRtree
+    for( Gcell* gcell : grid->getGcells() ) {
+        bgBox gcellBox = gcell->getQueryBox();
+        gcellRtree->insert( make_pair(gcellBox, gcell) );
+    }
+
+  
+    // make rsmtRtree
+    for( dbNet* net : db_->getChip()->getBlock()->getNets()) {
+        RSMT* rsmt = grid->getRSMT(net);
+        vector<Rect> segments = rsmt->getSegments();
+        // insert segments into rtree
+        for(Rect& seg : segments) {
+            // update (1) #cut-nets (2) wire utilization
+            bgSeg bgseg(bgPoint(seg.xMin(), seg.yMin()), bgPoint(seg.xMax(), seg.yMax()));
+            rsmtRtree->insert( make_pair( bgseg, rsmt ) );
+        }
+    }
+
+
+}
+
+void
+ClipGraphExtractor::init() {
+    sta_->updateTiming(false);
+    Flute::readLUT();
+
+
+    initGrid();
+    cout << "InitGrid is done" << endl;
+   
+
+    initGraph();
+    cout << "InitGraph is done" << endl;
+
+}
+
+void ClipGraphExtractor::initGrid() {
+    grid_ = (void*) new Grid();
+    Grid* grid = (Grid*) grid_;
+    dbBlock* block = getDb()->getChip()->getBlock();
     
-	Flute::readLUT();
-    // DB Query to fill in pin_RTree and rudy_RTree
-	// flute initialization
-	Flute::readLUT();
-	dbSet<dbNet> nets = block->getNets();
+    // Calculate grid size = rowHeight * numRows_
+    dbSite* site = block->getRows().begin()->getSite(); 
 
-    cout << "Start processing" << endl;
-	for(auto net : nets){
-		rudy_value r;
+    int gcellWidth = site->getHeight() * numRows_;
+    int gcellHeight = site->getHeight() * numRows_;
 
-		dbSet<dbITerm> iterms = net->getITerms();
-		int degree = 0;
-		vector<int> xs;
-		vector<int> ys;
-		int lx, ly, ux, uy;
-
-		for(dbITerm* iterm : iterms){
-			
-            int x, y;
-			iterm->getAvgXY(&x, &y);
-
-            if(iterm->isOutputSignal()) {
-                xs.insert(xs.begin(), x);
-                ys.insert(ys.begin(), y);
-            } else {
-                xs.push_back(x);
-                ys.push_back(y);
+    // get routing supply / capacity for each gcell
+    dbSet<dbTechLayer> techLayers = getDb()->getTech()->getLayers();
+    int numLayer=0;
+    int trackSupply=0;
+    int wireCapacity=0;
+    int minWidth =INT_MAX;
+    for(dbTechLayer* layer : techLayers) {
+        if(layer->getType() == dbTechLayerType::ROUTING) {
+            numLayer++;
+            minWidth = min(minWidth, (int)layer->getWidth());
+            int minPitch = layer->getPitch();
+            int minSpacing = layer->getSpacing();
+            int capacity=0;
+            int supply=0;
+            if(layer->getDirection() == dbTechLayerDir::HORIZONTAL) {
+                supply = gcellHeight / minPitch;
+                capacity = supply * gcellWidth;
+            }else if(layer->getDirection() == dbTechLayerDir::VERTICAL) {
+                supply = gcellWidth / minPitch;
+                capacity = supply * gcellHeight;
             }
             
-			if(degree == 0){
-				lx = x;
-				ly = y;
-				ux = x;
-				uy = y;
-			}
-			else{
-				if(x < lx) lx = x;
-				if(ux < x) ux = x;
-				if(y < ly) ly = y;
-				if(uy < y) uy = y;
-			}
-			
-			pin_value p;
-			p.name_ = iterm->getMTerm()->getMaster()->getName()+"/"+iterm->getMTerm()->getName();
-			p.setBox(x, y);
-			pin_rTree->insert( make_pair(p.box_, p) );
-			degree++;
-		}
-	
-		if(iterms.size() != 0){
-			r.net_ = net;
-			r.xs_ = xs;
-			r.ys_ = ys;
-			r.degree_ = degree;
-			r.wireWidth_ = 200;
-			r.setBox(lx, ly, ux, uy);
-			r.value_ = 0; // initialize
+            trackSupply+= supply;
+            wireCapacity += capacity;
 
-			updateCongRUDY(r);
-			//cout << r.net_->getName() << " " << r.value_ << endl;
-			rudy_rTree->insert( make_pair(r.box_, r) );
-			//cout << net->getName() << " " << endl;
-			//for(int i = 0; i < degree; i++) cout << r.xs_[i] << " " << r.ys_[i] << endl;
-			//cout << "degree: " << degree << " " << lx << " " << ly << " " << ux << " " << uy << endl;
-		}
-	}
-
-    // DB Query to fill in wire_RTree and via_RTree
-    for ( dbNet* net : nets ){ // net
-        dbWire* wire = net->getWire();
+            if(numLayer == maxRouteLayer_)
+                break;
+        }
+    }
 
 
-        if ( wire && wire->length() ){ // wire
-            dbWireDecoder decoder;
-        cout << "here" << endl;
-            decoder.begin(wire);
+    cout << "TrackSupply    : " << trackSupply << endl;
+    cout << "WireCapacity   : " << wireCapacity << endl;
+
+    // Get core area
+    odb::Rect blockArea;
+    block->getBBox()->getBox(blockArea);
+
+    // Initialize Gcell Grid
+    grid->setDb(getDb());
+    grid->setBoundary(blockArea);
+    grid->setGcellWidth(gcellWidth);
+    grid->setGcellHeight(gcellHeight);
+    grid->setWireCapacity(wireCapacity);
+    grid->setTrackSupply(trackSupply);
+    grid->setNumLayers(numLayer);
+    grid->setWireMinWidth(minWidth);
+    grid->init();
+    //  
+
+    cout << "Grid initialization finished" << endl;
+
+
+    initRtree1();
+    // has to finish grid->init() before calling initRtree()
+    initRtree2();
+
+    SegRtree<dbNet*> *wireRtree = (SegRtree<dbNet*>*) wireRtree_;
+    BoxRtree<Gcell*>* gcellRtree = (BoxRtree<Gcell*>*) gcellRtree_;
+    BoxRtree<dbInst*>* instRtree = (BoxRtree<dbInst*>*) instRtree_;
+    SegRtree<RSMT*>* rsmtRtree = (SegRtree<RSMT*>*) rsmtRtree_;
+    
+    //
+    for( dbNet* net : block->getNets() ) {
+        if(net->isSpecial()) {
+        }
+        // search overlapping gcells
+        RSMT* rsmt = grid->getRSMT(net);
+        rsmt->searchOverlaps(gcellRtree);
+    }
+
+    cout << "RSMT construction finished" << endl;
+
+    // add Instance in gcell 
+    for( Gcell* gcell : grid->getGcells() ) {
+        gcell->extractPlaceFeature(instRtree);
+        gcell->extractPlaceFeature(rsmtRtree);
+		gcell->extractRouteFeature(wireRtree);
+    }
+    
+    
+    ////// FOR DEBUG
+    double maxWireDenDR = 0;
+    double maxWireDenPL = 0;
+    double avgRUDY = 0;
+    for(Gcell* gcell : grid->getGcells()) { 
+       avgRUDY += gcell->getRUDY();
+        maxWireDenPL = max(maxWireDenPL, gcell->getWireUtil(ModelType::TREE));
+        maxWireDenDR = max(maxWireDenDR, gcell->getWireUtil(ModelType::ROUTE));
+    }
+    cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
+
+    avgRUDY /= grid->getGcells().size();
+    cout << "[REP] Avg RUDY : " << avgRUDY << endl;
+    cout << "[REP] Max WireDen (PL) : " << maxWireDenPL << endl;
+    cout << "[REP] Max WireDen (DR) : " << maxWireDenDR << endl;
+    cout << "Feature extraction finished" << endl;
+}
+
+
+void ClipGraphExtractor::initGraph() {
+
+    sta_->updateTiming(false);
+    sta::dbNetwork* network = sta_->getDbNetwork();
+    sta::Graph* graph = sta_->ensureGraph();
+    Grid* grid = (Grid*)grid_;
+
+    dbBlock* block = getDb()->getChip()->getBlock();
+
+    sta::Vertex* wstVertex;
+    sta::Slack wstSlack, totNegSlack;
+    sta_->worstSlack(sta::MinMax::max(), wstSlack, wstVertex);
+    totNegSlack = sta_->totalNegativeSlack(sta::MinMax::max());
+
+    cout << "Worst Slack    : " << wstSlack << endl;
+    cout << "Total NegSlack : " << totNegSlack << endl;
+
+
+
+    // Get slack info.
+    unordered_map<dbInst*, double> minSlack;
+
+    for(dbInst* inst : block->getInsts()) {
+    
+        minSlack[inst] = DBL_MAX;
+
+        for(dbITerm* iterm : inst->getITerms()) {
+
+            if(iterm->getIoType() == dbSigType::POWER || iterm->getIoType() == dbSigType::GROUND)
+                continue;
+
+            uint32_t vertexId = iterm->staVertexId();
+            sta::Vertex* vertex = graph->vertex(vertexId);
+            if(vertex == NULL)
+                continue;
+
+            sta::Slack staSlk = sta_->vertexSlack(vertex, sta::MinMax::max());
+            //sta::Slack minSlack = sta_->vertexSlack(vertex, sta::MinMax::min());
+        
+            double slack = (double)sta::delayAsFloat(staSlk);
+            minSlack[inst] = min(minSlack[inst], slack);
+        }
+
+        //cout << inst->getName() << "'s min slack is " << minSlack[inst] << endl;
+
+    }
+
+
+    // Rtree for M1-M2 via access point
+    dbSet<dbTechLayer> techLayers = getDb()->getTech()->getLayers();
+    unordered_map<dbTechLayer*, vector<int>> xGrid;
+    unordered_map<dbTechLayer*, vector<int>> yGrid;
+    dbTech* tech = getDb()->getTech();
+
+    cout << "Init x-y Grid" << endl;
+    for(dbTechLayer* techLayer : tech->getLayers()) {
+        if(techLayer->getType() == dbTechLayerType::ROUTING) {
+            dbTrackGrid* trackGrid = block->findTrackGrid(techLayer);
+            trackGrid->getGridX(xGrid[techLayer]);
+            trackGrid->getGridY(yGrid[techLayer]);
+        }
+    }
+    cout << "Init trackgrid is done" << endl;
+    /*
+    dbTechLayer* techLayer1 = getDb()->getTech()->findRoutingLayer(1);
+    dbTechLayer* techLayer2 = getDb()->getTech()->findRoutingLayer(2);
+    if(techLayer1->getDirection() == techLayer2->getDirection()) {
+        cout << "??" << endl;
+        exit(0);
+    }
+    if(techLayer1->getDirection() == dbTechLayerDir::HORIZONTAL &&
+            techLayer2->getDirection() == TechLayerDir::VERTICAL) {
+        techLayer1->getTrackGrid()->getGridY(yGrid);
+        techLayer2->getTrackGrid()->getGridX(xGrid);
+
+    } else if(techLayer2->getDirection() == dbTechLayerDir::HORIZONTAL &&
+            techLayer1->getDirection() == TechLayerDir::VERTICAL) {
+        techLayer2->getTrackGrid()->getGridY(yGrid);
+        techLayer1->getTrackGrid()->getGridX(xGrid);
+    } else {
+        cout << "exception case!" << endl;
+        exit(0);
+    }
+    */
+    
+    // Get # of access points info.
+    unordered_map<dbInst*, int> instAccPoints;
+    unordered_map<dbInst*, int> instBlkPoints;
+    unordered_map<dbInst*, int> instBndPoints;
+
+    unordered_map<dbITerm*, int> termAccPoints;
+
+
+    for(dbInst* inst : block->getInsts()) {
+        instAccPoints[inst] = 0;
+
+        Rect instBBox;
+        dbBox* instBox = inst->getBBox();
+        instBox->getBox(instBBox);
+
+
+        dbTechLayer* techM1Layer = getDb()->getTech()->findRoutingLayer(1);
+
+        vector<int>::iterator xMinIter = lower_bound(xGrid[techM1Layer].begin(), xGrid[techM1Layer].end(), instBBox.xMin());
+        vector<int>::iterator xMaxIter = upper_bound(xGrid[techM1Layer].begin(), xGrid[techM1Layer].end(), instBBox.xMax());
+        vector<int>::iterator yMinIter = lower_bound(yGrid[techM1Layer].begin(), yGrid[techM1Layer].end(), instBBox.yMin());
+        vector<int>::iterator yMaxIter = upper_bound(yGrid[techM1Layer].begin(), yGrid[techM1Layer].end(), instBBox.yMin());
+        instBndPoints[inst] = (yMaxIter-yMinIter) * (xMaxIter-xMinIter);
+
+
+        int xOrig, yOrig;
+        inst->getOrigin(xOrig, yOrig);
+        dbTransform transform;
+        transform.setOrient(inst->getOrient());
+        transform.setOffset( Point(xOrig, yOrig) );
+
+        for(dbITerm* iterm : inst->getITerms()) {
             
-            vector< pair<int, int > > point;
-            wire_value w;
-            w.pitches_ = layerPitches;
-            via_value v;
-            while(decoder.peek() != dbWireDecoder::END_DECODE){
-                unsigned int layerNum;
-                unsigned int layerWidth;
-                unsigned int layerSpacing;
+            
+            dbMTerm* mTerm = iterm->getMTerm();
+            set<Point> accPoints;
+            for(dbMPin* mPin : mTerm->getMPins()) {
+                for(dbBox* pBox : mPin->getGeometry()) {
+        
+                    if(pBox->getTechLayer()->getType() != dbTechLayerType::ROUTING)
+                        continue;
 
-                switch(decoder.peek()){
-                    case dbWireDecoder::PATH:
-                    case dbWireDecoder::JUNCTION:
-                    case dbWireDecoder::SHORT:{
-                        decoder.next();
-                        dbTechLayer* layer = decoder.getLayer();
-                        layerNum = (unsigned int) layer->getName()[1] - '0';
-                        layerWidth = layer->getWidth();
-                        layerSpacing = layer->getSpacing();
+                    dbTechLayer* techLayer = pBox->getTechLayer();
+                    Rect pinBBox;
+                    pBox->getBox(pinBBox);
+                    transform.apply(pinBBox);
+                    
+                    int xMin = pinBBox.xMin();
+                    int yMin = pinBBox.yMin();
+                    int xMax = pinBBox.xMax();
+                    int yMax = pinBBox.yMax();
 
-                        point.clear();
 
-                        w.layerNum_ = layerNum;
-                        w.net_ = net;
-                        w.width_ = layerWidth;
-                        w.spacing_ = layerSpacing;
-
-                        break;
-                                                 }
-                    case dbWireDecoder::VIA:
-                    case dbWireDecoder::TECH_VIA:{
-                        decoder.next();
-                        dbTechLayer* layer = decoder.getLayer();
-                        layerNum = (unsigned int) layer->getName()[1] - '0';
-                        layerWidth = layer->getWidth();
-                        
-                        pair<int, int> viaPoint = point.back();
-                        
-                        v.bottomLayer_ = layerNum;
-                        v.net_ = net;
-                        v.width_ = layerWidth;
-                        v.setBox(viaPoint.first, viaPoint.second);
-                        via_rTree->insert( make_pair(v.box_, v) );
-                        break;
-                                                 }
-                    case dbWireDecoder::POINT:{
-                        int x, y;
-                        decoder.next();
-                        decoder.getPoint(x, y);
-                        point.push_back( make_pair(x, y) );
-                        if(point.size() == 2){
-                            int fx = point[0].first;
-                            int fy = point[0].second;
-                            int tx = point[1].first;
-                            int ty = point[1].second;
-                            
-                            w.setBox(fx, fy, tx, ty);
-							if(tx-fx == 0) 
-								w.type_ = 'V';
-							else if(ty-fy == 0) 
-								w.type_ = 'H';
-							wire_rTree->insert( make_pair(w.box_, w) );
+                    vector<int>::iterator xMinIter = lower_bound(xGrid[techLayer].begin(), xGrid[techLayer].end(), xMin);
+                    vector<int>::iterator xMaxIter = upper_bound(xGrid[techLayer].begin(), xGrid[techLayer].end(), xMax);
+                    vector<int>::iterator yMinIter = lower_bound(yGrid[techLayer].begin(), yGrid[techLayer].end(), yMin);
+                    vector<int>::iterator yMaxIter = upper_bound(yGrid[techLayer].begin(), yGrid[techLayer].end(), yMax);
+                    
+                    for(; xMinIter != xMaxIter; xMinIter++) {
+                        for(; yMinIter != yMaxIter; yMinIter++) {
+                            int x = *xMinIter;
+                            int y = *yMinIter;
+                            Point point(x,y);
+                            accPoints.insert(point);
                         }
-                        break;
-                                              }
-                    default:
-                        decoder.next();
-                        break;
-                } 
+                    }
+                }
+            }
+
+
+            int numPoints = accPoints.size();
+            termAccPoints[iterm] = numPoints;
+
+
+
+            dbNet* net = iterm->getNet();
+            if(net == NULL) {
+                instBlkPoints[inst] += numPoints;
+            } else {
+                if(net->getSigType() == dbSigType::POWER) {
+                    instBlkPoints[inst] += numPoints; break;
+                } else if(net->getSigType() == dbSigType::GROUND) {
+                    instBlkPoints[inst] += numPoints; break;
+                } else {
+                    instAccPoints[inst] += numPoints; break;
+                }
             }
         }
     }
+
+
+    // Get left/right white space of inst
+    unordered_map<dbInst*, int> whiteSpaceL;
+    unordered_map<dbInst*, int> whiteSpaceR;
+
+
+
+    for(Gcell* gcell : grid->getGcells()) {
+
+        set<dbInst*> instSet = gcell->getInstSet();
+        Graph* instGraph = new Graph;
+        instGraph->setDb(db_);
+        instGraph->setSta(sta_);
+        instGraph->setGraphModel(graphModel_);
+        instGraph->setEdgeWeightModel(edgeWeightModel_);
+        instGraph->init(instSet);
+
+        // for timing
+        instGraph->setMinSlack(minSlack);
+        // for pin accessibility
+        instGraph->setNumAccPoints(instAccPoints);
+        instGraph->setNumBndPoints(instBndPoints);
+        instGraph->setNumBlkPoints(instBlkPoints);
+        instGraph->setWhiteSpaceL(whiteSpaceL);
+        instGraph->setWhiteSpaceR(whiteSpaceR);
+        gcell->setGraph(instGraph);
+    }
+    cout << "Done!" << endl;
 }
 
 
-void
-ClipGraphExtractor::updateCongRUDY(rudy_value& rudyValue) {
-	if(rudyValue.degree_ < 2) return;
-    //Flute::FluteState  *flute = Flute::flute_init(FLUTE_POWVFILE, FLUTE_POSTFILE);
-
-	//int d=0;
-	//int x[100], y[100];
-	Flute::Tree flutetree;
-	//int flutewl;
-	
-	int* xs = rudyValue.xs_.data();
-	int* ys = rudyValue.ys_.data();
-
-	// pin x y coordinate 
-	// store into x[], y[]
-	// d = degree (#terminals)
-
-	//x[0] = 1;
-	//y[0] = 1;
-
-	//x[1] = 3;
-	//y[1] = 5;
-
-	//x[2] = 2;
-	//y[2] = 7;
-
-	//d=3;
-
-	//cout << rudyValue.net_->getName() << endl;
-	//for(int i = 0; i < rudyValue.degree_; i++) cout << rudyValue.xs_[i] << " " << rudyValue.ys_[i] << endl;
-	flutetree = Flute::flute(rudyValue.degree_, xs, ys, FLUTE_ACCURACY);
-	//printf("FLUTE wirelength = %d\n", flutetree.length);
-	//cout << endl;
-	rudyValue.setValue(flutetree.length);
-	
-	//Flute::printtree(flutetree);
-	//Flute::plottree(flutetree);
-
-	//flutewl = Flute::flute_wl(d, x, y, FLUTE_ACCURACY);
-	//printf("FLUTE wirelength (without RSMT construction) = %d\n", flutewl);
-}
 
 void
 ClipGraphExtractor::extract(int lx, int ly, int ux, int uy) {
-  inst_RTree* inst_rTree = (inst_RTree*) inst_rTree_;
-  sta_->updateTiming(false);
-  sta::dbNetwork* network = sta_->getDbNetwork();
-  sta::Graph* graph = sta_->ensureGraph();
-  
-  box queryBox( point(lx, ly), point(ux, uy) );
 
-  vector< pair<box, inst_value> > foundInsts; 
-  inst_rTree->query(bgi::intersects(queryBox), 
-      std::back_inserter(foundInsts));
-
-  cout << "NumFoundInsts: " << foundInsts.size() << endl;
-
-  set<odb::dbInst*> instSet;
-  for(pair<box, inst_value>& val : foundInsts) {
-    odb::dbInst* inst = val.second.inst_;
-    instSet.insert( inst ); 
-  }
-  
-  Graph instGraph;
-  instGraph.setDb(db_);
-  instGraph.init(instSet, graphModel_, edgeWeightModel_);
-  instGraph.saveFile(fileName_);
-  cout << "Done!" << endl;
 }
-
-// added by dykim
-void
-ClipGraphExtractor::extractBinGraph(int numRows, int maxLayer) {
-
-    cout << "Extract bin graph" << endl;
-    inst_RTree* inst_rTree = (inst_RTree*) inst_rTree_;
-    wire_RTree* wire_rTree = (wire_RTree*) wire_rTree_;
-    via_RTree* via_rTree = (via_RTree*) via_rTree_;
-    pin_RTree* pin_rTree = (pin_RTree*) pin_rTree_;
-    rudy_RTree* rudy_rTree = (rudy_RTree*) rudy_rTree_;
-    
-    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;
-    binGraph->setDb(db_);
-    dbTech* tech = db_->getTech();
-    dbChip* chip = db_->getChip();
-    dbBlock* block = chip->getBlock();
-
-    int xMin = block->getBBox()->xMin();
-    int xMax = block->getBBox()->xMax();
-    int yMin = block->getBBox()->yMin();
-    int yMax = block->getBBox()->yMax();
-
-    dbSite* site = block->getRows().begin()->getSite();
-    uint blockWidth = block->getBBox()->getDX();
-    uint blockHeight = block->getBBox()->getDY();
-    uint siteHeight = site->getHeight();
-    uint siteWidth = site->getWidth();
-
-    int unitSize = numRows * siteHeight;
-
-    //cout << xMin << " " << yMin << " " << xMax << " " << yMax << endl;
-    //cout << "unit size : " << unitSize << endl;
-
-    int numVertices = std::ceil( 1.0* blockWidth / unitSize ) * std::ceil( 1.0*blockHeight / unitSize );
-   
-    int blockNum = 0;
-
-    for(int lx=xMin; lx <= xMax-unitSize; lx+=unitSize) {
-        for(int ly=yMin; ly <= yMax-unitSize; ly+=unitSize) {
-            
-            blockNum++;
-
-            int ux = lx + unitSize;
-            int uy = ly + unitSize;
-            //cout << "Block Num: " << blockNum << "\t";
-            //cout << lx/2000.0 << " " << ly/2000.0 << " " 
-            //     << ux/2000.0 << " " << uy/2000.0 << endl;
-
-            box queryBox( point(lx, ly), point(ux, uy) );
-            vector< pair<box, inst_value> > foundInsts;
-            vector< pair<box, wire_value> > foundWires;
-            vector< pair<box, via_value> > foundVias;
-            vector< pair<box, pin_value> > foundPins;
-            vector< pair<box, rudy_value> > foundRudys;
-
-            inst_rTree->query(bgi::intersects(queryBox), 
-                    std::back_inserter(foundInsts));
-            
-            wire_rTree->query(bgi::intersects(queryBox), 
-                    std::back_inserter(foundWires));
-            
-            via_rTree->query(bgi::intersects(queryBox), 
-                    std::back_inserter(foundVias));
-
-            pin_rTree->query(bgi::intersects(queryBox), 
-                    std::back_inserter(foundPins));
-
-			rudy_rTree->query(bgi::intersects(queryBox), 
-                    std::back_inserter(foundRudys));
-
-            vector<odb::dbInst*> insts;
-            vector<wire_value> wireValues;
-            vector<via_value> viaValues;
-            vector<pin_value> pinValues;
-            vector<rudy_value> rudyValues;
-
-			set<string> nets;
-			set<string> localNets;
-			set<string> globalNets;
-
-            for(pair<box, inst_value>& val : foundInsts) {
-                insts.push_back(val.second.inst_);
-            }
-            
-            for(pair<box, wire_value>& val : foundWires) {
-                wireValues.push_back(val.second);
-                //cout << "wire: " << val.second.layerNum_ << "\t" 
-                //                 << val.second.lx_/2000.0 << " " 
-                //                 << val.second.ly_/2000.0 << " " 
-                //                 << val.second.ux_/2000.0 << " " 
-                //                 << val.second.uy_/2000.0 << endl;
-				
-				wire_value wireValue = val.second;
-				nets.insert(wireValue.net_->getName());
-				
-				if((wireValue.lx_ < lx) || (wireValue.ly_ < ly) || (wireValue.ux_ > ux) || (wireValue.uy_ > uy))
-					globalNets.insert(wireValue.net_->getName());
-            }
-			set_difference(nets.begin(), nets.end(), globalNets.begin(), globalNets.end(), inserter(localNets, localNets.end()));
-    		
-			//cout << "total" << endl;
-			//for(auto net : nets) cout << net << " ";
-			//cout << endl;
-			//cout << "global" << endl;
-			//for(auto net : globalNets) cout << net << " ";
-			//cout << endl;
-			//cout << "local" << endl;
-			//for(auto net : localNets) cout << net << " ";
-			//cout << endl;
-
-            for(pair<box, via_value>& val : foundVias) {
-                viaValues.push_back(val.second);
-                //cout << "via: " << val.second.lx_/2000.0 << " " 
-                //                << val.second.ly_/2000.0 << " " 
-                //                << val.second.ux_/2000.0 << " " 
-                //                << val.second.uy_/2000.0 << endl;
-
-            }
-
-            for(pair<box, pin_value>& val : foundPins){
-                pinValues.push_back(val.second);
-                //cout << "pin: " << val.second.name_ << " " 
-                //                << val.second.x_/2000.0 << " " 
-                //                << val.second.y_/2000.0 << endl;
-            
-            }
-			
-			 for(pair<box, rudy_value>& val : foundRudys){
-                rudyValues.push_back(val.second);
-				//cout << "rudy: " << val.second.net_->getName() << "\t" 
-                //                 << val.second.lx_/2000.0 << " " 
-                //                 << val.second.ly_/2000.0 << " " 
-                //                 << val.second.ux_/2000.0 << " " 
-                //                 << val.second.uy_/2000.0 << endl;
-            }
-
-            binGraph->addVertex(lx, ly, ux, uy, maxLayer, insts, 
-                    wireValues, viaValues, pinValues, rudyValues,
-					nets, localNets, globalNets); 
-        }
-    }
-
-    //binGraph->initEdges();
-    //binGraph->saveFile(fileName_.c_str());
-    // temporal block
-    cout << "Done" << endl;
-}
-
-vector<string> splitAsTokens(string str, string delim){
-    vector<string> _tokens;
-    size_t start, end=0;
-    while(end < str.size()){
-        start = end;
-        while(start < str.size() && (delim.find(str[start]) != string::npos)){
-            start++;
-        }
-        end = start;
-        while(end < str.size() && (delim.find(str[end]) == string::npos)){
-            end++;
-        }
-        if(end-start != 0){
-            _tokens.push_back(string(str, start, end-start));
-        }
-    }
-    return _tokens;
-}
-
-void
-ClipGraphExtractor::labelingBinGraph(const char* invRoutingReport) {
-    drc_RTree* drc_rTree = (drc_RTree*) drc_rTree_;
-
-    ifstream inFile(invRoutingReport);
- 
-    const std::regex colon(":");
-    string line;
-
-	dbBlock* block = db_->getChip()->getBlock();
-    int dbUnitMicron = block->getDbUnitsPerMicron();
-
-	int lineNum = 0;
-
-	string type = "0";
-	string detailed = "0";
-	string toNet = "0";
-	string fromNet = "0";
-	string cell = "0";
-	int layer = 0;
-
-    while(getline(inFile, line)) {
-		lineNum++;
-		if(lineNum < 10) continue;
-
-        std::smatch match;
-        if(regex_search(line, match, colon)) {
-			string head = match.prefix();
-            string tail = match.suffix();
-            
-			if(head != "Bounds "){
-				if(head == "  Total Violations ") continue;
-
-				type = head;
-
-				string delim = "()";
-				vector<string> tokens = splitAsTokens(tail, delim);
-				ZASSERT(tokens.size() == 4);
-				
-				for(int i = 0; i < tokens.size(); i++)
-					tokens[i] = tokens[i].substr(1, tokens[i].size()-2);
-
-				detailed = tokens[1];
-				layer = atoi(tokens[3].substr(1).c_str());
-				
-				delim = "&";
-				tokens = splitAsTokens(tokens[2], delim);
-				ZASSERT(tokens.size() < 3);
-
-				if(tokens[0].substr(0, 19) == "Regular Wire of Net")
-					toNet = tokens[0].substr(20, tokens[0].size()-21);
-				
-				else if(tokens[0].substr(0, 11) == "Pin of Cell")
-					cell = tokens[0].substr(12, tokens[0].size()-12);
-
-				else cout << "outlier: " << line << endl;
-
-				if(tokens.size() > 1){
-					tokens[1] = tokens[1].substr(1, tokens[1].size()-2);
-					if(tokens[1].substr(0, 19) == "Regular Wire of Net")
-						fromNet = tokens[1].substr(20, tokens[1].size()-20);
-				}
-			}
-
-			else{
-				string delim = " (),";
-				vector<string> tokens = splitAsTokens(tail, delim);
-				if(tokens.size() != 4) {
-				
-				}
-
-				int lx = dbUnitMicron * atof(tokens[0].c_str());
-				int ly = dbUnitMicron * atof(tokens[1].c_str());
-				int ux = dbUnitMicron * atof(tokens[2].c_str());
-				int uy = dbUnitMicron * atof(tokens[3].c_str());
-		
-				//cout << type << " " << detailed << " " << toNet << " " << fromNet << " " << cell << " " << layer << " ";
-				//cout << "(" << lx << " " << ly << ") (" << ux << " " << uy << ")" << endl;
-				
-				box b (point(lx, ly), point(ux, uy));
-				drc_value d;
-				d.type_ = type;
-				d.detailed_ = detailed;
-				d.toNet_ = toNet;
-				d.fromNet_ = fromNet;
-				d.cell_ = cell;
-				d.layer_ = layer;
-				d.netDrvType_ = 0;
-
-				d.setBox((int)lx, (int)ly, (int)ux, (int)uy);
-				drc_rTree->insert( make_pair(b, d) );
-				
-				type = "0";
-				detailed = "0";
-				toNet = "0";
-				fromNet = "0";
-				cell = "0";
-				layer = 0;
-        	}
-		}
-    }
-
-    bingraph::Graph* binGraph = (bingraph::Graph*)binGraph_;
-    for(bingraph::Vertex* vert : binGraph->getVertices()) {
-        int lx = vert->getLx();
-        int ux = vert->getUx();
-        int ly = vert->getLy();
-        int uy = vert->getUy();
-
-        box queryBox( point(lx, ly), point(ux, uy) );
-        vector< pair<box, drc_value> > foundDrcs;
-        
-		drc_rTree->query(bgi::intersects(queryBox), 
-				std::back_inserter(foundDrcs));
-
-		// To distinguish net type(local or global) and add drc value
-		set<string> localNets = vert->getLocalNetValues();
-		
-		for(pair<box, drc_value>& val : foundDrcs) {
-			if(localNets.find(val.second.toNet_) != localNets.end()){ // toNet is in local nets.
-				if(localNets.find(val.second.fromNet_) != localNets.end() || (val.second.fromNet_ == "0")){
-					val.second.netDrvType_ = 1; // Both nets are local.
-					//cout << "1: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
-				} else {
-					val.second.netDrvType_ = 2; // Either net is local.
-					//cout << "2: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
-				}
-			} else {
-				if(localNets.find(val.second.fromNet_) != localNets.end()){
-					val.second.netDrvType_ = 2; // Either net is local.
-					//cout << "2: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
-				} else {
-					val.second.netDrvType_ = 3; // Either net is local.
-					//cout << "3: " << val.second.toNet_ << ", " << val.second.fromNet_ << endl;
-				}
-			}
-			vert->addDrcValue(val.second);
-		}
-		//cout << endl;
-        
-		int label = foundDrcs.size() > 0 ? 1 : 0;
-        vert->setLabel(label);
-    }
-}
-
-
-void
-ClipGraphExtractor::saveBinGraph() {
-    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;   
-    binGraph->saveFile(prefix_.c_str());
-}
-
-void
-ClipGraphExtractor::showCongestionMap() {
-    bingraph::Graph* binGraph = (bingraph::Graph*) binGraph_;   
-    binGraph->showCongestion();
-}
-
 
 
 void
@@ -718,6 +520,17 @@ void
 ClipGraphExtractor::setSta(sta::dbSta* sta) {
   sta_ = sta;
 }
+
+
+void ClipGraphExtractor::setGcellSize(int numRows) {
+    numRows_ = numRows;
+}
+
+void ClipGraphExtractor::setMaxRouteLayer(int maxRouteLayer) {
+    maxRouteLayer_ = maxRouteLayer;
+}
+
+
 
 void
 ClipGraphExtractor::setGraphModel(const char* graphModel) {
@@ -764,3 +577,39 @@ ClipGraphExtractor::setEdgeWeightModel( const char* edgeWeightModel ) {
 }
 
 }
+
+
+  //inst_RTree* inst_rTree = (inst_RTree*) inst_rTree_;
+    //// Print worst slack
+    //unordered_map<dbInst*, float> slack;
+
+
+        //for(dbInst* inst : block->getInsts()) {
+
+    //    for(dbITerm* iterm : inst->getITerms()) {
+
+    //        if(iterm->getIoType() == dbSigType::POWER ||
+    //                iterm->getIoType() == dbSigType::GROUND)
+    //            continue;
+
+    //        uint32_t vertexId = iterm->staVertexId();
+    //        sta::Vertex* vertex = graph->vertex(vertexId);
+    //        sta::Slack maxSlack = sta_->vertexSlack(vertex, sta::MinMax::max());
+    //        sta::Slack minSlack = sta_->vertexSlack(vertex, sta::MinMax::min());
+
+    //        if(inst->getName() == "f_permutation__out_reg_902_") {
+    //            cout << iterm->getMTerm()->getName() << " " <<  maxSlack << " " << minSlack << endl;
+    //        }
+    //    }
+    //}
+
+    //cout << "Done" << endl;
+
+
+    //for(dbNet* net : block->getNets()) {
+    //    
+    //    for(dbITerm* iterm : net->getITerms()) {
+    //        uint32_t vertexId = iterm->staVertexId();
+    //        //cout << iterm->getName() << " " << vertexId << endl;
+    //    }
+    //}

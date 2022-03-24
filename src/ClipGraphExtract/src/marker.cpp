@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 using namespace odb;
 using namespace std;

@@ -3,17 +3,19 @@
 #include <iostream>
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 using namespace std;
 using namespace odb;
 
-Gcell::Gcell() :
-    numInstances_(0), numTerminals_(0), 
-    //numLocalNets_(0), numGlobalNets_(0), 
-    numLayers_(1),
+Gcell::Gcell(int col, int row) :
+    col_(col), row_(row),
+    numInsts_(0), numTerms_(0), 
+    //numLNets_(0), numGNets_(0), 
+    numLayers_(1), graph_(nullptr),
     totalCellArea_(0), totalPinArea_(0),
-    cellDensity_(0), pinDensity_(0), RUDY_(0) {}
+    cellUtil_(0), pinUtil_(0), RUDY_(0),
+    lNetRUDY_(0), gNetRUDY_(0), sNetRUDY_(0) {}
 
 
 void Gcell::setBoundary(Rect rect) { 
@@ -21,19 +23,28 @@ void Gcell::setBoundary(Rect rect) {
 }
 
 void Gcell::setTrackSupply(int tSup) {
-    //rmEGR_.setTrackSupply((uint)tSup);
-    rmPL_.setTrackSupply((uint)tSup);
-    rmDR_.setTrackSupply((uint)tSup);
+    //rmEGR_.setTrackSupply((int)tSup);
+    rmPL_.setTrackSupply((int)tSup);
+    rmDR_.setTrackSupply((int)tSup);
 }
 
 void Gcell::setWireCapacity(int wCap) {
-    //rmEGR_.setWireCapacity((uint)wCap);
-    rmPL_.setWireCapacity((uint)wCap);
-    rmDR_.setWireCapacity((uint)wCap);
+    //rmEGR_.setWireCapacity((int)wCap);
+    rmPL_.setWireCapacity((int)wCap);
+    rmDR_.setWireCapacity((int)wCap);
 }
 
 void Gcell::setNumLayers(int nLyr) {
     numLayers_ = nLyr;
+}
+
+
+set<dbInst*> Gcell::getInstSet() {
+    return set<dbInst*>(insts_.begin(), insts_.end());
+}
+
+void Gcell::setGraph(Graph* graph) {
+    graph_ = graph;
 }
 
 
@@ -46,72 +57,93 @@ uint Gcell::getArea() {
     return bbox_.area();    
 }
 
-double Gcell::getCellDensity() {
-    return cellDensity_;
+double Gcell::getCellUtil() {
+    return cellUtil_;
 }
 
-double Gcell::getPinDensity() {
-    return pinDensity_;
+double Gcell::getPinUtil() {
+    return pinUtil_;
 }
 
 double Gcell::getRUDY() {
     return RUDY_;
 }
 
-uint Gcell::getTrackDemand(Orient orient, ModelType type) {
+double Gcell::getLNetRUDY() {
+    return lNetRUDY_;
+}
+
+double Gcell::getGNetRUDY() {
+    return gNetRUDY_;
+}
+
+double Gcell::getSNetRUDY() {
+    return sNetRUDY_;
+}
+
+int Gcell::getCol() {
+    return col_;
+}
+
+int Gcell::getRow() {
+    return row_;
+}
+
+
+int Gcell::getTrackDemand(Orient orient, ModelType type) {
     switch(type) {
-        case ModelType::DR: 
+        case ModelType::ROUTE: 
             return rmDR_.getTrackDemand(orient);
         //case ModelType::EGR:
         //    return rmEGR_.getTrackDemand(orient);
-        case ModelType::PL:
+        case ModelType::TREE:
             return rmPL_.getTrackDemand(orient);
         default:
             return 0; 
     }
 }
 
-uint Gcell::getTrackSupply(Orient orient, ModelType type) {
+int Gcell::getTrackSupply(Orient orient, ModelType type) {
     switch(type) {
-        case ModelType::DR: 
+        case ModelType::ROUTE: 
             return rmDR_.getTrackSupply(orient);
         //case ModelType::EGR:
         //    return rmEGR_.getTrackSupply(orient);
-        case ModelType::PL:
+        case ModelType::TREE:
             return rmPL_.getTrackSupply(orient);
         default:
             return 0; 
     }
 }
 
-uint Gcell::getWireCapacity(ModelType type) {
+int Gcell::getWireCapacity(ModelType type) {
     switch(type) {
-        case ModelType::DR: 
+        case ModelType::ROUTE: 
             return rmDR_.getWireCapacity();
         //case ModelType::EGR:
         //    return rmEGR_.getWireCapacity();
-        case ModelType::PL:
+        case ModelType::TREE:
             return rmPL_.getWireCapacity();
         default:
             return 0; 
     }
 }
 
-uint Gcell::getNumInstances() {
-    return numInstances_;
+int Gcell::getNumInsts() {
+    return numInsts_;
 }
 
-uint Gcell::getNumTerminals() {
-    return numTerminals_;
+int Gcell::getNumTerms() {
+    return numTerms_;
 }
 
-uint Gcell::getNumNets() {
-    return (uint)(rsmts_.size());
+int Gcell::getNumNets() {
+    return (int)(rsmts_.size());
 }
 
 
-uint Gcell::getNumLocalNets() {
-    uint count =0;
+int Gcell::getNumLNets() {
+    int count =0;
     for(RSMT* rsmt : rsmts_) {
         if(rsmt->isLocalNet())
             count++;
@@ -120,17 +152,17 @@ uint Gcell::getNumLocalNets() {
     return count;
 }
 
-uint Gcell::getNumGlobalNets() {
-    uint count = getNumNets() - getNumLocalNets();
+int Gcell::getNumGNets() {
+    int count = getNumNets() - getNumLNets();
     return count;
 
 }
 
-uint Gcell::getNumMarkers() {
-    return (uint)(markers_.size());
+int Gcell::getNumMarkers() {
+    return (int)(markers_.size());
 }
 
-void Gcell::getNumMarkers(uint &lnet, uint &gnet, uint &inst) {
+void Gcell::getNumMarkers(int &lnet, int &gnet, int &inst) {
     lnet =0;
     gnet =0;
     inst =0;
@@ -167,31 +199,31 @@ void Gcell::getNumMarkers(uint &lnet, uint &gnet, uint &inst) {
 
 
 
-double Gcell::getWireDensity(ModelType type) {
+double Gcell::getWireUtil(ModelType type) {
      switch(type) {
-        case ModelType::DR: 
-            return rmDR_.getWireDensity();
+        case ModelType::ROUTE: 
+            return rmDR_.getWireUtil();
         //case ModelType::EGR:
-        //    return rmEGR_.getWireDensity();
-        case ModelType::PL:
-            return rmPL_.getWireDensity();
+        //    return rmEGR_.getWireUtil();
+        case ModelType::TREE:
+            return rmPL_.getWireUtil();
         default:
             return 0; 
     }   
 }
 
-double Gcell::getLNetDensity(ModelType type) {
-    uint wireCap = 0;
-    uint wireLen = 0;
+double Gcell::getLNetUtil(ModelType type) {
+    int wireCap = 0;
+    int wireLen = 0;
     
-    if(type == ModelType::PL) {
+    if(type == ModelType::TREE) {
         wireCap = rmPL_.getWireCapacity();
         for(RSMT* rsmt : rsmts_) {
             if(rsmt->isLocalNet()) {
                 wireLen += rsmt->getWireLengthRSMT();
             }
         }
-    } else if(type == ModelType::DR) {
+    } else if(type == ModelType::ROUTE) {
         wireCap = rmDR_.getWireCapacity();
         for(RSMT* rsmt : rsmts_) {
             if(rsmt->isLocalNet()) {
@@ -211,52 +243,92 @@ double Gcell::getLNetDensity(ModelType type) {
 
 }
 
-double Gcell::getGNetDensity(ModelType type) {
-    //uint wireCap = rmPL_.getWireCapacity();
-    //uint wireLen = rmPL_.getWireLength();
-    return getWireDensity(type) - getLNetDensity(type);
+double Gcell::getGNetUtil(ModelType type) {
+    //int wireCap = rmPL_.getWireCapacity();
+    //int wireLen = rmPL_.getWireLength();
+    return getWireUtil(type) - getLNetUtil(type);
 }
 
 
 
 
-double Gcell::getChannelDensity(ModelType type) {
-    double chanDenL = getChannelDensity(Orient::LEFT, type);
-    double chanDenU = getChannelDensity(Orient::TOP, type);
-    double chanDenR = getChannelDensity(Orient::RIGHT, type);
-    double chanDenB = getChannelDensity(Orient::BOTTOM, type);
+double Gcell::getChanUtil(ModelType type) {
+    double chanDenL = getChanUtil(Orient::LEFT, type);
+    double chanDenU = getChanUtil(Orient::TOP, type);
+    double chanDenR = getChanUtil(Orient::RIGHT, type);
+    double chanDenB = getChanUtil(Orient::BOTTOM, type);
     double chanDen = (chanDenL + chanDenU + chanDenR + chanDenB) / 4;
     return chanDen;
 }
-double Gcell::getChannelDensity(Orient orient, ModelType type) {
+double Gcell::getChanUtil(Orient orient, ModelType type) {
     switch(type) {
-        case ModelType::DR: 
-            return rmDR_.getChannelDensity(orient);
+        case ModelType::ROUTE: 
+            return rmDR_.getChanUtil(orient);
         //case ModelType::EGR:
-        //    return rmEGR_.getChannelDensity(orient);
-        case ModelType::PL:
-            return rmPL_.getChannelDensity(orient);
+        //    return rmEGR_.getChanUtil(orient);
+        case ModelType::TREE:
+            return rmPL_.getChanUtil(orient);
         default:
             return 0.0; 
     }
 }
 
+double Gcell::getChanUtilV(ModelType type) {
+    double chanDenU = getChanUtil(Orient::TOP, type);
+    double chanDenB = getChanUtil(Orient::BOTTOM, type);
+    double chanDen = (chanDenU + chanDenB) / 2;
+    return chanDen;
+}
+
+
+double Gcell::getChanUtilH(ModelType type) {
+    double chanDenL = getChanUtil(Orient::LEFT, type);
+    double chanDenR = getChanUtil(Orient::RIGHT, type);
+    double chanDen = (chanDenL + chanDenR) / 2;
+    return chanDen;
+}
+
+double Gcell::getAvgTerms() {
+    if(getNumNets() > 0) 
+        return 1.0* getNumTerms() / getNumNets();
+    else
+        return 0.0;
+}
+
+double Gcell::getBufferUtil() {
+    // TODO
+    return 0.0;
+}
+
+
+double Gcell::getTNS() {
+    // TODO
+    return 0.0;
+}
+
+double Gcell::getClkRatio() {
+    // TODO
+    return 0.0;
+}
+
+void Gcell::saveGraph(string dirPath, string fileName) {
+    string vertFeaFile = dirPath + "/" + fileName + ".x";
+    string edgeIdxFile = dirPath + "/" + fileName + ".edge_index";
+    string edgeAttFile = dirPath + "/" + fileName + ".edge_attr";
+    graph_->saveNodeFeaFile(vertFeaFile);
+    graph_->saveEdgeIdxFile(edgeIdxFile);
+    graph_->saveEdgeAttFile(edgeAttFile);
+}
 
 
 
 
 void
-Gcell::extractFeaturePL(BoxRtree<odb::dbInst*> &rtree) {
+Gcell::extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree) {
     vector<pair<bgBox, dbInst*>> queryResults;
 
-    //bbox_.print();
-   
-    //bgBox qBox = getQueryBox();
-    //cout << bg::get<0,0>(qBox) << " " << bg::get<0,1>(qBox) << " " << bg::get<1,0>(qBox) << " " << bg::get<1,1>(qBox) << endl;
-
-
     // Query
-    rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
+    rtree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
 
     //DEBUG
 
@@ -322,7 +394,7 @@ Gcell::extractFeaturePL(BoxRtree<odb::dbInst*> &rtree) {
             } else {
                 // connected pin
             }
-            numTerminals_++;
+            numTerms_++;
             totalPinArea_ += pinArea;
         }
 
@@ -330,24 +402,24 @@ Gcell::extractFeaturePL(BoxRtree<odb::dbInst*> &rtree) {
         //if(totalPinArea_ > getArea()) {
         //    cout << "HERE" << endl;
         //}
-        numInstances_++;
+        numInsts_++;
         totalCellArea_ += cellArea; 
     }
     //
-    cellDensity_ = 1.0* totalCellArea_ / getArea();
-    pinDensity_ = 1.0 * totalPinArea_ / getArea();
+    cellUtil_ = 1.0* totalCellArea_ / getArea();
+    pinUtil_ = 1.0 * totalPinArea_ / getArea();
 
     //cout << "extractPL done" << endl;
 }
 
 
 void
-Gcell::extractFeatureDR(SegRtree<odb::dbNet*> &rtree) {
+Gcell::extractRouteFeature(SegRtree<odb::dbNet*> *rtree) {
 
     vector<pair<bgSeg, dbNet*>> queryResults;
 
     // Query
-    rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
+    rtree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
 
     bgSeg lb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMin(), bbox_.yMax()));
     bgSeg rb(bgPoint(bbox_.xMax(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -383,7 +455,7 @@ Gcell::extractFeatureDR(SegRtree<odb::dbNet*> &rtree) {
             x1 = min(x1, bbox_.xMax());
             y1 = min(y1, bbox_.yMax());
             // intersection wirelength
-            uint wl = (x1-x0) + (y1-y0);
+            int wl = (x1-x0) + (y1-y0);
             rmDR_.addWireLength(wl);
 
         } catch(boost::numeric::negative_overflow &e) {
@@ -398,12 +470,12 @@ Gcell::extractFeatureDR(SegRtree<odb::dbNet*> &rtree) {
 
 
 void
-Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
+Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
     //cout << "extract feature rsmt start" << endl;
     vector<pair<bgSeg, RSMT*>> queryResults;
 
     // Query
-    rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
+    rtree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
     bgSeg lb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMin(), bbox_.yMax()));
     bgSeg rb(bgPoint(bbox_.xMax(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg tb(bgPoint(bbox_.xMin(), bbox_.yMax()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -412,7 +484,7 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
 	//cout << bbox_.xMin() << " " << bbox_.yMin() << " " << bbox_.xMax() << " " << bbox_.yMax() << endl;
    
 	set<RSMT*> RSMTs;
-    uint wirelength=0;
+    int wirelength=0;
     for(auto &val : queryResults) {
         bgSeg wire_seg = val.first;
         RSMT* myRSMT = val.second;
@@ -440,7 +512,7 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
             x1 = min(x1, bbox_.xMax());
             y1 = min(y1, bbox_.yMax());
             // intersection wirelength
-            uint wl = (x1-x0) + (y1-y0);
+            int wl = (x1-x0) + (y1-y0);
             rmPL_.addWireLength(wl);
             RSMTs.insert(myRSMT);
 
@@ -450,8 +522,6 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         } catch(boost::numeric::positive_overflow &e) {
             cout << e.what() << endl;
         }
-
-
     }
 
 
@@ -462,26 +532,48 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
         // update RUDY
         odb::Rect r1 = bbox_;
         odb::Rect r2 = myRSMT->getBBox();
-        uint area1 = r2.intersect(r1).area();
-        uint area2 = r1.area();
-        double dn = myRSMT->getWireUniformDensity();
+        int area1 = r2.intersect(r1).area();
+        int area2 = r1.area();
+        double dn = myRSMT->getWireUniformUtil();
         double R = 1.0* area1 / area2;
         //double R = 1.0 * r2.intersect(r1).area() / r1.area();
         double partialRUDY = dn * R;   
-       
-        //cout << "   - "<< myRSMT->getNet()->getName() << " RUDY = " << partialRUDY << " (" << dn << " " << R << ")" << endl;
+      
+
+        if(dn < 0) {
+
+        cout << "   - "<< myRSMT->getNet()->getName() << " RUDY = " << partialRUDY << " (" << dn << " " << R << ")" << endl;
+        exit(0);
+        }
+
+
         RUDY_ += partialRUDY;
 
         //
         rsmts_.push_back(myRSMT);
+
+        if(myRSMT->getNet()->isSpecial()) {
+            sNetRUDY_ += partialRUDY;
+        } else {
+            if(myRSMT->isLocalNet()) {
+                lNetRUDY_ += partialRUDY;
+            } else {
+                gNetRUDY_ += partialRUDY;
+            }
+        }
+
+
         //if(myRSMT->isLocalNet())
-        //    numLocalNets_++;
+        //    numLNets_++;
         //else
-        //    numGlobalNets_++;
+        //    numGNets_++;
 
     }
 
-    RUDY_ = RUDY_ / numLayers_;
+    RUDY_ /=  numLayers_;
+    lNetRUDY_ /= lNetRUDY_;
+    gNetRUDY_ /= gNetRUDY_;
+    sNetRUDY_ /= gNetRUDY_;
     //cout << "extract feature rsmt done" << endl;
 }
 
@@ -493,43 +585,43 @@ Gcell::extractFeatureRSMT(SegRtree<RSMT*> &rtree) {
 
 void Gcell::print() {
 
-    uint lnet, gnet, inst;
+    int lnet, gnet, inst;
     getNumMarkers(lnet, gnet, inst);
 
     cout << "GCELL (" << bbox_.xMin() << " " << bbox_.yMin() << ") (" << bbox_.xMax() << " " << bbox_.yMax() << ")" << endl;
-    cout << "   - CellDen   : " << getCellDensity() << endl;
-    cout << "   - PinDen    : " << getPinDensity() << endl;
-    cout << "   - #Insts    : " << getNumInstances() << endl;
-    cout << "   - #Terms    : " << getNumTerminals() << endl;
-    cout << "   - #GNets    : " << getNumGlobalNets() << endl;
-    cout << "   - #LNets    : " << getNumLocalNets() << endl;
+    cout << "   - CellDen   : " << getCellUtil() << endl;
+    cout << "   - PinDen    : " << getPinUtil() << endl;
+    cout << "   - #Insts    : " << getNumInsts() << endl;
+    cout << "   - #Terms    : " << getNumTerms() << endl;
+    cout << "   - #GNets    : " << getNumGNets() << endl;
+    cout << "   - #LNets    : " << getNumLNets() << endl;
     cout << "   - RUDY      : " << getRUDY() << endl;
     cout << "   Measured using RSMT " << endl;
-    cout << "   - LNetDen   : " << getLNetDensity(ModelType::PL) << endl;
-    cout << "   - GNetDen   : " << getGNetDensity(ModelType::PL) << endl;
-    cout << "   - WireDen   : " << getWireDensity(ModelType::PL) 
-         << "(" << getWireCapacity(ModelType::PL) << ")" <<  endl;
-    cout << "   - ChaDen (u): " << getChannelDensity(Orient::TOP, ModelType::PL) 
-         << " (" << getTrackDemand(Orient::TOP, ModelType::PL) << " " << getTrackSupply(Orient::TOP, ModelType::PL) << ")" << endl;
-    cout << "   - ChaDen (r): " << getChannelDensity(Orient::RIGHT, ModelType::PL)
-         << " (" << getTrackDemand(Orient::RIGHT, ModelType::PL) << " " << getTrackSupply(Orient::RIGHT, ModelType::PL) << ")" << endl;
-    cout << "   - ChaDen (b): " << getChannelDensity(Orient::BOTTOM, ModelType::PL)
-         << " (" << getTrackDemand(Orient::BOTTOM, ModelType::PL) << " " << getTrackSupply(Orient::BOTTOM, ModelType::PL) << ")" << endl;
-    cout << "   - ChaDen (l): " << getChannelDensity(Orient::LEFT, ModelType::PL) 
-         << " (" << getTrackDemand(Orient::LEFT, ModelType::PL) << " " << getTrackSupply(Orient::LEFT, ModelType::PL) << ")" << endl;
+    cout << "   - LNetDen   : " << getLNetUtil(ModelType::TREE) << endl;
+    cout << "   - GNetDen   : " << getGNetUtil(ModelType::TREE) << endl;
+    cout << "   - WireDen   : " << getWireUtil(ModelType::TREE) 
+         << "(" << getWireCapacity(ModelType::TREE) << ")" <<  endl;
+    cout << "   - ChaDen (u): " << getChanUtil(Orient::TOP, ModelType::TREE) 
+         << " (" << getTrackDemand(Orient::TOP, ModelType::TREE) << " " << getTrackSupply(Orient::TOP, ModelType::TREE) << ")" << endl;
+    cout << "   - ChaDen (r): " << getChanUtil(Orient::RIGHT, ModelType::TREE)
+         << " (" << getTrackDemand(Orient::RIGHT, ModelType::TREE) << " " << getTrackSupply(Orient::RIGHT, ModelType::TREE) << ")" << endl;
+    cout << "   - ChaDen (b): " << getChanUtil(Orient::BOTTOM, ModelType::TREE)
+         << " (" << getTrackDemand(Orient::BOTTOM, ModelType::TREE) << " " << getTrackSupply(Orient::BOTTOM, ModelType::TREE) << ")" << endl;
+    cout << "   - ChaDen (l): " << getChanUtil(Orient::LEFT, ModelType::TREE) 
+         << " (" << getTrackDemand(Orient::LEFT, ModelType::TREE) << " " << getTrackSupply(Orient::LEFT, ModelType::TREE) << ")" << endl;
      cout << "   Measured using DR " << endl;
-    cout << "   - LNetDen   : " << getLNetDensity(ModelType::DR) << endl;
-    cout << "   - GNetDen   : " << getGNetDensity(ModelType::DR) << endl;
-    cout << "   - WireDen   : " << getWireDensity(ModelType::DR) 
-         << "(" << getWireCapacity(ModelType::DR) << ")" <<  endl;
-    cout << "   - ChaDen (u): " << getChannelDensity(Orient::TOP, ModelType::DR) 
-         << " (" << getTrackDemand(Orient::TOP, ModelType::DR) << " " << getTrackSupply(Orient::TOP, ModelType::DR) << ")" << endl;
-    cout << "   - ChaDen (r): " << getChannelDensity(Orient::RIGHT, ModelType::DR)
-         << " (" << getTrackDemand(Orient::RIGHT, ModelType::DR) << " " << getTrackSupply(Orient::RIGHT, ModelType::DR) << ")" << endl;
-    cout << "   - ChaDen (b): " << getChannelDensity(Orient::BOTTOM, ModelType::DR)
-         << " (" << getTrackDemand(Orient::BOTTOM, ModelType::DR) << " " << getTrackSupply(Orient::BOTTOM, ModelType::DR) << ")" << endl;
-    cout << "   - ChaDen (l): " << getChannelDensity(Orient::LEFT, ModelType::DR) 
-         << " (" << getTrackDemand(Orient::LEFT, ModelType::DR) << " " << getTrackSupply(Orient::LEFT, ModelType::DR) << ")" << endl;
+    cout << "   - LNetDen   : " << getLNetUtil(ModelType::ROUTE) << endl;
+    cout << "   - GNetDen   : " << getGNetUtil(ModelType::ROUTE) << endl;
+    cout << "   - WireDen   : " << getWireUtil(ModelType::ROUTE) 
+         << "(" << getWireCapacity(ModelType::ROUTE) << ")" <<  endl;
+    cout << "   - ChaDen (u): " << getChanUtil(Orient::TOP, ModelType::ROUTE) 
+         << " (" << getTrackDemand(Orient::TOP, ModelType::ROUTE) << " " << getTrackSupply(Orient::TOP, ModelType::ROUTE) << ")" << endl;
+    cout << "   - ChaDen (r): " << getChanUtil(Orient::RIGHT, ModelType::ROUTE)
+         << " (" << getTrackDemand(Orient::RIGHT, ModelType::ROUTE) << " " << getTrackSupply(Orient::RIGHT, ModelType::ROUTE) << ")" << endl;
+    cout << "   - ChaDen (b): " << getChanUtil(Orient::BOTTOM, ModelType::ROUTE)
+         << " (" << getTrackDemand(Orient::BOTTOM, ModelType::ROUTE) << " " << getTrackSupply(Orient::BOTTOM, ModelType::ROUTE) << ")" << endl;
+    cout << "   - ChaDen (l): " << getChanUtil(Orient::LEFT, ModelType::ROUTE) 
+         << " (" << getTrackDemand(Orient::LEFT, ModelType::ROUTE) << " " << getTrackSupply(Orient::LEFT, ModelType::ROUTE) << ")" << endl;
  
     cout << "   - #DRVs     : " << getNumMarkers() << endl;
     cout << "   -   due to local net = " << lnet << endl;

@@ -16,7 +16,7 @@
 
 using namespace std;
 using namespace odb;
-using namespace feature_extractor;
+using namespace ClipGraphExtract;
 using namespace ClipGraphExtract;
 
 vector<string> splitAsTokens(string str, string delim){
@@ -78,7 +78,7 @@ string parseLayerName(string substr) {
 
 
 
-void ClipGraphExtractor::readRoutingReport(const char* fileName) {
+void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 
     cout << "Start to read routing report (" << fileName << ")" << endl;
 
@@ -115,16 +115,17 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
     
 	Grid* grid = (Grid*)grid_;
 	
-	uint drvNum = 0;
+	int drvNum = 0;
 
 	while(getline(inFile, line)) {
         smatch matStr; 
         string str = line;
         smatch m;
 
+
 		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
-			
+
 			// Detect type and delete the corresponding part
             if(regex_search(str, m, typeRex)) {
                 //cout << "1" << str << endl;
@@ -306,6 +307,9 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 			//exit(0);
         }
     }
+
+    cout << "# of Markers : " <<  rtree.size() << endl;
+
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
@@ -318,7 +322,7 @@ void ClipGraphExtractor::readRoutingReport(const char* fileName) {
 
 
 
-namespace feature_extractor {
+namespace ClipGraphExtract {
 
 Marker* Grid::createMarker(int x1, int y1, int x2, int y2) {
     Marker* mark = new Marker();
@@ -373,7 +377,7 @@ void Grid::reportDRC() {
         type2count[mark->getType()]++;
     }
 
-    uint lnet, gnet, inst;
+    int lnet, gnet, inst;
 
 
 
