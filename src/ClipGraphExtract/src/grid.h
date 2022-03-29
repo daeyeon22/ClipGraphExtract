@@ -7,6 +7,7 @@
 #include "flute.h"
 #include "opendb/db.h"
 #include "opendb/geom.h"
+
 #include "instGraph.h"
 
 
@@ -21,6 +22,11 @@ template<typename A>
 using BoxRtree = bgi::rtree<std::pair<bgBox, A>, bgi::quadratic<6>>;
 template<typename A>
 using SegRtree = bgi::rtree<std::pair<bgSeg, A>, bgi::quadratic<6>>;
+
+namespace sta {
+    class dbSta;
+};
+
 
 namespace ClipGraphExtract {
 
@@ -158,7 +164,8 @@ class Gcell {
     double getChanUtilH(ModelType type);
     double getChanUtil(Orient orient, ModelType = ModelType::TREE);
     double getBufferUtil();
-    double getTNS();
+    double getTNS(sta::dbSta* db_sta);
+    double getWNS(sta::dbSta* db_sta);
     double getClkRatio();
 
 
@@ -282,16 +289,19 @@ class Grid {
     int numLayers_;
     int minWidth_;
 
-
+    sta::dbSta* sta_;
     odb::dbDatabase* db_;
     std::vector<Gcell*> gcells_;
     std::vector<RSMT*> rsmts_;
     // After read drc.rpt
     std::vector<Marker*> markers_;
    
+    
+    std::map<std::pair<int,int>, Gcell*> pos2gcell_;
     std::unordered_map<odb::dbNet*, RSMT*> net2rsmt_;
 
   public:
+    sta::dbSta* getSta() { return sta_; }
     odb::dbDatabase* getDb() { return db_; }
     odb::Rect getBoundary();
     std::vector<Gcell*> getGcells();
@@ -299,7 +309,8 @@ class Grid {
     Gcell* createGcell(int col, int row, int width, int height); //int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     Marker* createMarker(int x1, int y1, int x2, int y2);
-    
+   
+    Gcell* getGcell(int col, int row);
     
     RSMT* getRSMT(odb::dbNet* net);
 
@@ -308,6 +319,7 @@ class Grid {
     void init();
     void setWireMinWidth(int width);
     void setDb(odb::dbDatabase* db);
+    void setSta(sta::dbSta* sta);
     void setBoundary(odb::Rect rect);
     void setGcellWidth(int width);
     void setGcellHeight(int height);

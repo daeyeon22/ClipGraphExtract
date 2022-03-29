@@ -10,8 +10,6 @@ namespace ClipGraphExtract {
 using namespace std;
 using namespace odb;
 
-
-
 void ClipGraphExtractor::saveGraphs(const char* dirPath) {
     // TODO
     Grid* grid = (Grid*) grid_;
@@ -31,6 +29,11 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
     ofstream outFile;
     string attrFileName = string(dirPath) + "/GcellFeature.csv";
     outFile.open(attrFileName, std::ios_base::out);
+    int numCols=grid->getNumCols();
+    int numRows=grid->getNumRows();
+    int numGcells = numCols*numRows;
+
+
     outFile << "Col" << ","
             << "Row" << ","
             << "RelPosX" << ","
@@ -60,11 +63,8 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
             << "NumNets" << ","
             << "NumGNets" << ","
             << "NumLNets" << ","
-            << "ClkRatio" << endl;
-
-    int numCols = grid->getNumCols();
-    int numRows = grid->getNumRows();
-    int numGcells = numCols*numRows;
+            << "ClkRatio" << "," 
+            << "TNS" << endl;
 
     for(Gcell* tarGcell : grid->getGcells()) {
         outFile << tarGcell->getCol() << ","
@@ -96,11 +96,14 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
                 << tarGcell->getNumNets() << ","
                 << tarGcell->getNumGNets() << ","
                 << tarGcell->getNumLNets() << ","
-                << tarGcell->getClkRatio() << endl;
+                << tarGcell->getClkRatio() << ","
+                << tarGcell->getTNS(sta_) << endl;
     }
     outFile.close();
     cout << "End writing file." << endl;
 }
+
+
 
 void ClipGraphExtractor::saveLabels(const char* dirPath) {
     // TODO
@@ -146,9 +149,170 @@ void ClipGraphExtractor::saveLabels(const char* dirPath) {
                 << numGNetMarkers << ","
                 << numInstMarkers << ","
                 << tarGcell->getClkRatio() << ","
-                << tarGcell->getTNS() << endl;
+                << tarGcell->getTNS(sta_) << endl;
 
     }
+    outFile.close();
+    cout << "End writing file." << endl;
+}
+
+
+void writeHeader(ofstream& outFile, int numHops) {
+
+    vector<string> fieldId { 
+        "col", "row"
+    };
+    vector<string> fieldData {
+        "rel_pos_x", "rel_pos_y", "rel_area",
+        "cell_den" , "pin_den", 
+        "rudy", "lnet_rudy", "gnet_rudy", "snet_rudy", 
+        "wire_den_rsmt", "lnet_den_rsmt", "gnet_den_rsmt",
+        "chan_den_rsmt", "chan_den_v_rsmt", "chan_den_h_rsmt",
+        "wire_den_egr", "lnet_den_egr", "gnet_den_egr",
+        "chan_den_egr", "chan_den_v_egr", "chan_den_h_egr",
+        "avg_terms", "num_insts", "num_terms", "num_nets",
+        "num_gnets", "num_lnets", "clk_ratio", 
+        "wns", "tns"
+    };
+
+
+    
+    for(int i=0; i < fieldId.size(); i++) {
+        string fieldName = fieldId[i];
+        outFile << fieldName << ",";
+    }
+
+    for(int x=-numHops;x<=numHops;x++) {
+        for(int y=-numHops;y<=numHops;y++) {
+            string prefix = "";
+            if(y < 0)
+                prefix+="n"+to_string(y);
+            else if(y>0)
+                prefix+="s"+to_string(y);
+            if(x < 0)
+                prefix+="w"+to_string(x);
+            else if(x > 0)
+                prefix+="e"+to_string(x);
+            for(int i=0; i < fieldData.size(); i++) {
+                
+                string fieldName = (prefix=="")? fieldData[i] : prefix + "_" + fieldData[i];
+                outFile << fieldName;
+                
+                if(!(x==numHops && y==numHops && i==fieldData.size()-1))
+                        outFile << ",";
+            }
+        }
+    }
+  
+    outFile << endl;
+}
+
+
+void writeData(ofstream& outFile, Grid* tarGrid, int tarCol, int tarRow, int numHops) {
+
+    int numCols = tarGrid->getNumCols();
+    int numRows = tarGrid->getNumRows();
+    int numGcells = numCols*numRows;
+
+    outFile << tarCol << "," << tarRow << ",";
+
+
+    for(int dx=-numHops;dx<=numHops;dx++) {
+        for(int dy=-numHops;dy<=numHops;dy++) {
+            int col = tarCol + dx;
+            int row = tarRow + dy;
+            Gcell* tarGcell = tarGrid->getGcell(col, row);
+            if(tarGcell==NULL) {
+                outFile << 0 << "," // 1
+                    << 0 << "," // 2
+                    << 0 << "," // 3
+                    << 0 << "," // 4
+                    << 0 << "," // 5
+                    << 0 << "," // 6
+                    << 0 << "," // 7
+                    << 0 << "," // 8
+                    << 0 << "," // 9
+                    << 0 << "," // 10
+                    << 0 << "," // 11
+                    << 0 << "," // 12
+                    << 0 << "," // 13
+                    << 0 << "," // 14
+                    << 0 << "," // 15 
+                    << 0 << "," // 16
+                    << 0 << "," // 17
+                    << 0 << "," // 18
+                    << 0 << "," // 19
+                    << 0 << "," // 20
+                    << 0 << "," // 21
+                    << 0 << "," // 22
+                    << 0 << "," // 23
+                    << 0 << "," // 24
+                    << 0 << "," // 25
+                    << 0 << "," // 26
+                    << 0 << "," // 27
+                    << 0 << "," // 28
+                    << 0 << "," // 29
+                    << 0; // 30
+            } else {
+                outFile << 1.0 * tarGcell->getCol() / numCols << "," 
+                    << 1.0 * tarGcell->getRow() / numRows << ","
+                    << 1.0 / numGcells << ","
+                    << tarGcell->getCellUtil() << ","
+                    << tarGcell->getPinUtil() << ","
+                    << tarGcell->getRUDY() << ","
+                    << tarGcell->getLNetRUDY() << ","
+                    << tarGcell->getGNetRUDY() << ","
+                    << tarGcell->getSNetRUDY() << ","
+                    << tarGcell->getWireUtil(ModelType::TREE) << ","
+                    << tarGcell->getLNetUtil(ModelType::TREE) << ","
+                    << tarGcell->getGNetUtil(ModelType::TREE) << ","
+                    << tarGcell->getChanUtil(ModelType::TREE) << ","
+                    << tarGcell->getChanUtilV(ModelType::TREE) << ","
+                    << tarGcell->getChanUtilH(ModelType::TREE) << ","
+                    << tarGcell->getWireUtil(ModelType::ROUTE) << ","
+                    << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
+                    << tarGcell->getGNetUtil(ModelType::ROUTE) << ","
+                    << tarGcell->getChanUtil(ModelType::ROUTE) << ","
+                    << tarGcell->getChanUtilV(ModelType::ROUTE) << ","
+                    << tarGcell->getChanUtilH(ModelType::ROUTE) << ","
+                    << tarGcell->getAvgTerms() << ","
+                    << tarGcell->getNumInsts() << ","
+                    << tarGcell->getNumTerms() << ","
+                    << tarGcell->getNumNets() << ","
+                    << tarGcell->getNumGNets() << ","
+                    << tarGcell->getNumLNets() << ","
+                    << tarGcell->getClkRatio() << ","
+                    << tarGcell->getWNS(tarGrid->getSta()) << ","
+                    << tarGcell->getTNS(tarGrid->getSta()); 
+            }
+        
+            if(dx!=numHops || dy!=numHops)
+                outFile << ",";
+        }
+    }
+
+    outFile << endl;
+}
+
+void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
+
+    // TODO
+    Grid* grid = (Grid*) grid_;
+    ofstream outFile;
+    string fileName = "rows_" + to_string(numRows_) + "_hops_" + to_string(numHops) + ".csv";
+    string filePath = string(dirPath) + "/" + fileName;
+    outFile.open(filePath, std::ios_base::out);
+    writeHeader(outFile, numHops);
+    
+    int numCols=grid->getNumCols();
+    int numRows=grid->getNumRows();
+
+    for(int tarCol=0; tarCol<numCols;tarCol++) {
+        for(int tarRow=0; tarRow<numRows;tarRow++) {
+            writeData(outFile, grid, tarCol, tarRow, numHops);
+        }
+    }
+
     outFile.close();
     cout << "End writing file." << endl;
 }
