@@ -1,5 +1,12 @@
 #include "grid.h"
 #include "opendb/dbTransform.h"
+#include "sta/Sta.hh"
+#include "sta/Network.hh"
+#include "sta/DelayFloat.hh"
+#include "sta/Graph.hh"
+#include "db_sta/dbSta.hh"
+#include "db_sta/dbNetwork.hh"
+
 #include <iostream>
 
 
@@ -301,14 +308,62 @@ double Gcell::getBufferUtil() {
 }
 
 
-double Gcell::getTNS() {
+double Gcell::getTNS(sta::dbSta* db_sta) {
     // TODO
-    return 0.0;
+    sta::Graph* sta_graph = db_sta->ensureGraph();
+    double tns = 0;
+    for(dbInst* tarInst : insts_) {
+        for(dbITerm* tarITerm : tarInst->getITerms()) {
+            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
+            if(tarVertex == NULL)
+                continue;
+            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
+            double slkValue = (double)sta::delayAsFloat(slk);
+
+            if(slkValue < 0) {
+                tns += slkValue;
+            }
+        }
+    }
+    return tns;
 }
+
+double Gcell::getWNS(sta::dbSta* db_sta) {
+    sta::Graph* sta_graph = db_sta->ensureGraph();
+    double wns = 0;
+    for(dbInst* tarInst : insts_) {
+        for(dbITerm* tarITerm : tarInst->getITerms()) {
+            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
+            if(tarVertex == NULL)
+                continue;
+            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
+            double slkValue = (double)sta::delayAsFloat(slk);
+
+            if(slkValue < 0) {
+                wns = min(wns, slkValue);
+            }
+        }
+    }
+    return wns;
+}
+
+
 
 double Gcell::getClkRatio() {
     // TODO
-    return 0.0;
+    int numInsts = insts_.size();
+    if(numInsts>0) {
+        int numClked = 0;
+        for(dbInst* tarInst : insts_) {
+            dbMaster* tarMaster = tarInst->getMaster();
+            if(tarMaster->isSequential()) {
+                numClked++;
+            }
+        }
+        return 1.0 * numClked / numInsts;
+    } else {
+        return 0.0;
+    }
 }
 
 void Gcell::saveGraph(string dirPath, string fileName) {
@@ -571,9 +626,9 @@ Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
     }
 
     RUDY_ /=  numLayers_;
-    lNetRUDY_ /= lNetRUDY_;
-    gNetRUDY_ /= gNetRUDY_;
-    sNetRUDY_ /= gNetRUDY_;
+    lNetRUDY_ /= numLayers_;
+    gNetRUDY_ /= numLayers_;
+    sNetRUDY_ /= numLayers_;
     //cout << "extract feature rsmt done" << endl;
 }
 

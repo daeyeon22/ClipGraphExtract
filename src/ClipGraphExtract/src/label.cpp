@@ -299,7 +299,7 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 			if(stoi(parseDrv(m[0].str())) != drvNum){
 				cout << "The number of DRVs is different." << endl;
 				cout << "parseNum: " << parseDrv(m[0].str()) << " OriginalNum: " << drvNum << endl;
-				exit(0);
+                //exit(0);
 			}	
 		} else {
             //cout << "exception case!" << endl;

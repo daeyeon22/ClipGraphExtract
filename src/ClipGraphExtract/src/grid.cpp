@@ -82,10 +82,22 @@ Gcell* Grid::createGcell(int col, int row, int width, int height) {
     int y1 = height * row;
     int y2 = height * (row+1);
     
+    pair<int,int> pos(col,row);
     Gcell* gcell = new Gcell(col, row);
     gcell->setBoundary(Rect(x1,y1, x2,y2));
+    pos2gcell_.insert(make_pair(pos, gcell));
     gcells_.push_back(gcell);
     return gcell;
+}
+
+Gcell* Grid::getGcell(int col, int row) {
+    // TODO
+    //
+    pair<int,int> pos(col,row);
+    if(pos2gcell_.find(pos) == pos2gcell_.end())
+        return NULL;
+    else
+        return pos2gcell_[pos];
 }
 
 
@@ -148,6 +160,11 @@ void Grid::setWireMinWidth(int width) {
 void Grid::setDb(dbDatabase* db) {
     db_ = db;
 }
+
+void Grid::setSta(sta::dbSta* sta) {
+    sta_ = sta;
+}
+
 void Grid::setBoundary(odb::Rect rect) {
     bbox_ = rect;
 }

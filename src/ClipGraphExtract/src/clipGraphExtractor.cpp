@@ -238,6 +238,7 @@ void ClipGraphExtractor::initGrid() {
 
     // Initialize Gcell Grid
     grid->setDb(getDb());
+    grid->setSta(getSta());
     grid->setBoundary(blockArea);
     grid->setGcellWidth(gcellWidth);
     grid->setGcellHeight(gcellHeight);
@@ -300,7 +301,6 @@ void ClipGraphExtractor::initGrid() {
 
 void ClipGraphExtractor::initGraph() {
 
-    sta_->updateTiming(false);
     sta::dbNetwork* network = sta_->getDbNetwork();
     sta::Graph* graph = sta_->ensureGraph();
     Grid* grid = (Grid*)grid_;
@@ -471,6 +471,15 @@ void ClipGraphExtractor::initGraph() {
                 }
             }
         }
+    }
+
+
+
+    for(dbNet* tarNet : block->getNets()) {
+        if(tarNet->isBuffered()) {
+            cout << tarNet->getName() << " is buffered" << endl;
+        }
+
     }
 
 
