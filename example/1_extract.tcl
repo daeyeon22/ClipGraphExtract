@@ -13,11 +13,20 @@ set LABEL_HOME __LABEL_HOME__
 set GRAPH_HOME __GRAPH_HOME__
 set FEATURE_HOME __FEATURE_HOME__
 
+#################
+# OpenDB update #
+#################
 read_lef $LEF_PATH
 read_liberty $LIB_PATH
 read_def $DEF_PATH
+
 read_sdc $SDC_PATH
+
+
 read_spef $SPEF_PATH
+
+# 
+
 
 # report_checks
 # initialize gcell_grid and inst_graph
@@ -26,7 +35,7 @@ graph_extract_init \
     -max_route_layer $RMAX_LYR \
     -graph_model $GRAPH_MODEL \
     -edge_weight_model $EDGE_WEIGHT_MODEL
-
+graph_extract
 save_features -save_dir $FEATURE_HOME
 save_graphs -save_dir $GRAPH_HOME
 

@@ -29,6 +29,8 @@ enum ValueType {
   ROUTE_CHAN_DEN,
   ROUTE_LNET_DEN,
   ROUTE_GNET_DEN,
+  TNS,
+  WNS,
   MARKER_ALL,
   MARKER_LNET,
   MARKER_GNET,
@@ -39,6 +41,7 @@ double getValue(Gcell* gcell, ValueType valType) {
     int lnet;
     int gnet;
     int inst;
+    double tns, wns;
     switch(valType) {
         case ValueType::RUDY:
             return min(1.0, gcell->getRUDY());
@@ -73,49 +76,16 @@ double getValue(Gcell* gcell, ValueType valType) {
             return min(1.0, gcell->getLNetUtil(ModelType::ROUTE));
         case ValueType::ROUTE_GNET_DEN:
             return min(1.0, gcell->getGNetUtil(ModelType::ROUTE));
+        case ValueType::WNS: 
+            wns = fabs(1e+8 * gcell->getWNS());    
+            return min(1.0, wns);
+        case ValueType::TNS: 
+            tns = fabs(1e+6 * gcell->getTNS());
+            return min(1.0, tns);
         default:
             return 0.0;
     }
 }
-
-double getDenom(Grid* grid, ValueType valType) {
-    switch(valType) {
-        case ValueType::RUDY:
-            return grid->getMaxRUDY();
-        case ValueType::CELL_DEN:
-            return 1.0;
-        case ValueType::PIN_DEN:
-            return 1.0;
-        case ValueType::MARKER_ALL:
-            return 1.0;
-        case ValueType::MARKER_LNET:
-            return 1.0;
-        case ValueType::MARKER_GNET:
-            return 1.0;
-        case ValueType::MARKER_INST:
-            return 1.0;
-        case ValueType::RSMT_WIRE_DEN:
-            return 1.0;
-        case ValueType::RSMT_CHAN_DEN:
-            return 1.0;
-        case ValueType::RSMT_LNET_DEN:
-            return 1.0;
-        case ValueType::RSMT_GNET_DEN:
-            return 1.0;
-        case ValueType::ROUTE_WIRE_DEN:
-            return 1.0;
-        case ValueType::ROUTE_CHAN_DEN:
-            return 1.0;
-        case ValueType::ROUTE_LNET_DEN:
-            return 1.0;
-        case ValueType::ROUTE_GNET_DEN:
-            return 1.0;
-        default:
-            return 1.0;
-    }
-}
-
-
 
 void drawGcell(CImgObj* img, Gcell* gcell, Point origin, double scale, double opacity, double value) {
     int x1 = gcell->getBBox().xMin();
@@ -135,8 +105,7 @@ void drawGcell(CImgObj* img, Gcell* gcell, Point origin, double scale, double op
 
 
 
-void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) {
-
+void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath, string prefix) {
     // img scaling factor
     float sf = 0.001;
     int imgWidth = (int) ( sf * grid->getBoundary().dx() );
@@ -147,10 +116,7 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
     Point origin = grid->getBoundary().ll();
     float opacity = 1.0;
     CImgObj img(imgWidth, imgHeight, imgDepth, imgChannel, imgSpectrum);
-
-
     //double denom = getDenom(grid, vtype);
-
     for(Gcell* gcell : grid->getGcells()) {
     
         double val = getValue(gcell, vtype);
@@ -158,35 +124,44 @@ void saveMapImage(Grid* grid, ValueType vtype, string fileName, string dirPath) 
         
         drawGcell(&img, gcell, origin, sf, opacity, val);
     }
-    string imgPath = dirPath + "/" + fileName + ".jpg";
+    string imgPath ="";
+    if(prefix!="") {
+        imgPath= dirPath + "/" + prefix +"_" + fileName + ".jpg";
+    } else {
+        imgPath = dirPath + "/" + fileName + ".jpg";
+    }
     img.save_jpeg(imgPath.c_str(), 200);
-
     cout << "[DONE] Save Map Image (" << imgPath << ")" << endl;
+}
+
+void
+ClipGraphExtractor::saveGridImages( const char* imgDir, const char* prefix ) {
+    Grid* grid = (Grid*)(grid_);
+    grid->saveGridImages(string(imgDir), string(prefix));
 }
 
 
 
-void Grid::saveGridImages(string dirPath) {
 
-   
-    saveMapImage(this, ValueType::RUDY, "RUDY", dirPath);
-    saveMapImage(this, ValueType::CELL_DEN, "CellDen", dirPath);
-    saveMapImage(this, ValueType::PIN_DEN, "PinDen", dirPath);
-    saveMapImage(this, ValueType::MARKER_ALL, "DRV_ALL", dirPath);
-    saveMapImage(this, ValueType::MARKER_LNET, "DRV_LNET", dirPath);
-    saveMapImage(this, ValueType::MARKER_GNET, "DRV_GNET", dirPath);
-    saveMapImage(this, ValueType::MARKER_INST, "DRV_INST", dirPath);
-    saveMapImage(this, ValueType::RSMT_LNET_DEN, "RSMT_LNetDen", dirPath);
-    saveMapImage(this, ValueType::RSMT_GNET_DEN, "RSMT_GNetDen", dirPath);
-    saveMapImage(this, ValueType::RSMT_CHAN_DEN, "RSMT_ChanDen", dirPath);
-    saveMapImage(this, ValueType::RSMT_WIRE_DEN, "RSMT_WireDen", dirPath);
-    saveMapImage(this, ValueType::ROUTE_LNET_DEN, "ROUTE_LNetDen", dirPath);
-    saveMapImage(this, ValueType::ROUTE_GNET_DEN, "ROUTE_GNetDen", dirPath);
-    saveMapImage(this, ValueType::ROUTE_CHAN_DEN, "ROUTE_ChanDen", dirPath);
-    saveMapImage(this, ValueType::ROUTE_WIRE_DEN, "ROUTE_WireDen", dirPath);
+void Grid::saveGridImages(string dirPath, string prefix) {
 
-
-
+    saveMapImage(this, ValueType::RUDY, "RUDY", dirPath, prefix);
+    saveMapImage(this, ValueType::CELL_DEN, "CellDen", dirPath, prefix);
+    saveMapImage(this, ValueType::PIN_DEN, "PinDen", dirPath, prefix);
+    saveMapImage(this, ValueType::MARKER_ALL, "DRV_ALL", dirPath, prefix);
+    saveMapImage(this, ValueType::MARKER_LNET, "DRV_LNET", dirPath, prefix);
+    saveMapImage(this, ValueType::MARKER_GNET, "DRV_GNET", dirPath, prefix);
+    saveMapImage(this, ValueType::MARKER_INST, "DRV_INST", dirPath, prefix);
+    saveMapImage(this, ValueType::RSMT_LNET_DEN, "RSMT_LNetDen", dirPath, prefix);
+    saveMapImage(this, ValueType::RSMT_GNET_DEN, "RSMT_GNetDen", dirPath, prefix);
+    saveMapImage(this, ValueType::RSMT_CHAN_DEN, "RSMT_ChanDen", dirPath, prefix);
+    saveMapImage(this, ValueType::RSMT_WIRE_DEN, "RSMT_WireDen", dirPath, prefix);
+    saveMapImage(this, ValueType::ROUTE_LNET_DEN, "ROUTE_LNetDen", dirPath, prefix);
+    saveMapImage(this, ValueType::ROUTE_GNET_DEN, "ROUTE_GNetDen", dirPath, prefix);
+    saveMapImage(this, ValueType::ROUTE_CHAN_DEN, "ROUTE_ChanDen", dirPath, prefix);
+    saveMapImage(this, ValueType::ROUTE_WIRE_DEN, "ROUTE_WireDen", dirPath, prefix);
+    saveMapImage(this, ValueType::WNS, "WNS", dirPath, prefix);
+    saveMapImage(this, ValueType::TNS, "TNS", dirPath, prefix);
 
     reportDRC();
 
@@ -303,4 +278,43 @@ void Grid::saveGridImages(string dirPath) {
 //                                        {188, 189, 220}, {158, 154, 200}, {128, 125, 186},
 //                                        {106, 81, 163}, {84, 39, 143}, {63, 0, 125}};
 //
+/*
+double getDenom(Grid* grid, ValueType valType) {
+    switch(valType) {
+        case ValueType::RUDY:
+            return grid->getMaxRUDY();
+        case ValueType::CELL_DEN:
+            return 1.0;
+        case ValueType::PIN_DEN:
+            return 1.0;
+        case ValueType::MARKER_ALL:
+            return 1.0;
+        case ValueType::MARKER_LNET:
+            return 1.0;
+        case ValueType::MARKER_GNET:
+            return 1.0;
+        case ValueType::MARKER_INST:
+            return 1.0;
+        case ValueType::RSMT_WIRE_DEN:
+            return 1.0;
+        case ValueType::RSMT_CHAN_DEN:
+            return 1.0;
+        case ValueType::RSMT_LNET_DEN:
+            return 1.0;
+        case ValueType::RSMT_GNET_DEN:
+            return 1.0;
+        case ValueType::ROUTE_WIRE_DEN:
+            return 1.0;
+        case ValueType::ROUTE_CHAN_DEN:
+            return 1.0;
+        case ValueType::ROUTE_LNET_DEN:
+            return 1.0;
+        case ValueType::ROUTE_GNET_DEN:
+            return 1.0;
+        default:
+            return 1.0;
+    }
+}
+*/
+
 

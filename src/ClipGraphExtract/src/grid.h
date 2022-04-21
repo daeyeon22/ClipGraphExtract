@@ -100,7 +100,8 @@ class Gcell {
     double lNetRUDY_;
     double gNetRUDY_;
     double sNetRUDY_;
-
+    double tns_;
+    double wns_;
 
 
     Graph* graph_;
@@ -127,6 +128,9 @@ class Gcell {
     void extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree);
     void extractPlaceFeature(SegRtree<RSMT*> *rtree);
     void extractRouteFeature(SegRtree<odb::dbNet*> *rtree);
+    void updateTimingInfo(std::unordered_map<odb::dbInst*, double> slack);
+
+
 
     // 
     void annotateLabel(BoxRtree<Marker*> &rtree);
@@ -164,8 +168,8 @@ class Gcell {
     double getChanUtilH(ModelType type);
     double getChanUtil(Orient orient, ModelType = ModelType::TREE);
     double getBufferUtil();
-    double getTNS(sta::dbSta* db_sta);
-    double getWNS(sta::dbSta* db_sta);
+    double getTNS();
+    double getWNS();
     double getClkRatio();
 
 
@@ -186,7 +190,7 @@ class Gcell {
 class Marker {
   public:
     
-    enum Tag { BoC, PoC, RWoN, NONE };  
+    enum Tag { BoC, PoC, RWoN, SWoN, NONE };  
     enum Category { L2L, L2I, L2G, G2I, G2G, I2I, ERR, SELF };
 
     Marker();
@@ -304,15 +308,16 @@ class Grid {
     sta::dbSta* getSta() { return sta_; }
     odb::dbDatabase* getDb() { return db_; }
     odb::Rect getBoundary();
-    std::vector<Gcell*> getGcells();
 
     Gcell* createGcell(int col, int row, int width, int height); //int x1, int y1, int x2, int y2);
     RSMT* createRSMT(odb::dbNet* net);
     Marker* createMarker(int x1, int y1, int x2, int y2);
    
     Gcell* getGcell(int col, int row);
-    
     RSMT* getRSMT(odb::dbNet* net);
+  
+    std::vector<Gcell*> getGcells();
+    std::vector<RSMT*> getRSMTs() { return rsmts_; }
 
     int getNumRows() { return numCols_; }
     int getNumCols() { return numRows_; }
@@ -326,8 +331,10 @@ class Grid {
     void setWireCapacity(int wCap);
     void setTrackSupply(int tSup);
     void setNumLayers(int nLyr);
-    void saveGridImages(std::string dirPath);
+    void saveGridImages(std::string dirPath, std::string prefix="");
 
+    int getGcellWidth() { return gcellWidth_; }
+    int getGcellHeight() { return gcellHeight_; }
     
     
 

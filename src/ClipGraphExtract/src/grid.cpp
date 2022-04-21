@@ -16,13 +16,6 @@ using namespace ClipGraphExtract;
 using namespace ClipGraphExtract;
 
 
-void
-ClipGraphExtractor::saveGridImages( const char* imgDir ) {
-    Grid* grid = (Grid*)(grid_);
-    grid->saveGridImages(string(imgDir));
-}
-
-
 
 
 namespace ClipGraphExtract {
@@ -34,6 +27,9 @@ void Grid::init() {
     cout << "Initialize gcell grid (" << gcellWidth_ << " " << gcellHeight_ << ")" << endl;
     numCols_ = bbox_.dx() / gcellWidth_;
     numRows_ = bbox_.dy() / gcellHeight_;
+
+
+    cout << "Grid (" << numCols_ << " x " << numRows_ << ")" << endl;
 
     // init gcell
 

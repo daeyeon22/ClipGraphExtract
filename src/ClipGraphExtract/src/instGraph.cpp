@@ -262,20 +262,34 @@ void Graph::printEdgeList() {
 
 void Graph::saveNodeFeaFile(std::string fileName) {
 
+    
+    int dbu = db_->getChip()->getBlock()->getDbUnitsPerMicron();
+
     std::ofstream outFile;
     outFile.open(fileName, std::ios_base::out);
     for(auto &tarVertex : vertices_) {
         outFile << tarVertex.id() << " " 
-                << tarVertex.getMinSlack() << " "
+                << tarVertex.getRelPosX() << " " 
+                << tarVertex.getRelPosY() << " " 
+                << tarVertex.getAbsSlack() << " "
+                << tarVertex.getRelSlack() << " "
                 << tarVertex.getNumAccPoints() << " "
                 << tarVertex.getNumBlkPoints() << " " 
+                << tarVertex.getNumBndPoints() << " " 
                 << tarVertex.getWhiteSpaceL() << " "
                 << tarVertex.getWhiteSpaceR() << " "
-                << tarVertex.getSize() << " "
+                << tarVertex.getWhiteSpaceT() << " "
+                << tarVertex.getWhiteSpaceD() << " "
+                << 1.0* tarVertex.getSize() / (dbu*dbu) << " "
                 << tarVertex.getDegree() << " "
                 << tarVertex.getNumInEdges() << " "
                 << tarVertex.getNumOutEdges() << " "
-                << tarVertex.isClocked() << endl;
+                << tarVertex.isClocked() << " "
+                << tarVertex.getSWireOverlap() << " " 
+                << tarVertex.getBBoxSize() << " " 
+                << tarVertex.getCellType() << " "
+                << tarVertex.getCutEdges() << " " 
+                << tarVertex.getIsCrit() << endl;
     }
     outFile.close();
 }
@@ -286,7 +300,7 @@ void Graph::saveEdgeIdxFile(std::string fileName) {
     outFile.open(fileName, std::ios_base::out);
 	for(auto& edge: edges_) {
 		outFile << edge.from()->id() << " " 
-                << edge.to() << endl;
+                << edge.to()->id() << endl;
 	}
 	outFile.close();
 
@@ -317,69 +331,108 @@ void Graph::saveFile(std::string fileName) {
 	outFile.close();
 }
 
-void Graph::setMinSlack(std::unordered_map<dbInst*, double> &minSlack) {
+
+void Graph::setRelPos(  unordered_map<dbInst*, double> &relPosX, 
+                        unordered_map<dbInst*, double> &relPosY ) {
     for(auto& val : vertexMap_) {
         Vertex* tarVertex = val.second;
         dbInst* tarInst = val.first;
-        double slack = minSlack[tarInst];
-        
+        tarVertex->setRelPos(relPosX[tarInst], relPosY[tarInst]);
+    }
+}
+
+
+
+void Graph::setSlack(double clockPeriod, std::unordered_map<dbInst*, double> &absoluteSlack) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        double slack = absoluteSlack[tarInst];
+
         if(tarVertex == NULL) {
             cout << tarInst->getName() << " ??? nullptr" << endl;
             exit(0);
         }
-        tarVertex->setMinSlack(slack);
+        tarVertex->setSlack(clockPeriod, slack);
     }
 }
 
-void Graph::setNumAccPoints(std::unordered_map<dbInst*, int> &numAccPoints) {
+void Graph::setIsCrit(std::unordered_map<dbInst*, bool> &isCrit) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVert = val.second;
+        dbInst* tarInst = val.first;
+        tarVert->setIsCrit(isCrit[tarInst]);
+    }
+}
+
+
+void Graph::setSWireOverlap(std::unordered_map<dbInst*, double> &sWireOverlap) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVert = val.second;
+        dbInst* tarInst = val.first;
+        tarVert->setSWireOverlap(sWireOverlap[tarInst]);
+    }
+}
+
+
+void Graph::setCutEdges(std::unordered_map<dbInst*, int> &cutEdges) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVert = val.second;
+        dbInst* tarInst = val.first;
+        tarVert->setCutEdges(cutEdges[tarInst]);
+    }
+}
+
+
+void Graph::setCellType(std::unordered_map<dbInst*, int> &cellType) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVert = val.second;
+        dbInst* tarInst = val.first;
+        tarVert->setCellType(cellType[tarInst]);
+    }
+}
+
+void Graph::setBBoxSize(std::unordered_map<dbInst*, double> &bboxSize) {
+     for(auto& val : vertexMap_) {
+        Vertex* tarVert = val.second;
+        dbInst* tarInst = val.first;
+        tarVert->setBBoxSize(bboxSize[tarInst]);
+    }   
+}
+
+
+void Graph::setNumPoints(   std::unordered_map<dbInst*, int> &numAccPoints,
+                            std::unordered_map<dbInst*, int> &numBlkPoints,
+                            std::unordered_map<dbInst*, int> &numBndPoints) {
+
+    // set properties
     for(auto& val : vertexMap_) {
         Vertex* tarVertex = val.second;
         dbInst* tarInst = val.first;
-        int numPoints = numAccPoints[tarInst];
-        tarVertex->setNumAccPoints(numPoints);
+        tarVertex->setNumAccPoints(numAccPoints[tarInst]);
+        tarVertex->setNumBlkPoints(numBlkPoints[tarInst]);
+        tarVertex->setNumBndPoints(numBndPoints[tarInst]);
+
+    
+        
+
     }
 }
 
-void Graph::setNumBlkPoints(std::unordered_map<dbInst*, int> &numBlkPoints) {
+
+void Graph::setWhiteSpace(  std::unordered_map<dbInst*,double> &whiteSpaceL,
+                            std::unordered_map<dbInst*,double> &whiteSpaceR,
+                            std::unordered_map<dbInst*,double> &whiteSpaceT,
+                            std::unordered_map<dbInst*,double> &whiteSpaceD ) {
     for(auto& val : vertexMap_) {
         Vertex* tarVertex = val.second;
         dbInst* tarInst = val.first;
-        int numPoints = numBlkPoints[tarInst];
-        tarVertex->setNumBlkPoints(numPoints);
+        tarVertex->setWhiteSpaceL(whiteSpaceL[tarInst]);
+        tarVertex->setWhiteSpaceR(whiteSpaceR[tarInst]);
+        tarVertex->setWhiteSpaceT(whiteSpaceT[tarInst]);
+        tarVertex->setWhiteSpaceD(whiteSpaceD[tarInst]);
     }
 }
-
-void Graph::setNumBndPoints(std::unordered_map<dbInst*, int> &numBndPoints) {
-    for(auto& val : vertexMap_) {
-        Vertex* tarVertex = val.second;
-        dbInst* tarInst = val.first;
-        int numPoints = numBndPoints[tarInst];
-        tarVertex->setNumBndPoints(numPoints);
-    }
-}
-
-
-void Graph::setWhiteSpaceL(std::unordered_map<dbInst*, int> &whiteSpaceL) {
-    for(auto& val : vertexMap_) {
-        Vertex* tarVertex = val.second;
-        dbInst* tarInst = val.first;
-        int whiteSpace = whiteSpaceL[tarInst];
-        tarVertex->setWhiteSpaceL(whiteSpace);
-    }
-}
-
-void Graph::setWhiteSpaceR(std::unordered_map<dbInst*, int> &whiteSpaceR) {
-    for(auto& val : vertexMap_) {
-        Vertex* tarVertex = val.second;
-        dbInst* tarInst = val.first;
-        int whiteSpace = whiteSpaceR[tarInst];
-        tarVertex->setWhiteSpaceR(whiteSpace);
-    }
-}
-
-
-
-
 
 Vertex* Graph::dbToGraph(odb::dbInst* inst) {
   auto vertPtr = vertexMap_.find(inst);
@@ -415,5 +468,41 @@ getEdgeWeight(int fanout, EdgeWeightModel eModel) {
       break;
   }
 }
+
+
+void Graph::print() {
+
+    double dbu2 = db_->getChip()->getBlock()->getDbUnitsPerMicron();
+    dbu2 = dbu2*dbu2;
+
+    for(auto elem : vertexMap_) {
+        dbInst* tarInst = elem.first;
+        Vertex* tarVert = elem.second;
+
+        cout << tarVert->id() << " " << tarInst->getName() << endl;
+        cout << "   - relpos (x,y) : " << tarVert->getRelPosX() << " " << tarVert->getRelPosY() << endl;
+        cout << "   - # acc points : " << tarVert->getNumAccPoints() << endl;
+        cout << "   - # blk points : " << tarVert->getNumBlkPoints() << endl;
+        cout << "   - # bnd points : " << tarVert->getNumBndPoints() << endl;
+        cout << "   - # cut edges  : " << tarVert->getCutEdges() << endl;
+        cout << "   - wire overlap : " << tarVert->getSWireOverlap() << endl;
+        cout << "   - wspace (L/R) : " << tarVert->getWhiteSpaceL() << " " 
+                                       << tarVert->getWhiteSpaceR() << endl;
+        cout << "   - wspace (T/D) : " << tarVert->getWhiteSpaceT() << " " 
+                                       << tarVert->getWhiteSpaceD() << endl;
+        cout << "   - encoded type : " << tarVert->getCellType() << endl;
+        cout << "   - size of bbox : " << tarVert->getBBoxSize() << endl;
+        cout << "   - # outedges   : " << tarVert->getNumOutEdges() << endl;
+        cout << "   - # inedges    : " << tarVert->getNumInEdges() << endl;
+        cout << "   - degree       : " << tarVert->getDegree() << endl;
+        cout << "   - cell size    : " << 1.0*tarVert->getSize() / dbu2 << endl;
+        cout << "   - abs slack    : " << tarVert->getAbsSlack() << endl;
+        cout << "   - rel slack    : " << tarVert->getRelSlack() << endl;
+        cout << "   - is critical  : " << tarVert->getIsCrit() << endl;
+        cout << endl; 
+    }
+
+}
+
 
 }

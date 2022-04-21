@@ -97,7 +97,7 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
                 << tarGcell->getNumGNets() << ","
                 << tarGcell->getNumLNets() << ","
                 << tarGcell->getClkRatio() << ","
-                << tarGcell->getTNS(sta_) << endl;
+                << tarGcell->getTNS() << endl;
     }
     outFile.close();
     cout << "End writing file." << endl;
@@ -109,25 +109,27 @@ void ClipGraphExtractor::saveLabels(const char* dirPath) {
     // TODO
     Grid* grid = (Grid*) grid_;
     ofstream outFile;
-    string attrFileName = string(dirPath) + "/GcellLabel.csv";
-    outFile.open(attrFileName, std::ios_base::out);
-    outFile << "Col" << ","
-            << "Row" << ","
-            << "CellDen(DR)" << ","
-            << "PinDen(DR)" << ","
-            << "WireDen(DR)" << ","
-            << "LNetDen(DR)" << ","
-            << "GNetDen(DR)" << ","
-            << "ChanDen(DR)" << ","
-            << "ChanDenV(DR)" << ","
-            << "ChanDenH(DR)" << ","
-            << "BufDen(DR)" << ","
-            << "NumDRVs" << ","
-            << "NumLNetDRVs" << ","
-            << "NumGNetDRVs" << ","
-            << "NumInstDRVs" << ","
-            << "ClkRatio" << ","
-            << "TNS" << endl;
+    string fileName = "x" + to_string(numRows_) + ".csv";
+    string filePath = string(dirPath) + "/" + fileName;
+    outFile.open(filePath, std::ios_base::out);
+
+    vector<string> header{
+        "col", "row", "cell_den_dr", "pin_den_dr", 
+        "wire_den_dr", "lnet_den_dr", "gnet_den_dr", 
+        "chan_den_dr", "chan_den_v_dr", "chan_den_h_dr",
+        "buf_den_dr", 
+        "num_drvs", "num_lnet_drvs", "num_gnet_drvs", 
+        "num_inst_drvs","clk_ratio", "wns", "tns"
+    };
+    
+    for(int i=0; i < header.size(); i++) {
+        outFile << header[i];
+        if(i!=header.size()-1)
+            outFile << ",";
+        else
+            outFile << endl;
+    }
+    
     int numLNetMarkers, numGNetMarkers, numInstMarkers;
     for(Gcell* tarGcell : grid->getGcells()) {
         // get #drvs
@@ -149,7 +151,8 @@ void ClipGraphExtractor::saveLabels(const char* dirPath) {
                 << numGNetMarkers << ","
                 << numInstMarkers << ","
                 << tarGcell->getClkRatio() << ","
-                << tarGcell->getTNS(sta_) << endl;
+                << tarGcell->getWNS() << ","
+                << tarGcell->getTNS() << endl;
 
     }
     outFile.close();
@@ -186,18 +189,16 @@ void writeHeader(ofstream& outFile, int numHops) {
         for(int y=-numHops;y<=numHops;y++) {
             string prefix = "";
             if(y < 0)
-                prefix+="n"+to_string(y);
+                prefix+="s"+to_string(abs(y));
             else if(y>0)
-                prefix+="s"+to_string(y);
+                prefix+="n"+to_string(abs(y));
             if(x < 0)
-                prefix+="w"+to_string(x);
+                prefix+="w"+to_string(abs(x));
             else if(x > 0)
-                prefix+="e"+to_string(x);
+                prefix+="e"+to_string(abs(x));
             for(int i=0; i < fieldData.size(); i++) {
-                
                 string fieldName = (prefix=="")? fieldData[i] : prefix + "_" + fieldData[i];
                 outFile << fieldName;
-                
                 if(!(x==numHops && y==numHops && i==fieldData.size()-1))
                         outFile << ",";
             }
@@ -282,8 +283,8 @@ void writeData(ofstream& outFile, Grid* tarGrid, int tarCol, int tarRow, int num
                     << tarGcell->getNumGNets() << ","
                     << tarGcell->getNumLNets() << ","
                     << tarGcell->getClkRatio() << ","
-                    << tarGcell->getWNS(tarGrid->getSta()) << ","
-                    << tarGcell->getTNS(tarGrid->getSta()); 
+                    << tarGcell->getWNS() << ","
+                    << tarGcell->getTNS(); 
             }
         
             if(dx!=numHops || dy!=numHops)
@@ -299,7 +300,7 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
     // TODO
     Grid* grid = (Grid*) grid_;
     ofstream outFile;
-    string fileName = "rows_" + to_string(numRows_) + "_hops_" + to_string(numHops) + ".csv";
+    string fileName = "x" + to_string(numRows_) + ".csv";
     string filePath = string(dirPath) + "/" + fileName;
     outFile.open(filePath, std::ios_base::out);
     writeHeader(outFile, numHops);
@@ -307,10 +308,13 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
     int numCols=grid->getNumCols();
     int numRows=grid->getNumRows();
 
-    for(int tarCol=0; tarCol<numCols;tarCol++) {
-        for(int tarRow=0; tarRow<numRows;tarRow++) {
-            writeData(outFile, grid, tarCol, tarRow, numHops);
-        }
+    for(Gcell* tarGcell : grid->getGcells()) {
+        int tarCol = tarGcell->getCol();
+        int tarRow = tarGcell->getRow();
+        writeData(outFile, grid, tarCol, tarRow, numHops);
+//    for(int tarCol=0; tarCol<numCols;tarCol++) {
+//        for(int tarRow=0; tarRow<numRows;tarRow++) {
+//        }
     }
 
     outFile.close();
