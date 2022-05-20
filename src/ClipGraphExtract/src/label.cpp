@@ -64,12 +64,20 @@ string parseDrv(string substr) {
     return str;
 }
 
-string parseNetName(string substr) {
+string parseRegularNetName(string substr) {
     string str =substr;
     str = regex_replace(substr, regex("Regular Wire of Net "), "");
     str = regex_replace(str, regex("\\s"), "");
 	return str;
 }
+
+string parseSpecialNetName(string substr) {
+    string str =substr;
+    str = regex_replace(substr, regex("Special Wire of Net "), "");
+    str = regex_replace(str, regex("\\s"), "");
+	return str;
+}
+
 
 string parseLayerName(string substr) {
     return regex_replace(substr, regex("[\\(\\)\\s]"), "");
@@ -99,6 +107,7 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
     regex objRex1("Blockage of Cell [\\w\\d\\[\\]]+");
     regex objRex2("Pin of Cell [\\w\\d\\[\\]]+");
     regex objRex3("Regular Wire of Net [\\w\\d\\[\\]]+");
+    regex objRex4("Special Wire of Net [\\w\\d\\[\\]]+");
     regex boxRex("\\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\) \\( [0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+ \\)");
 
     string typeName ="";
@@ -167,10 +176,15 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
                 tokens[0] = regex_replace(tokens[0], objRex2, "");
                 //cout << tokens[0] << endl;
             } else if(regex_search(tokens[0], m, objRex3)) {
-                fromNet = parseNetName(m[0].str());
+                fromNet = parseRegularNetName(m[0].str());
                 fromPrefix = "Regular Wire of Net";
                 tokens[0] = regex_replace(tokens[0], objRex3, "");
                 //cout << tokens[0] << endl;
+            } else if(regex_search(tokens[0], m, objRex4)) {
+                //cout << "1 " <<  m[0] << endl;
+                fromNet = parseSpecialNetName(m[0].str());
+                fromPrefix = "Special Wire of Net";
+                tokens[0] = regex_replace(tokens[0], objRex4, "");
             } else {
                 cout << "exception case! here!" << endl;
                 cout << tokens[0] << endl;
@@ -190,11 +204,16 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 					tokens[1] = regex_replace(tokens[1], objRex2, "");
 					//cout << tokens[1] << endl;
 				} else if(regex_search(tokens[1], m, objRex3)) {
-					toNet = parseNetName(m[0].str());
+					toNet = parseRegularNetName(m[0].str());
 					toPrefix = "Regular Wire of Net";
 					tokens[1] = regex_replace(tokens[1], objRex3, "");
 					//cout << tokens[1] << endl;
-				} else {
+                } else if(regex_search(tokens[0], m, objRex4)) {
+                    //cout << "2 " << m[0] << endl;
+                    toNet = parseSpecialNetName(m[0].str());
+                    toPrefix = "Special Wire of Net";
+                    tokens[0] = regex_replace(tokens[0], objRex4, "");
+                } else {
 					//cout << "There is only object1" << endl;
 				}
 			}
@@ -233,11 +252,11 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             if(fromNet != "") {
                 if(net1 == NULL) {
                     cout << fromNet << " is NULL ptr" << endl;
-                    exit(0);
+                    //exit(0);
                 }else{
                     if(grid->getRSMT(net1)==NULL) {
                         cout << fromNet << " has no RSMT" << endl;
-                        exit(0);
+                        //exit(0);
                     }
                 }
             }
@@ -254,6 +273,8 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
                 mark->setFromTag(Marker::Tag::PoC);
             } else if (fromPrefix == "Regular Wire of Net") {
                 mark->setFromTag(Marker::Tag::RWoN);
+            } else if (fromPrefix == "Special Wire of Net") {
+                mark->setFromTag(Marker::Tag::SWoN);
             } else {
                 mark->setFromTag(Marker::Tag::NONE);
             }
@@ -264,6 +285,8 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
                 mark->setToTag(Marker::Tag::PoC);
             } else if (toPrefix == "Regular Wire of Net") {
                 mark->setToTag(Marker::Tag::RWoN);
+            } else if (toPrefix == "Special Wire of Net") {
+                mark->setToTag(Marker::Tag::SWoN);
             } else {
                 mark->setToTag(Marker::Tag::NONE);
             }

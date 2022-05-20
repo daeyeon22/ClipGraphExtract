@@ -49,10 +49,11 @@ class ClipGraphExtractor {
     // defined in label.cpp
     void parseDrcReport(const char* fileName);
     // defined in plot.cpp
-    void saveGridImages(const char* dirPath);
+    void saveGridImages(const char* dirPath, const char* prefix);
     // defined in writer.cpp
     void saveGraphs(const char* dirPath);
     void saveFeatures(const char* dirPath);
+    void saveFeatures(const char* dirPath, int numHops); // revised 
     void saveLabels(const char* dirPath);
 
 
@@ -62,7 +63,7 @@ class ClipGraphExtractor {
     ClipGraphExtractor();
     ~ClipGraphExtractor();
     odb::dbDatabase* getDb() { return db_; }
-  
+    sta::dbSta* getSta() { return sta_; } 
   private:
     odb::dbDatabase* db_;
     sta::dbSta* sta_;
@@ -75,21 +76,21 @@ class ClipGraphExtractor {
     int maxRouteLayer_; // MAX ROUTE LAYER (need to figure out routing capacity)
 
     // for Def
-    void* wireRtree_;
-    void* instRtree_;
+    //void* wireRtree_;
+    //void* instRtree_;
     // for Grid
-    void* rsmtRtree_;
-    void* gcellRtree_;
+    //void* rsmtRtree_;
+    //void* gcellRtree_;
     // for Drc
-    void* markerRtree_;
+    //void* markerRtree_;
 
     void* grid_;
 
     // for initialization
-    void initGrid();
-    void initGraph();
-    void initRtree1();
-    void initRtree2();
+    //void initGrid();
+    //void initGraph();
+    //void initRtree1();
+    //void initRtree2();
 
 
 

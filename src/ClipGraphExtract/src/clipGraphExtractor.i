@@ -31,12 +31,6 @@ using ClipGraphExtract::EdgeWeightModel;
 %inline %{
 
 void
-save_grid_images_cmd(const char* imgDir) {
-    ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->saveGridImages(imgDir);
-}
-
-void
 parse_drc_report_cmd(const char* file_name) {
 
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
@@ -97,6 +91,15 @@ graph_extract_init_cmd()
 }
 
 
+void
+graph_extract_cmd() 
+{
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->extract();
+}
+
+
+
 void 
 save_features_cmd(const char* dirPath, int numHops) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
@@ -122,12 +125,20 @@ save_labels_cmd(const char* dirPath) {
 }
 
 void
+save_grid_images_cmd(const char* imgDir, const char* prefix) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveGridImages(imgDir, prefix);
+}
+
+
+/*
+void
 graph_extract_cmd(int lx, int ly, int ux, int uy) 
 {
   ClipGraphExtractor* graphExt = getClipGraphExtractor();
   graphExt->extract(lx, ly, ux, uy);
 }
-
+*/
 void
 graph_extract_clear_cmd() 
 {

@@ -19,6 +19,7 @@ Gcell::Gcell(int col, int row) :
     col_(col), row_(row),
     numInsts_(0), numTerms_(0), 
     //numLNets_(0), numGNets_(0), 
+    wns_(0), tns_(0),
     numLayers_(1), graph_(nullptr),
     totalCellArea_(0), totalPinArea_(0),
     cellUtil_(0), pinUtil_(0), RUDY_(0),
@@ -188,11 +189,15 @@ void Gcell::getNumMarkers(int &lnet, int &gnet, int &inst) {
             case Marker::Category::SELF: {
                 if(mark->getFromTag() == Marker::Tag::BoC || mark->getFromTag() == Marker::Tag::PoC) {
                     inst++;
-                } else if (mark->getFromTag() == Marker::Tag::RWoN) {
-                    if(mark->getFromNet()->isLocalNet())
-                        lnet++;
-                    else
-                        gnet++;
+                } else if (mark->getFromTag() == Marker::Tag::RWoN || mark->getFromTag() == Marker::Tag::SWoN) {
+                    if(mark->getFromNet() != NULL) {
+                        if(mark->getFromNet()->isLocalNet())
+                            lnet++;
+                        else
+                            gnet++;
+                    } else {
+                        lnet++;   
+                    }
                 }
                 break;
             }
@@ -308,44 +313,53 @@ double Gcell::getBufferUtil() {
 }
 
 
-double Gcell::getTNS(sta::dbSta* db_sta) {
-    // TODO
-    sta::Graph* sta_graph = db_sta->ensureGraph();
-    double tns = 0;
-    for(dbInst* tarInst : insts_) {
-        for(dbITerm* tarITerm : tarInst->getITerms()) {
-            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
-            if(tarVertex == NULL)
-                continue;
-            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
-            double slkValue = (double)sta::delayAsFloat(slk);
-
-            if(slkValue < 0) {
-                tns += slkValue;
-            }
-        }
-    }
-    return tns;
+double Gcell::getTNS() {
+    return tns_;    
 }
 
-double Gcell::getWNS(sta::dbSta* db_sta) {
-    sta::Graph* sta_graph = db_sta->ensureGraph();
-    double wns = 0;
-    for(dbInst* tarInst : insts_) {
-        for(dbITerm* tarITerm : tarInst->getITerms()) {
-            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
-            if(tarVertex == NULL)
-                continue;
-            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
-            double slkValue = (double)sta::delayAsFloat(slk);
-
-            if(slkValue < 0) {
-                wns = min(wns, slkValue);
-            }
-        }
-    }
-    return wns;
+double Gcell::getWNS() {
+    return wns_;
 }
+
+//sta::dbSta* db_sta) {
+//
+//    // TODO
+//    sta::Graph* sta_graph = db_sta->ensureGraph();
+//    double tns = 0;
+//    for(dbInst* tarInst : insts_) {
+//        for(dbITerm* tarITerm : tarInst->getITerms()) {
+//            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
+//            if(tarVertex == NULL)
+//                continue;
+//            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
+//            double slkValue = (double)sta::delayAsFloat(slk);
+//
+//            if(slkValue < 0) {
+//                tns += slkValue;
+//            }
+//        }
+//    }
+//    return tns;
+//}
+//
+//double Gcell::getWNS(sta::dbSta* db_sta) {
+//    sta::Graph* sta_graph = db_sta->ensureGraph();
+//    double wns = 0;
+//    for(dbInst* tarInst : insts_) {
+//        for(dbITerm* tarITerm : tarInst->getITerms()) {
+//            sta::Vertex* tarVertex = sta_graph->vertex(tarITerm->staVertexId());
+//            if(tarVertex == NULL)
+//                continue;
+//            sta::Slack slk = db_sta->vertexSlack(tarVertex, sta::MinMax::max());
+//            double slkValue = (double)sta::delayAsFloat(slk);
+//
+//            if(slkValue < 0) {
+//                wns = min(wns, slkValue);
+//            }
+//        }
+//    }
+//    return wns;
+//}
 
 
 
@@ -365,6 +379,21 @@ double Gcell::getClkRatio() {
         return 0.0;
     }
 }
+
+void Gcell::updateTimingInfo(unordered_map<dbInst*, double> slack) {
+
+    for(dbInst* tarInst : insts_) {
+        if(slack.find(tarInst) == slack.end()) {
+            cout << "?" << endl;
+            continue;
+        }
+        wns_ = min(wns_, slack[tarInst]);
+        if(slack[tarInst] < 0)
+            tns_ += slack[tarInst];
+    }
+}
+
+
 
 void Gcell::saveGraph(string dirPath, string fileName) {
     string vertFeaFile = dirPath + "/" + fileName + ".x";

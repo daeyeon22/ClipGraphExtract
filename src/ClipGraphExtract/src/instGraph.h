@@ -45,21 +45,46 @@ public:
 
     // 
 
-    void setMinSlack(double slack);
+
+    void setSlack(double clockPeriod, double slack);
     void setNumAccPoints(int numAccPoints);
     void setNumBlkPoints(int numBlkPoints);
     void setNumBndPoints(int numBndPoints);
-    void setWhiteSpaceL(int whiteSpaceL);
-    void setWhiteSpaceR(int whiteSpaceL);
+    void setWhiteSpaceL(double whiteSpace);
+    void setWhiteSpaceR(double whiteSpace);
+    void setWhiteSpaceT(double whiteSpace);
+    void setWhiteSpaceD(double whiteSpace);
+    void setRelPos(double relPosX, double relPosY);
+    
+    void setBBoxSize(double bboxSize);
+    void setCellType(int cellType);
+    void setSWireOverlap(double overlap);
+    void setIsCrit(bool isCrit);
+    void setCutEdges(int cutEdges);
+
+    
 
 
     // For node feature
-    double getMinSlack();
+    double getRelPosX();
+    double getRelPosY();
+    double getAbsSlack();
+    double getRelSlack();
+
     int getNumAccPoints();
     int getNumBlkPoints();
     int getNumBndPoints();
-    int getWhiteSpaceL();
-    int getWhiteSpaceR();
+    double getWhiteSpaceL();
+    double getWhiteSpaceR();
+    double getWhiteSpaceD();
+    double getWhiteSpaceT();
+
+    double getBBoxSize();
+    double getSWireOverlap();
+    bool getIsCrit();
+    int getCutEdges();
+    int getCellType();
+
 
     bool isClocked();
     int getSize();
@@ -73,14 +98,23 @@ private:
   int id_;
   float weight_;
 
-    double minSlack_;
+    // Node features
+    double absSlack_;
+    double relSlack_;
+
     int numAccPoints_;
     int numBlkPoints_;
     int numBndPoints_;
-
-    int whiteSpaceL_;
-    int whiteSpaceR_;
-
+    int cutEdges_;
+    int cellType_;
+    bool isCrit_;
+    double bboxSize_;
+    double sWireOverlap_;
+    double whiteSpaceL_;
+    double whiteSpaceR_;
+    double whiteSpaceD_;
+    double whiteSpaceT_;
+    double relPosX_, relPosY_;
 };
 
 
@@ -133,14 +167,32 @@ class Graph {
 
 
     // 
-    void setMinSlack(std::unordered_map<odb::dbInst*, double> &minSlack);
-    void setNumAccPoints(std::unordered_map<odb::dbInst*, int> &numAccPoints);
-    void setNumBlkPoints(std::unordered_map<odb::dbInst*, int> &numBlkPoints);
-    void setNumBndPoints(std::unordered_map<odb::dbInst*, int> &numBndPoints);
+    void setSlack(double clockPeriod, std::unordered_map<odb::dbInst*, double> &minSlack);
+    void setNumPoints(
+        std::unordered_map<odb::dbInst*, int> &numAccPoints,
+        std::unordered_map<odb::dbInst*, int> &numBlkPoints,
+        std::unordered_map<odb::dbInst*, int> &numBndPoints
+    );
 
-    void setWhiteSpaceL(std::unordered_map<odb::dbInst*, int> &whiteSpaceL);
-    void setWhiteSpaceR(std::unordered_map<odb::dbInst*, int> &whiteSpaceL);
+    void setWhiteSpace(
+        std::unordered_map<odb::dbInst*, double> &whiteSpaceL,
+        std::unordered_map<odb::dbInst*, double> &whiteSpaceR,
+        std::unordered_map<odb::dbInst*, double> &whiteSpaceD,
+        std::unordered_map<odb::dbInst*, double> &whiteSpaceT
+    );
 
+
+    void setRelPos(
+        std::unordered_map<odb::dbInst*, double> &relPosX, 
+        std::unordered_map<odb::dbInst*, double> &relPosY
+    );
+
+
+    void setBBoxSize(std::unordered_map<odb::dbInst*, double> &bboxSize);
+    void setCellType(std::unordered_map<odb::dbInst*, int> &cellType);
+    void setSWireOverlap(std::unordered_map<odb::dbInst*, double> &sWireOverlap);
+    void setIsCrit(std::unordered_map<odb::dbInst*, bool> &isCrit);
+    void setCutEdges(std::unordered_map<odb::dbInst*, int> &cutEdges);
 
 
     void init(std::set<odb::dbInst*> &insts);
@@ -151,6 +203,8 @@ class Graph {
     void setGraphModel(GraphModel graphModel);
     void setEdgeWeightModel(EdgeWeightModel edgeWeightModel);
     Vertex* dbToGraph(odb::dbInst* inst);
+    void print();
+
 
   private:
 
@@ -163,6 +217,7 @@ class Graph {
     std::vector<Edge> edges_;
     std::map<odb::dbInst*, Vertex*> vertexMap_;
 
+    
     
 
 
