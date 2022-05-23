@@ -428,12 +428,6 @@ void ClipGraphExtractor::extract() {
         
         cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
 
-
-
-
-
-
-
         for(dbITerm* iterm : inst->getITerms()) {
             dbMTerm* mTerm = iterm->getMTerm();
             set<Point> accPoints;
@@ -617,8 +611,7 @@ void ClipGraphExtractor::extract() {
     
     cout << "Start to extract clip graphs" << endl; 
     for(Gcell* gcell : grid->getGcells()) {
-
-
+//        cout << "Axis : " << gcell->getRow() << " " << gcell->getCol() << endl;
         set<dbInst*> instSet = gcell->getInstSet();
 
         //unordered_map<dbInst*, double> relPosX_;
@@ -629,19 +622,26 @@ void ClipGraphExtractor::extract() {
 
         for(dbInst* tarInst : instSet) {
             dbBox* instBox = tarInst->getBBox();
-            double cenX = 1.0*(instBox->xMin() + instBox->xMax()) /2;
-            double cenY = 1.0*(instBox->yMin() + instBox->yMax()) /2;
+            double cenX = 1.0*(instBox->xMin() + instBox->xMax()) / 2;
+            double cenY = 1.0*(instBox->yMin() + instBox->yMax()) / 2;
 
             cenX = (cenX - boundBox.xMin())/boundBox.dx();
             cenY = (cenY - boundBox.yMin())/boundBox.dy();
+            
             relPosX_[tarInst] = cenX;
             relPosY_[tarInst] = cenY;
 
-            numCutEdges_[tarInst] = 0;
+//            numCutEdges_[tarInst] = 0;
+
             for(dbITerm* tarITerm : tarInst->getITerms()) {
                 dbNet* tarNet = tarITerm->getNet();
+                dbMTerm* tarMTerm = tarITerm->getMTerm();
+
                 if(tarNet != NULL) {
                     // Calculate numCutEdges_
+//                    cout << "pin net: " << tarInst->getName() << "/" << tarMTerm->getName() << " " << tarNet->getName() << endl;
+//                    cout << "IO type: " << tarITerm->getIoType() << endl;
+                    
                     if(tarITerm->getIoType() == dbIoType::OUTPUT) {
                         for(dbITerm* sinkITerm : tarNet->getITerms()) {
                             dbInst* sinkInst = sinkITerm->getInst();
@@ -668,6 +668,7 @@ void ClipGraphExtractor::extract() {
                     }
                 }
             }
+//            cout << endl;
         }
         Graph* instGraph = new Graph;
         instGraph->setDb(db_);

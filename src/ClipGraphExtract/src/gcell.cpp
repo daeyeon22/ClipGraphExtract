@@ -48,7 +48,9 @@ void Gcell::setNumLayers(int nLyr) {
 
 
 set<dbInst*> Gcell::getInstSet() {
-    return set<dbInst*>(insts_.begin(), insts_.end());
+    set<dbInst*> instSet;
+    copy(insts_.begin(), insts_.end(), inserter(instSet, instSet.end()));
+    return instSet;
 }
 
 void Gcell::setGraph(Graph* graph) {
