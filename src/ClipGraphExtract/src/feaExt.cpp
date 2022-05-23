@@ -631,7 +631,7 @@ void ClipGraphExtractor::extract() {
             relPosX_[tarInst] = cenX;
             relPosY_[tarInst] = cenY;
 
-//            numCutEdges_[tarInst] = 0;
+            numCutEdges_[tarInst] = 0;
 
             for(dbITerm* tarITerm : tarInst->getITerms()) {
                 dbNet* tarNet = tarITerm->getNet();
