@@ -34,7 +34,6 @@ class Marker;
 class Gcell;
 class RSMT;
 
-
 enum Orient {
     LEFT=0,
     RIGHT=1,
@@ -183,6 +182,8 @@ class Gcell {
     void print();
 
     // initGraph() in ClipGraphExtractor
+
+    Graph* getGraph() { return graph_; }
     void setGraph(Graph* graph);
     void saveGraph(std::string dirPath, std::string fileName);
 };
@@ -214,6 +215,7 @@ class Marker {
 
     RSMT* getFromNet();
     RSMT* getToNet();
+    odb::dbInst* getFromInst();
     odb::dbInst* getToInst();
 
     bgBox getQueryBox();
@@ -292,6 +294,7 @@ class Grid {
     int trackSupply_;
     int numLayers_;
     int minWidth_;
+    double clockPeriod_;
 
     sta::dbSta* sta_;
     odb::dbDatabase* db_;
@@ -299,10 +302,15 @@ class Grid {
     std::vector<RSMT*> rsmts_;
     // After read drc.rpt
     std::vector<Marker*> markers_;
-   
-    
+
     std::map<std::pair<int,int>, Gcell*> pos2gcell_;
     std::unordered_map<odb::dbNet*, RSMT*> net2rsmt_;
+
+
+
+
+
+
 
   public:
     sta::dbSta* getSta() { return sta_; }
@@ -345,6 +353,10 @@ class Grid {
     double getMaxCellUtil();
 
     void reportDRC();
+
+
+
+
 
 };
 

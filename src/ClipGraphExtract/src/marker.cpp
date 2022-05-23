@@ -84,6 +84,12 @@ odb::dbInst* Marker::getToInst() {
     return toInst_;
 }
 
+odb::dbInst* Marker::getFromInst() {
+    return fromInst_;
+}
+
+
+
 bgBox Marker::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
 }

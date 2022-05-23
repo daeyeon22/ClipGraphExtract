@@ -61,7 +61,7 @@ public:
     void setSWireOverlap(double overlap);
     void setIsCrit(bool isCrit);
     void setCutEdges(int cutEdges);
-
+    void setNumDrvs(int numDrvs);
     
 
 
@@ -91,6 +91,7 @@ public:
     int getDegree();
     int getNumInEdges();
     int getNumOutEdges();
+    int getNumDrvs();
 private:
   odb::dbInst* inst_;
   std::vector<Edge*> inEdges_;
@@ -107,6 +108,7 @@ private:
     int numBndPoints_;
     int cutEdges_;
     int cellType_;
+    int numDrvs_;
     bool isCrit_;
     double bboxSize_;
     double sWireOverlap_;
@@ -167,6 +169,8 @@ class Graph {
 
 
     // 
+    void setNumDrvs(std::unordered_map<odb::dbInst*, int> &numDrvs);
+
     void setSlack(double clockPeriod, std::unordered_map<odb::dbInst*, double> &minSlack);
     void setNumPoints(
         std::unordered_map<odb::dbInst*, int> &numAccPoints,

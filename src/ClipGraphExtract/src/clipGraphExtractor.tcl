@@ -160,3 +160,30 @@ proc save_labels { args } {
     save_labels_cmd $save_dir
 }
 
+proc save_inst_features { args } {
+    sta::parse_key_args "save_inst_features" args \
+        keys { -save_dir } flags {}
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+        if { ![file isdirectory $save_dir] } {
+            puts "ERROR: -save_dir ${save_dir} does not exist"
+            return
+        }       
+    }
+    save_inst_features_cmd $save_dir
+}
+
+proc save_inst_labels { args } {
+    sta::parse_key_args "save_inst_labels" args \
+        keys { -save_dir } flags {}
+    set save_dir "./"
+    if { [info exists keys(-save_dir)] } {
+        set save_dir $keys(-save_dir)
+        if { ![file isdirectory $save_dir] } {
+            puts "ERROR: -save_dir ${save_dir} does not exist"
+            return
+        }       
+    }
+    save_inst_labels_cmd $save_dir
+}

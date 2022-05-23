@@ -321,6 +321,80 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
     cout << "End writing file." << endl;
 }
 
+void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
+
+
+    string filePath = string(dirPath) + "/instFeature.csv";
+    ofstream outFile;
+    outFile.open(filePath, std::ios_base::out);
+
+
+    outFile << "inst_name" << ","
+            << "rel_pos_x" << ","
+            << "rel_pos_y" << ","
+            << "abs_slack" << ","
+            << "rel_slack" << ","
+            << "inst_acc_points" << ","
+            << "inst_blk_points" << ","
+            << "white_space_l" << ","
+            << "white_space_r" << ","
+            << "white_space_t" << ","
+            << "white_space_d" << ","
+            << "swire_overlap" << ","
+            << "stn_bbox" << ","
+            << "cell_type" << ","
+            << "cell_size" << ","
+            << "is_clocked" << ","
+            << "num_cut_edges" << ","
+            << "num_in_edges" << ","
+            << "num_out_edges" << ","
+            << "num_edges" << endl;
+
+
+    Grid* grid = (Grid*)grid_;
+    dbBlock* block = db_->getChip()->getBlock();
+    for(dbInst *tarInst : block->getInsts()) {
+        outFile << tarInst->getName() << ","
+                << relPosX_[tarInst] << ","
+                << relPosY_[tarInst] << ","
+                << absSlack_[tarInst] << ","
+                << relSlack_[tarInst] << ","
+                << instAccPoints_[tarInst] << ","
+                << instBlkPoints_[tarInst] << ","
+                << instBndPoints_[tarInst] << ","
+                << whiteSpaceL_[tarInst] << ","
+                << whiteSpaceR_[tarInst] << ","
+                << whiteSpaceD_[tarInst] << ","
+                << whiteSpaceT_[tarInst] << ","
+                << sWireOverlap_[tarInst] << ","
+                << stnBBox_[tarInst] << ","
+                << cellType_[tarInst] << ","
+                << cellSize_[tarInst] << ","
+                << isClocked_[tarInst] << ","
+                << numCutEdges_[tarInst] << ","
+                << numInEdges_[tarInst] << ","
+                << numOutEdges_[tarInst] << ","
+                << numEdges_[tarInst] << endl;
+    }
+}
+
+
+void ClipGraphExtractor::saveInstLabels(const char* dirPath) {
+    string filePath = string(dirPath) + "/instLabel.csv";
+    ofstream outFile;
+    outFile.open(filePath, std::ios_base::out);
+
+    outFile << "inst_name" << ","
+            << "num_drvs" << endl;
+
+    dbBlock* block = db_->getChip()->getBlock();
+    Grid* grid = (Grid*)grid_;
+    for(dbInst *tarInst : block->getInsts()) {
+        outFile << tarInst->getName() << ","
+                << numDrvs_[tarInst] << endl;
+    }
+
+}
 
 
 

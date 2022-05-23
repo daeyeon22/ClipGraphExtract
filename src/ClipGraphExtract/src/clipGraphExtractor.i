@@ -112,6 +112,21 @@ save_features_cmd(const char* dirPath) {
     graphExt->saveFeatures(dirPath);
 }
 
+
+void 
+save_inst_features_cmd(const char* dirPath) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveInstFeatures(dirPath);
+}
+
+void
+save_inst_labels_cmd(const char* dirPath) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->saveInstLabels(dirPath);
+}
+
+
+
 void
 save_graphs_cmd(const char* dirPath) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();

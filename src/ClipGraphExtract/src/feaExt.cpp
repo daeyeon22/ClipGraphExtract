@@ -156,9 +156,10 @@ void initRsmtRtree(Grid* grid, SegRtree<RSMT*> &rsmtRtree) {
 
 
 void getTimingInfo(dbDatabase* db_, sta::dbSta* sta_, 
-        double &clockPeriod,
-        unordered_map<dbInst*, double> &absoluteSlack, 
-        unordered_map<dbInst*, bool> &isCrit) {
+        double &clockPeriod_,
+        unordered_map<dbInst*, double> &absSlack_, 
+        unordered_map<dbInst*, double> &relSlack_, 
+        unordered_map<dbInst*, bool> &isCritical_) {
 
     sta_->updateTiming(false);
     sta::dbNetwork* network = sta_->getDbNetwork();
@@ -171,23 +172,23 @@ void getTimingInfo(dbDatabase* db_, sta::dbSta* sta_,
     cout << "Worst Slack    : " << wstSlack << endl;
     cout << "Total NegSlack : " << totNegSlack << endl;
 
-    double wstSlk = (double)sta::delayAsFloat(wstSlack);
+    double wstSlk = abs((double)sta::delayAsFloat(wstSlack));
 
 
     string clockName = "clk";
     const sta::Clock* staClock = sta_->findClock(clockName.c_str());
     if(staClock == NULL) {
         cout << "Cannot find clock (" << clockName << ")" << endl;
-        clockPeriod = 1.0;
+        clockPeriod_ = 1.0;
     } else {
         cout << staClock->name() << " -period " << staClock->period() << endl;
-        clockPeriod = staClock->period();
+        clockPeriod_ = staClock->period();
     }
 
     dbBlock* block = db_->getChip()->getBlock();
     // Get slack info.
     for(dbInst* inst : block->getInsts()) {
-        absoluteSlack[inst] = 0.0;
+        absSlack_[inst] = 0.0;
         for(dbITerm* iterm : inst->getITerms()) {
             if(iterm->getIoType() == dbSigType::POWER || iterm->getIoType() == dbSigType::GROUND)
                 continue;
@@ -197,13 +198,20 @@ void getTimingInfo(dbDatabase* db_, sta::dbSta* sta_,
                 continue;
             sta::Slack staSlk = sta_->vertexSlack(vertex, sta::MinMax::max());
             double slack = (double)sta::delayAsFloat(staSlk);
-            absoluteSlack[inst] = min(absoluteSlack[inst], slack);
+         
+            absSlack_[inst] = min(absSlack_[inst], slack);
+            //cout << slack << " " << absSlack_[inst] << endl;
         }
 
-        isCrit[inst] = (absoluteSlack[inst] < 0.9* wstSlk)? true : false;
-        //
-        if(isCrit[inst]) {
-            cout << inst->getName() << " is in a critical path (" << absoluteSlack[inst] << ")"  << endl;
+
+        absSlack_[inst] = abs(absSlack_[inst]);
+        relSlack_[inst] = absSlack_[inst] / clockPeriod_;
+        isCritical_[inst] = absSlack_[inst] > 0.0 ?  true : false;
+       
+
+        absSlack_[inst] *= 1e+9;
+        if(isCritical_[inst]) {
+            cout << inst->getName() << " is in a critical path (" << absSlack_[inst] << ") " << wstSlk  << endl;
         }   
 
 
@@ -298,11 +306,12 @@ void ClipGraphExtractor::extract() {
     initRsmtRtree((Grid*)grid_, rsmtRtree);
     // 
     //
-    unordered_map<dbInst*, bool> isCrit;
-    unordered_map<dbInst*, double> absoluteSlack;
-    double clockPeriod;
+    //unordered_map<dbInst*, bool> isCritical_;
+    //unordered_map<dbInst*, double> absSlack_;
+    double clockPeriod_;
     // Get timing info.
-    getTimingInfo(db_, sta_, clockPeriod, absoluteSlack, isCrit);
+    getTimingInfo(db_, sta_, clockPeriod_, absSlack_, relSlack_, isCritical_);
+
 
 
     for( dbNet* net : block->getNets() ) {
@@ -317,7 +326,7 @@ void ClipGraphExtractor::extract() {
         gcell->extractPlaceFeature(&instRtree);
         gcell->extractPlaceFeature(&rsmtRtree);
         gcell->extractRouteFeature(&rWireRtree);
-        gcell->updateTimingInfo(absoluteSlack);
+        gcell->updateTimingInfo(absSlack_);
     }
 
 
@@ -335,23 +344,20 @@ void ClipGraphExtractor::extract() {
     }
 
     // Get # of access points info.
-    unordered_map<dbInst*, int> instAccPoints;
-    unordered_map<dbInst*, int> instBlkPoints;
-    unordered_map<dbInst*, int> instBndPoints;
+    //unordered_map<dbInst*, int> instAccPoints_;
+    //unordered_map<dbInst*, int> instBlkPoints_;
+    //unordered_map<dbInst*, int> instBndPoints_;
     unordered_map<dbITerm*, int> termAccPoints;
     // Get left/right white space of inst
-    unordered_map<dbInst*, double> whiteSpaceL;
-    unordered_map<dbInst*, double> whiteSpaceR;
-    unordered_map<dbInst*, double> whiteSpaceT;
-    unordered_map<dbInst*, double> whiteSpaceD;
-
+    //unordered_map<dbInst*, double> whiteSpaceL_;
+    //unordered_map<dbInst*, double> whiteSpaceR_;
+    //unordered_map<dbInst*, double> whiteSpaceT_;
+    //unordered_map<dbInst*, double> whiteSpaceD_;
     // Get overlaps by PDN stripes
-    unordered_map<dbInst*, double> sWireOverlap;
-
-    unordered_map<dbInst*, double> bboxSize;
-    unordered_map<dbInst*, int> numCutEdges;
-    unordered_map<dbInst*, int> cellType;
-
+    //unordered_map<dbInst*, double> sWireOverlap_;
+    //unordered_map<dbInst*, double> stnBBox_;
+    //unordered_map<dbInst*, int> numCutEdges;
+    //unordered_map<dbInst*, int> cellType_;
 
     ////// FOR DEBUG
     double maxWireDenDR = 0;
@@ -387,12 +393,11 @@ void ClipGraphExtractor::extract() {
     for(dbInst* inst : block->getInsts()) {
 
         dbMaster* tarMaster = inst->getMaster();
-        cellType[inst] = typeEncoder[tarMaster];
-        
+        cellType_[inst] = typeEncoder[tarMaster];
         // Calculate # of points
-        instAccPoints[inst] = 0;
-        instBndPoints[inst] = 0;
-        instBlkPoints[inst] = 0;
+        instAccPoints_[inst] = 0;
+        instBndPoints_[inst] = 0;
+        instBlkPoints_[inst] = 0;
 
         Rect instBBox;
         dbBox* instBox = inst->getBBox();
@@ -405,7 +410,7 @@ void ClipGraphExtractor::extract() {
         //cout << inst->getName() << " (" << instBBox.xMin() << " " << instBBox.yMin() << ") (" << instBBox.xMax() << " " << instBBox.yMax() << ")" << endl;
        
         //cout << xMaxIter - xMinIter << " " << yMaxIter - yMinIter << endl;
-        instBndPoints[inst] = (yMaxIter-yMinIter) * (xMaxIter-xMinIter);
+        instBndPoints_[inst] = (yMaxIter-yMinIter) * (xMaxIter-xMinIter);
         int xOrig, yOrig;
         inst->getOrigin(xOrig, yOrig);
         dbTransform transform;
@@ -419,6 +424,15 @@ void ClipGraphExtractor::extract() {
         yMax = instBBox.yMax();
         set<odb::dbInst*> sourceInsts;
         set<odb::dbInst*> sinkInsts;
+
+        
+        cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
+
+
+
+
+
+
 
         for(dbITerm* iterm : inst->getITerms()) {
             dbMTerm* mTerm = iterm->getMTerm();
@@ -451,16 +465,17 @@ void ClipGraphExtractor::extract() {
             dbNet* tarNet = iterm->getNet();
             
             if(tarNet == NULL) {
-                instBlkPoints[inst] += numPoints;
+                instBlkPoints_[inst] += numPoints;
             } else {
                 
                 if(iterm->getSigType() == dbSigType::SIGNAL) {
-                    instAccPoints[inst] += numPoints;
+                    instAccPoints_[inst] += numPoints;
                 } else {
-                    instBlkPoints[inst] += numPoints;
+                    instBlkPoints_[inst] += numPoints;
                 }
                 // Calculate NetBBox for tarInst
                 if(iterm->getIoType() == dbIoType::OUTPUT) {
+                    
                     for(dbITerm* sinkITerm : tarNet->getITerms()) {
                         dbInst* sinkInst = sinkITerm->getInst();
                         if(sinkInst != inst) {
@@ -472,6 +487,7 @@ void ClipGraphExtractor::extract() {
                         }
                     }
                 } else if(iterm->getIoType() == dbIoType::INPUT) {
+
                     dbITerm* sourceITerm = tarNet->getFirstOutput();
                     if(sourceITerm!=NULL) {
                         dbInst* sourceInst = sourceITerm->getInst();
@@ -485,8 +501,13 @@ void ClipGraphExtractor::extract() {
             }
         }
 
+
+        numInEdges_[inst] = sourceInsts.size();
+        numOutEdges_[inst] = sinkInsts.size();
+        numEdges_[inst] = sourceInsts.size() + sinkInsts.size();
+
         
-        bboxSize[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
+        stnBBox_[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
 
         
         bgBox tarBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
@@ -499,8 +520,8 @@ void ClipGraphExtractor::extract() {
 
         bgBox horQueryBox(bgPoint(xMin, yMin), bgPoint(xMax,yMax));
         instRtree.query(bgi::intersects(horQueryBox), back_inserter(queryResults));
-        whiteSpaceL[inst] = 1.0;
-        whiteSpaceR[inst] = 1.0;
+        whiteSpaceL_[inst] = 1.0;
+        whiteSpaceR_[inst] = 1.0;
         for(auto& val : queryResults) {
             dbInst* adjInst = val.second;
             bgBox adjBox = val.first;
@@ -516,10 +537,10 @@ void ClipGraphExtractor::extract() {
             //cout << inst->getName() << " " << adjInst->getName() << " dist " << dist << endl;
             if (adjCenX < instBBox.xMin()) {
                 // leftside
-                whiteSpaceL[inst] = min(whiteSpaceL[inst], dist);
+                whiteSpaceL_[inst] = min(whiteSpaceL_[inst], dist);
             } else if (adjCenX > instBBox.xMax()) {
                 // rightside
-                whiteSpaceR[inst] = min(whiteSpaceR[inst], dist);
+                whiteSpaceR_[inst] = min(whiteSpaceR_[inst], dist);
             } else {
                 cout << "1 Overlapped (" << inst->getName() << " " << adjInst->getName() << ")" <<  endl;
                 cout << bg::get<0,0>(tarBox) << " " << bg::get<0,1>(tarBox) << " "
@@ -540,8 +561,8 @@ void ClipGraphExtractor::extract() {
 
         bgBox verQueryBox(bgPoint(xMin, yMin), bgPoint(xMax,yMax));
         instRtree.query(bgi::intersects(verQueryBox), back_inserter(queryResults));
-        whiteSpaceT[inst] = 1.0;
-        whiteSpaceD[inst] = 1.0;
+        whiteSpaceT_[inst] = 1.0;
+        whiteSpaceD_[inst] = 1.0;
          for(auto& val : queryResults) {
             dbInst* adjInst = val.second;
             bgBox adjBox = val.first;
@@ -558,10 +579,10 @@ void ClipGraphExtractor::extract() {
 
             if (adjCenY < instBBox.yMin()) {
                 // bottomside
-                whiteSpaceD[inst] = min(whiteSpaceD[inst], dist);
+                whiteSpaceD_[inst] = min(whiteSpaceD_[inst], dist);
             } else if (adjCenY > instBBox.yMax()) {
                 // topside
-                whiteSpaceT[inst] = min(whiteSpaceT[inst], dist);
+                whiteSpaceT_[inst] = min(whiteSpaceT_[inst], dist);
             } else {
                 cout << "2 Overlapped (" << inst->getName() << " " << adjInst->getName() << ")" <<  endl;
                 cout << bg::get<0,0>(tarBox) << " " << bg::get<0,1>(tarBox) << " "
@@ -574,7 +595,7 @@ void ClipGraphExtractor::extract() {
             }
         }
 
-        sWireOverlap[inst] = 0.0;
+        sWireOverlap_[inst] = 0.0;
         bgBox queryBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
         for( auto it =sWireRtree.qbegin(bgi::intersects(queryBox)); it != sWireRtree.qend(); it++) {
             xMin = bg::get<0,0>(it->first);
@@ -589,7 +610,7 @@ void ClipGraphExtractor::extract() {
             double area2 = instBBox.dx() * instBBox.dy();
             double overlapRatio = area1 / area2;
             
-            sWireOverlap[inst] += overlapRatio;
+            sWireOverlap_[inst] += overlapRatio;
         }
     }
 
@@ -600,9 +621,9 @@ void ClipGraphExtractor::extract() {
 
         set<dbInst*> instSet = gcell->getInstSet();
 
-        unordered_map<dbInst*, double> relPosX;
-        unordered_map<dbInst*, double> relPosY;
-        unordered_map<dbInst*, int> cutEdges;        
+        //unordered_map<dbInst*, double> relPosX_;
+        //unordered_map<dbInst*, double> relPosY_;
+        //unordered_map<dbInst*, int> numCutEdges_;        
 
         Rect boundBox = gcell->getBBox();
 
@@ -613,19 +634,19 @@ void ClipGraphExtractor::extract() {
 
             cenX = (cenX - boundBox.xMin())/boundBox.dx();
             cenY = (cenY - boundBox.yMin())/boundBox.dy();
-            relPosX[tarInst] = cenX;
-            relPosY[tarInst] = cenY;
+            relPosX_[tarInst] = cenX;
+            relPosY_[tarInst] = cenY;
 
-            cutEdges[tarInst] = 0;
+            numCutEdges_[tarInst] = 0;
             for(dbITerm* tarITerm : tarInst->getITerms()) {
                 dbNet* tarNet = tarITerm->getNet();
                 if(tarNet != NULL) {
-                    // Calculate cutEdges
+                    // Calculate numCutEdges_
                     if(tarITerm->getIoType() == dbIoType::OUTPUT) {
                         for(dbITerm* sinkITerm : tarNet->getITerms()) {
                             dbInst* sinkInst = sinkITerm->getInst();
                             if(instSet.find(sinkInst) == instSet.end()) {
-                                cutEdges[tarInst]++;
+                                numCutEdges_[tarInst]++;
                             }
                         }
                     } else if(tarITerm->getIoType() == dbIoType::INPUT) {
@@ -641,7 +662,7 @@ void ClipGraphExtractor::extract() {
                             
                             dbInst* sourceInst = fstITerm->getInst();
                             if(instSet.find(sourceInst) == instSet.end()) {
-                                cutEdges[tarInst]++;    
+                                numCutEdges_[tarInst]++;    
                             }
                         }
                     }
@@ -656,22 +677,22 @@ void ClipGraphExtractor::extract() {
         instGraph->init(instSet);
 
         // for timing
-        instGraph->setIsCrit(isCrit);
-        instGraph->setSlack(clockPeriod, absoluteSlack);
+        instGraph->setIsCrit(isCritical_);
+        instGraph->setSlack(clockPeriod_, absSlack_);
         // for pin accessibility
-        instGraph->setNumPoints(instAccPoints,
-                                instBlkPoints,
-                                instBndPoints);
-        instGraph->setWhiteSpace(whiteSpaceL,
-                                 whiteSpaceR,
-                                 whiteSpaceT,
-                                 whiteSpaceD);
-        instGraph->setSWireOverlap(sWireOverlap);
-        instGraph->setCutEdges(cutEdges);
-        instGraph->setBBoxSize(bboxSize);
-        instGraph->setCellType(cellType);
-        instGraph->setIsCrit(isCrit); 
-        instGraph->setRelPos(relPosX, relPosY);
+        instGraph->setNumPoints(instAccPoints_,
+                                instBlkPoints_,
+                                instBndPoints_);
+        instGraph->setWhiteSpace(whiteSpaceL_,
+                                 whiteSpaceR_,
+                                 whiteSpaceT_,
+                                 whiteSpaceD_);
+        instGraph->setSWireOverlap(sWireOverlap_);
+        instGraph->setCutEdges(numCutEdges_);
+        instGraph->setBBoxSize(stnBBox_);
+        instGraph->setCellType(cellType_);
+        instGraph->setIsCrit(isCritical_); 
+        instGraph->setRelPos(relPosX_, relPosY_);
         gcell->setGraph(instGraph);
 
    
@@ -680,17 +701,17 @@ void ClipGraphExtractor::extract() {
         //for(dbInst* tarInst: instSet) {
         //    // For debug
         //    cout << tarInst->getName() << endl;
-        //    cout << "   - relpos (x,y) : " << relPosX[tarInst] << " " << relPosY[tarInst] << endl;
-        //    cout << "   - # acc points : " << instAccPoints[tarInst] << endl;
-        //    cout << "   - # blk points : " << instBlkPoints[tarInst] << endl;
-        //    cout << "   - # bnd points : " << instBndPoints[tarInst] << endl;
-        //    cout << "   - # cut edges  : " << cutEdges[tarInst] << endl;
-        //    cout << "   - wspace (L/R) : " << whiteSpaceL[tarInst] << " " << whiteSpaceR[tarInst] << endl;
-        //    cout << "   - wspace (T/D) : " << whiteSpaceT[tarInst] << " " << whiteSpaceD[tarInst] << endl;
-        //    cout << "   - encoded type : " << cellType[tarInst] << endl;
-        //    cout << "   - size of bbox : " << bboxSize[tarInst] << endl;
-        //    cout << "   - is critical  : " << isCrit[tarInst] << endl;
-        //    cout << "   - wire overlap : " << sWireOverlap[tarInst] << endl;
+        //    cout << "   - relpos (x,y) : " << relPosX_[tarInst] << " " << relPosY_[tarInst] << endl;
+        //    cout << "   - # acc points : " << instAccPoints_[tarInst] << endl;
+        //    cout << "   - # blk points : " << instBlkPoints_[tarInst] << endl;
+        //    cout << "   - # bnd points : " << instBndPoints_[tarInst] << endl;
+        //    cout << "   - # cut edges  : " << numCutEdges_[tarInst] << endl;
+        //    cout << "   - wspace (L/R) : " << whiteSpaceL_[tarInst] << " " << whiteSpaceR_[tarInst] << endl;
+        //    cout << "   - wspace (T/D) : " << whiteSpaceT_[tarInst] << " " << whiteSpaceD_[tarInst] << endl;
+        //    cout << "   - encoded type : " << cellType_[tarInst] << endl;
+        //    cout << "   - size of bbox : " << stnBBox_[tarInst] << endl;
+        //    cout << "   - is critical  : " << isCritical_[tarInst] << endl;
+        //    cout << "   - wire overlap : " << sWireOverlap_[tarInst] << endl;
         //    cout << endl; 
         //}
 
