@@ -2,6 +2,7 @@
 #define __GRAPH__EXTRACTOR__
 
 #include <iostream>
+#include <unordered_map>
 
 namespace odb {
 class dbDatabase;
@@ -55,6 +56,9 @@ class ClipGraphExtractor {
     void saveFeatures(const char* dirPath);
     void saveFeatures(const char* dirPath, int numHops); // revised 
     void saveLabels(const char* dirPath);
+    
+    void saveInstFeatures(const char* dirPath);
+    void saveInstLabels(const char* dirPath);
 
 
     GraphModel getGraphModel() { return graphModel_; }
@@ -92,7 +96,29 @@ class ClipGraphExtractor {
     //void initRtree1();
     //void initRtree2();
 
-
+    // For instance feature
+    std::unordered_map<odb::dbInst*, bool> isCritical_;
+    std::unordered_map<odb::dbInst*, bool> isClocked_;
+    std::unordered_map<odb::dbInst*, double> absSlack_;
+    std::unordered_map<odb::dbInst*, double> relSlack_;
+    std::unordered_map<odb::dbInst*, int> instAccPoints_;
+    std::unordered_map<odb::dbInst*, int> instBlkPoints_;
+    std::unordered_map<odb::dbInst*, int> instBndPoints_;
+    std::unordered_map<odb::dbInst*, double> whiteSpaceL_;
+    std::unordered_map<odb::dbInst*, double> whiteSpaceR_;
+    std::unordered_map<odb::dbInst*, double> whiteSpaceT_;
+    std::unordered_map<odb::dbInst*, double> whiteSpaceD_;
+    std::unordered_map<odb::dbInst*, double> sWireOverlap_;
+    std::unordered_map<odb::dbInst*, double> stnBBox_;
+    std::unordered_map<odb::dbInst*, double> cellSize_;
+    std::unordered_map<odb::dbInst*, int> numCutEdges_;
+    std::unordered_map<odb::dbInst*, int> numInEdges_;
+    std::unordered_map<odb::dbInst*, int> numOutEdges_;
+    std::unordered_map<odb::dbInst*, int> numEdges_;
+    std::unordered_map<odb::dbInst*, int> cellType_;
+    std::unordered_map<odb::dbInst*, double> relPosX_;
+    std::unordered_map<odb::dbInst*, double> relPosY_;
+    std::unordered_map<odb::dbInst*, int> numDrvs_;
 
 };
 };

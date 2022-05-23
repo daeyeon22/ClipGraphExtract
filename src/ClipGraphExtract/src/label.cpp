@@ -126,6 +126,12 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 	
 	int drvNum = 0;
 
+    //unordered_map<dbInst*, int> numDrvs_;
+    for(dbInst* tarInst : block->getInsts()) {
+        numDrvs_[tarInst] = 0;
+    }
+
+
 	while(getline(inFile, line)) {
         smatch matStr; 
         string str = line;
@@ -197,7 +203,11 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 					toInst = parseInstName(m[0].str());
 					toPrefix = "Blockage of Cell";
 					tokens[1] = regex_replace(tokens[1], objRex1, "");
-					//cout << tokens[1] << endl;
+					
+                    
+                    
+                    
+                    //cout << tokens[1] << endl;
 				} else if(regex_search(tokens[1], m, objRex2)) {
 					toInst = parseInstName(m[0].str());
 					toPrefix = "Pin of Cell";
@@ -247,6 +257,17 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             dbNet* net2 = block->findNet(toNet.c_str());
             dbInst* inst1 = block->findInst(fromInst.c_str());
             dbInst* inst2 = block->findInst(toInst.c_str());
+
+
+            if(inst1 != NULL) {
+                numDrvs_[inst1]++;
+            }
+
+            if(inst2 != NULL) {
+                numDrvs_[inst2]++;
+            }
+
+
 
             ///////////////////////////////////////////////////////////
             if(fromNet != "") {
@@ -336,7 +357,7 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
-
+        gcell->getGraph()->setNumDrvs(numDrvs_);
         if(gcell->getNumMarkers() > 0)
             gcell->print();
     
@@ -359,8 +380,9 @@ void Gcell::annotateLabel(BoxRtree<Marker*> &rtree) {
     vector<pair<bgBox, Marker*>> queryResults;
     rtree.query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
     for(auto& val : queryResults) {
-        Marker* mark = val.second;
-        markers_.push_back(mark);
+        Marker* tarMark = val.second;
+        markers_.push_back(tarMark);
+   
     }
 }
 

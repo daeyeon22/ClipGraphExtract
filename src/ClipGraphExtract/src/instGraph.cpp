@@ -260,6 +260,7 @@ void Graph::printEdgeList() {
 }
 
 
+
 void Graph::saveNodeFeaFile(std::string fileName) {
 
     
@@ -330,6 +331,15 @@ void Graph::saveFile(std::string fileName) {
 	}
 	outFile.close();
 }
+
+void Graph::setNumDrvs( unordered_map<dbInst*, int> &numDrvs) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        tarVertex->setNumDrvs(numDrvs[tarInst]);
+    }
+}
+
 
 
 void Graph::setRelPos(  unordered_map<dbInst*, double> &relPosX, 

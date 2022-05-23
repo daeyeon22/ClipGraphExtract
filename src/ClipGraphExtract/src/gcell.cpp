@@ -149,21 +149,18 @@ int Gcell::getNumNets() {
     return (int)(rsmts_.size());
 }
 
-
 int Gcell::getNumLNets() {
     int count =0;
     for(RSMT* rsmt : rsmts_) {
         if(rsmt->isLocalNet())
             count++;
     }
-
     return count;
 }
 
 int Gcell::getNumGNets() {
     int count = getNumNets() - getNumLNets();
     return count;
-
 }
 
 int Gcell::getNumMarkers() {
@@ -208,8 +205,6 @@ void Gcell::getNumMarkers(int &lnet, int &gnet, int &inst) {
         }
     }
 }
-
-
 
 double Gcell::getWireUtil(ModelType type) {
      switch(type) {
@@ -260,9 +255,6 @@ double Gcell::getGNetUtil(ModelType type) {
     //int wireLen = rmPL_.getWireLength();
     return getWireUtil(type) - getLNetUtil(type);
 }
-
-
-
 
 double Gcell::getChanUtil(ModelType type) {
     double chanDenL = getChanUtil(Orient::LEFT, type);
@@ -387,9 +379,8 @@ void Gcell::updateTimingInfo(unordered_map<dbInst*, double> slack) {
             cout << "?" << endl;
             continue;
         }
-        wns_ = min(wns_, slack[tarInst]);
-        if(slack[tarInst] < 0)
-            tns_ += slack[tarInst];
+        wns_ = max(wns_, slack[tarInst]);
+        tns_ += slack[tarInst];
     }
 }
 
@@ -399,13 +390,11 @@ void Gcell::saveGraph(string dirPath, string fileName) {
     string vertFeaFile = dirPath + "/" + fileName + ".x";
     string edgeIdxFile = dirPath + "/" + fileName + ".edge_index";
     string edgeAttFile = dirPath + "/" + fileName + ".edge_attr";
+
     graph_->saveNodeFeaFile(vertFeaFile);
     graph_->saveEdgeIdxFile(edgeIdxFile);
     graph_->saveEdgeAttFile(edgeAttFile);
 }
-
-
-
 
 void
 Gcell::extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree) {

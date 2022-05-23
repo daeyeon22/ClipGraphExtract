@@ -59,7 +59,9 @@ Vertex::Vertex(odb::dbInst* inst,
     cutEdges_=0;
     bboxSize_=0.0;
     sWireOverlap_=0.0;
+    numDrvs_=0;
 } 
+
 
 void Vertex::setInst(odb::dbInst* inst) {
   inst_ = inst;
@@ -76,6 +78,11 @@ void Vertex::addInEdge(Edge* edge) {
 void Vertex::addOutEdge(Edge* edge) { 
   outEdges_.push_back(edge);
 }
+
+void Vertex::setNumDrvs(int numDrvs) {
+    numDrvs_ = numDrvs;
+}
+
 
 void Vertex::setBBoxSize(double bboxSize) {
     bboxSize_ = bboxSize;
@@ -144,6 +151,9 @@ double Vertex::getRelPosY() {
     return relPosY_;
 }
 
+int Vertex::getNumDrvs() {
+    return numDrvs_;
+}
 
 
 
