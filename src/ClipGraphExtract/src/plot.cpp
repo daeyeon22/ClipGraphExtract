@@ -1,6 +1,7 @@
 #include "grid.h"
 #include "CImg.h"
 #include <iostream>
+#include <fstream>
 #include <tinycolormap.hpp>
 
 
@@ -266,8 +267,6 @@ void Grid::saveGridImages(string dirPath, string prefix) {
     img6.save_jpeg(imgPath.c_str(), 200);
     */
 }
-
-
 
 
 };

@@ -60,7 +60,6 @@ class ClipGraphExtractor {
     void saveInstFeatures(const char* dirPath);
     void saveInstLabels(const char* dirPath);
 
-
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
 

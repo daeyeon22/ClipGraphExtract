@@ -346,9 +346,6 @@ class Grid {
     
     
 
-
-    
-    //
     double getMaxRUDY();
     double getMaxCellUtil();
 

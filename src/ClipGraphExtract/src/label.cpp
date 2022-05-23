@@ -66,7 +66,8 @@ string parseDrv(string substr) {
 
 string parseRegularNetName(string substr) {
     string str =substr;
-    str = regex_replace(substr, regex("Regular Wire of Net "), "");
+    str = regex_replace(str, regex("Regular Wire of Net "), "");
+    str = regex_replace(str, regex("Special Wire of Net "), "");
     str = regex_replace(str, regex("\\s"), "");
 	return str;
 }
@@ -136,7 +137,6 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
         smatch matStr; 
         string str = line;
         smatch m;
-
 
 		// Detect parsing start pattern
         if(regex_search(str, m, startRex)) {
@@ -313,7 +313,7 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             }
 
             rtree.insert(make_pair(mark->getQueryBox(), mark));
-/*		
+/*	
 			cout << typeName << ":";
 			cout << ruleName << ":";
 			cout << fromPrefix << ":";
@@ -326,7 +326,7 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 			cout << endl;
             cout << "(" << tokens[0] << " " << tokens[1] << ") (" << tokens[2] << " " << tokens[3] <<")" << endl;
 			cout << endl;
-*/			
+*/		
 			typeName ="";
 			ruleName ="";
 			lyrName ="";
