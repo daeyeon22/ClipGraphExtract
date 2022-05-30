@@ -427,6 +427,7 @@ void ClipGraphExtractor::extract() {
 
         
         cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
+        isClocked_[inst] = tarMaster->isSequential();
 
         for(dbITerm* iterm : inst->getITerms()) {
             dbMTerm* mTerm = iterm->getMTerm();
@@ -630,6 +631,9 @@ void ClipGraphExtractor::extract() {
             
             relPosX_[tarInst] = cenX;
             relPosY_[tarInst] = cenY;
+
+            col_[tarInst] = gcell->getCol();
+            row_[tarInst] = gcell->getRow();
 
             numCutEdges_[tarInst] = 0;
 
