@@ -122,6 +122,10 @@ void Vertex::setNumBndPoints(int numPoints) {
     numBndPoints_ = numPoints;
 }
 
+void Vertex::setViaFeature(double powerViaDistance) {
+    powerViaDistance_ = powerViaDistance;
+}
+
 void Vertex::setWhiteSpaceL(double space) {
     whiteSpaceL_ = space;
 }

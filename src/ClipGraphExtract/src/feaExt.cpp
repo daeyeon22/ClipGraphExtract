@@ -585,39 +585,79 @@ void ClipGraphExtractor::extract() {
         
         vector<pair<bgBox, dbTechVia*>> queryViaResults;
         
-        pViaRtree.query(bgi::nearest(tarBox, 2), back_inserter(queryViaResults));
+        pViaRtree.query(bgi::nearest(tarBox, 1), back_inserter(queryViaResults));
 
-        cout << "Inst Box" << " ";
-        cout << instBBox.xMin() << " "
-             << instBBox.yMin() << " "
-             << instBBox.xMax() << " "
-             << instBBox.yMax() << endl;
-
-        int xCenInst = (instBBox.xMin()+instBBox.xMax())/2;
-        int yCenInst = (instBBox.yMin()+instBBox.yMax())/2;
+        int instXMin = instBBox.xMin(); 
+        int instXMax = instBBox.xMax(); 
+        int instYMin = instBBox.yMin(); 
+        int instYMax = instBBox.yMax(); 
+        
+//        cout << "Inst Box" << " ";
+//        cout << instXMin << " " << instXMax << " " << instYMin << " " << instYMax << endl;
 
         for(auto& val : queryViaResults) {
             dbTechVia* via = val.second;
             bgBox viaBox = val.first;
 
-            cout << "Via Box" << " ";
-            cout << viaBox.min_corner().get<0>() << " "
-                 << viaBox.min_corner().get<1>() << " "
-                 << viaBox.max_corner().get<0>() << " "
-                 << viaBox.max_corner().get<1>() << " ";
+            int viaXMin = viaBox.min_corner().get<0>();
+            int viaYMin = viaBox.min_corner().get<1>();
+            int viaXMax = viaBox.max_corner().get<0>();
+            int viaYMax = viaBox.max_corner().get<1>();
+
+//            cout << "Via Box" << " ";
+//            cout << viaXMin << " " << viaYMin << " " << viaXMax << " " << viaYMax << " ";
+           
+            int c = 0;
+            if(viaXMax <= instXMin) {
+                if(instYMax <= viaYMin) c = 1;
+                else if(instYMin <= viaYMax && viaYMin <= instYMax) c = 4;
+                else c = 7;
+            }
+
+            else if(instXMin <= viaXMax && viaXMin <= instXMax) {
+                if(instYMax <= viaYMin) c = 2;
+                else if(instYMin < viaYMax && viaYMin <= instYMax) c = 5;
+                else c = 8;
+            }
             
-            int xCenVia = (viaBox.min_corner().get<0>()+viaBox.max_corner().get<0>())/2;
-            int yCenVia = (viaBox.min_corner().get<1>()+viaBox.max_corner().get<1>())/2;
+            else {
+                if(instYMax <= viaYMin) c = 3;
+                else if(instYMin <= viaYMax && viaYMin <= instYMax) c = 6;
+                else c = 9;
+            }
+            
+            switch(c) {
+                case 1:
+                    powerViaDistance_[inst] = (instXMin-viaXMax) + (viaYMin-instYMax);
+                    break;
+                case 2:
+                    powerViaDistance_[inst] = viaYMin-instYMax;
+                    break;
+                case 3:
+                    powerViaDistance_[inst] = (viaXMin-instXMax) + (viaYMin-instYMax);
+                    break;
+                case 4:
+                    powerViaDistance_[inst] = instXMin-viaXMax;
+                    break;
+                case 5:
+                    powerViaDistance_[inst] = 0;
+                    break;
+                case 6:
+                    powerViaDistance_[inst] = viaXMin-instXMax;
+                    break;
+                case 7:
+                    powerViaDistance_[inst] = (instXMin-viaXMax) + (instYMin-viaYMax);
+                    break;
+                case 8:
+                    powerViaDistance_[inst] = instYMin-viaYMax;
+                    break;
+                case 9:
+                    powerViaDistance_[inst] = (viaXMin-instXMax) + (instYMin-viaYMax);
+                    break;
+            }
 
-            int xDis = xCenInst - xCenVia;
-            if(xDis < 0) xDis = -xDis;
-
-            int yDis = yCenInst - yCenVia;
-            if(yDis < 0) yDis = -yDis;
-
-            int distance = xDis + yDis;
-
-            cout << "Distance : " << distance << endl;
+            powerViaDistance_[inst] /= gcellHeight;
+//            cout << "powerViaDistance_[inst] : " << powerViaDistance_[inst] << endl;
         }
         
         // Calculate white space (horizontal)
@@ -801,6 +841,7 @@ void ClipGraphExtractor::extract() {
         instGraph->setNumPoints(instAccPoints_,
                                 instBlkPoints_,
                                 instBndPoints_);
+        instGraph->setViaFeature(powerViaDistance_);
         instGraph->setWhiteSpace(whiteSpaceL_,
                                  whiteSpaceR_,
                                  whiteSpaceT_,
