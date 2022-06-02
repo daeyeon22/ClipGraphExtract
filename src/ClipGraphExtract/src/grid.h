@@ -86,6 +86,8 @@ class Gcell {
     // using placement, RSMT results
     int numInsts_;
     int numTerms_;
+    int numVias_;
+    int numPowerVias_;
     //int numLocalNets_;
     //int numGlobalNets_;
 
@@ -127,6 +129,9 @@ class Gcell {
     void extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree);
     void extractPlaceFeature(SegRtree<RSMT*> *rtree);
     void extractRouteFeature(SegRtree<odb::dbNet*> *rtree);
+    void extractViaFeature(BoxRtree<odb::dbTechVia*> *rViaRtree, BoxRtree<odb::dbTechVia*> *sViaRtree,
+                            BoxRtree<odb::dbTechVia*> *pViaRtree);
+
     void updateTimingInfo(std::unordered_map<odb::dbInst*, double> slack);
 
 

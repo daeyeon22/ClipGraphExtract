@@ -17,7 +17,7 @@ using namespace odb;
 
 Gcell::Gcell(int col, int row) :
     col_(col), row_(row),
-    numInsts_(0), numTerms_(0), 
+    numInsts_(0), numTerms_(0), numVias_(0), numPowerVias_(0),
     //numLNets_(0), numGNets_(0), 
     wns_(0), tns_(0),
     numLayers_(1), graph_(nullptr),
@@ -540,6 +540,106 @@ Gcell::extractRouteFeature(SegRtree<odb::dbNet*> *rtree) {
     
     }
 }
+
+void
+Gcell::extractViaFeature(BoxRtree<odb::dbTechVia*> *rViaRtree, 
+        BoxRtree<odb::dbTechVia*> *sViaRtree, BoxRtree<odb::dbTechVia*> *pViaRtree) {
+    
+    vector<pair<bgBox, dbTechVia*>> rQueryResults;
+    vector<pair<bgBox, dbTechVia*>> sQueryResults;
+    vector<pair<bgBox, dbTechVia*>> pQueryResults;
+
+    // Query
+    rViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(rQueryResults));
+    sViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(sQueryResults));
+    pViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(pQueryResults));
+    
+    bgPoint minCorner = getQueryBox().min_corner();
+    bgPoint maxCorner = getQueryBox().max_corner();
+
+//    int minX = minCorner.get<0>();
+//    int minY = minCorner.get<1>();
+//    int maxX = maxCorner.get<0>();
+//    int maxY = maxCorner.get<1>();
+//    
+//    cout << minX/2000.0 << " ";
+//    cout << minY/2000.0 << " ";
+//    cout << maxX/2000.0 << " ";
+//    cout << maxY/2000.0 << endl;
+//
+//    cout << "Signal Vias" << endl;
+    for(auto &val : rQueryResults) {
+        numVias_++;
+//        dbTechVia* via = val.second;
+//        bgBox box = val.first;
+//
+//        bgPoint minCorner = box.min_corner();
+//        bgPoint maxCorner = box.max_corner();
+//
+//        int minX = minCorner.get<0>();
+//        int minY = minCorner.get<1>();
+//        int maxX = maxCorner.get<0>();
+//        int maxY = maxCorner.get<1>();
+//
+//        cout << (minX+maxX)/4000.0 << " ";
+//        cout << (minY+maxY)/4000.0 << " ";
+//
+//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
+    }
+    
+//    cout << endl;
+    
+//    cout << "Special Vias" << endl;
+    for(auto &val : sQueryResults) {
+        numVias_++;
+//        dbTechVia* via = val.second;
+//        bgBox box = val.first;
+//        
+//        bgPoint minCorner = box.min_corner();
+//        bgPoint maxCorner = box.max_corner();
+//
+//        int minX = minCorner.get<0>();
+//        int minY = minCorner.get<1>();
+//        int maxX = maxCorner.get<0>();
+//        int maxY = maxCorner.get<1>();
+//        
+//        cout << (minX+maxX)/4000.0 << " ";
+//        cout << (minY+maxY)/4000.0 << " ";
+//
+//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
+    }
+
+//    cout << endl;
+    
+//    cout << "Power Vias" << endl;
+    for(auto &val : pQueryResults) {
+        numVias_++;
+        numPowerVias_++;
+//        dbTechVia* via = val.second;
+//        bgBox box = val.first;
+//        
+//        bgPoint minCorner = box.min_corner();
+//        bgPoint maxCorner = box.max_corner();
+//
+//        int minX = minCorner.get<0>();
+//        int minY = minCorner.get<1>();
+//        int maxX = maxCorner.get<0>();
+//        int maxY = maxCorner.get<1>();
+//        
+//        cout << (minX+maxX)/4000.0 << " ";
+//        cout << (minY+maxY)/4000.0 << " ";
+//
+//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
+    }
+
+//    cout << endl;
+//    cout << "===========================" << endl;
+//    cout << "# of total vias : " << numVias_ << endl;
+//    cout << "# of power vias : " << numPowerVias_ << endl;
+//    cout << "===========================" << endl;
+//    cout << endl;
+}
+
 
 
 void
