@@ -259,7 +259,9 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             dbNet* net2 = block->findNet(toNet.c_str());
             dbInst* inst1 = block->findInst(fromInst.c_str());
             dbInst* inst2 = block->findInst(toInst.c_str());
-
+            dbTechLayer* tarLayer = db_->getTech()->findLyaer(lyrName.c_str());
+           
+            mark->setLayer(tarLayer);
 
             if(inst1 != NULL) {
                 numDrvs_[inst1]++;
