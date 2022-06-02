@@ -97,6 +97,8 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 	dbBlock* block = db_->getChip()->getBlock();
     int dbUnitMicron = block->getDbUnitsPerMicron();
 
+    unordered_map<dbLayer*, BoxRtree<Marker*>> rtrees;
+
     BoxRtree<Marker*> rtree;
 
     regex lyrRex("\\( Metal[0-9]+ \\)");
@@ -266,6 +268,8 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             if(inst2 != NULL) {
                 numDrvs_[inst2]++;
             }
+
+            
 
 
 

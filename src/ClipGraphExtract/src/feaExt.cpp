@@ -426,13 +426,15 @@ void ClipGraphExtractor::extract() {
         set<odb::dbInst*> sinkInsts;
 
         
+        
+
         cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
         isClocked_[inst] = tarMaster->isSequential();
+        
 
 
-
-
-
+        xCoord_[inst] = 0.5*(xMax+xMin)/dbu;
+        yCoord_[inst] = 0.5*(yMax+yMin)/dbu;
 
 
         for(dbITerm* iterm : inst->getITerms()) {

@@ -121,6 +121,10 @@ class ClipGraphExtractor {
     std::unordered_map<odb::dbInst*, int> numDrvs_;
     std::unordered_map<odb::dbInst*, int> row_;
     std::unordered_map<odb::dbInst*, int> col_;
+    std::unordered_map<odb::dbInst*, double> xCoord_;
+    std::unordered_map<odb::dbInst*, double> yCoord_;
+
+
 
 };
 };

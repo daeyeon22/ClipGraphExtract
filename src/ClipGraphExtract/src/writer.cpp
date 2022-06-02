@@ -104,7 +104,7 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
 }
 
 
-
+// USE
 void ClipGraphExtractor::saveLabels(const char* dirPath) {
     // TODO
     Grid* grid = (Grid*) grid_;
@@ -296,6 +296,7 @@ void writeData(ofstream& outFile, Grid* tarGrid, int tarCol, int tarRow, int num
     outFile << endl;
 }
 
+// USE
 void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
 
     // TODO
@@ -322,6 +323,7 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath, int numHops) {
     cout << "End writing file." << endl;
 }
 
+// USE
 void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
 
 
@@ -335,6 +337,8 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
             //<< "rel_pos_y" << ","
             << "col" << ","
             << "row" << ","
+            << "x_coord" << ","
+            << "y_coord" << ","
             << "abs_slack" << ","
             << "rel_slack" << ","
             << "inst_acc_points" << ","
@@ -366,6 +370,8 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
                 //<< relPosY_[tarInst] << ","
                 << col_[tarInst] << ","
                 << row_[tarInst] << ","
+                << xCoord_[tarInst] << ","
+                << yCoord_[tarInst] << ","
                 << absSlack_[tarInst] << ","
                 << relSlack_[tarInst] << ","
                 << instAccPoints_[tarInst] << ","
@@ -391,6 +397,7 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
 }
 
 
+// USE
 void ClipGraphExtractor::saveInstLabels(const char* dirPath) {
     string filePath = string(dirPath) + "/instLabel.csv";
     ofstream outFile;
