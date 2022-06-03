@@ -205,7 +205,7 @@ class Marker {
     void setToNet(RSMT* rsmt);
     void setFromInst(odb::dbInst* inst);
     void setToInst(odb::dbInst* inst);
-
+    void setLayer(odb::dbTechLayer* layer);
 
     bool isFromNet();
     bool isToNet();
@@ -240,6 +240,7 @@ class Marker {
     RSMT* toNet_;
     odb::dbInst* fromInst_;
     odb::dbInst* toInst_;
+    odb::dbTechLayer* layer_;
 
 
     odb::Rect bbox_;

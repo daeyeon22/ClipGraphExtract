@@ -210,9 +210,9 @@ void getTimingInfo(dbDatabase* db_, sta::dbSta* sta_,
        
 
         absSlack_[inst] *= 1e+9;
-        if(isCritical_[inst]) {
-            cout << inst->getName() << " is in a critical path (" << absSlack_[inst] << ") " << wstSlk  << endl;
-        }   
+        //if(isCritical_[inst]) {
+        //    cout << inst->getName() << " is in a critical path (" << absSlack_[inst] << ") " << wstSlk  << endl;
+        //}   
 
 
     }

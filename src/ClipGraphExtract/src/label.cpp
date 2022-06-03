@@ -4,6 +4,7 @@
 #include "clip_graph_ext/clipGraphExtractor.h"
 #include "opendb/db.h"
 #include "opendb/dbWireCodec.h"
+#include "opendb/dbTransform.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -85,7 +86,6 @@ string parseLayerName(string substr) {
 
 
 
-
 void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 
     cout << "Start to read routing report (" << fileName << ")" << endl;
@@ -95,13 +95,11 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
     string line;
 
 	dbBlock* block = db_->getChip()->getBlock();
-    int dbUnitMicron = block->getDbUnitsPerMicron();
-
-    unordered_map<dbLayer*, BoxRtree<Marker*>> rtrees;
+    int dbu = block->getDbUnitsPerMicron();
 
     BoxRtree<Marker*> rtree;
 
-    regex lyrRex("\\( Metal[0-9]+ \\)");
+    regex lyrRex("\\( m[0-9]+ \\)");
     regex startRex("[\\w]+: \\( [\\w\\s\\d-\\.]+ \\)");
     regex DrvRex("\\s+Total Violations : \\d+ Viols\\.");
     regex typeRex("[\\w]+:");
@@ -128,11 +126,219 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 	
 	int drvNum = 0;
 
+    typedef pair<dbNet*, dbInst*> dbValue;
+    unordered_map<int, BoxRtree<dbValue>> rtrees;
+
     //unordered_map<dbInst*, int> numDrvs_;
     for(dbInst* tarInst : block->getInsts()) {
         numDrvs_[tarInst] = 0;
+
+        int xOrig, yOrig;
+        tarInst->getOrigin(xOrig, yOrig);
+        dbTransform transform;
+        transform.setOrient(tarInst->getOrient());
+        transform.setOffset(Point(xOrig, yOrig));
+
+        for(dbITerm* tarIterm : tarInst->getITerms()) {
+            dbMTerm* tarMterm = tarIterm->getMTerm();
+            dbNet* tarNet = tarIterm->getNet();
+            for(dbMPin* tarMpin : tarMterm->getMPins()) {
+                for(dbBox* tarBox : tarMpin->getGeometry()) {
+                    int routingLevel = tarBox->getTechLayer()->getRoutingLevel();
+                    if(routingLevel == 1 || routingLevel == 2) {
+                        Rect tarBBox;
+                        tarBox->getBox(tarBBox);
+                        transform.apply(tarBBox);
+                        int xMin = tarBBox.xMin();
+                        int yMin = tarBBox.yMin();
+                        int xMax = tarBBox.xMax();
+                        int yMax = tarBBox.yMax();
+
+                        rtrees[routingLevel].insert(
+                                make_pair(bgBox(bgPoint(xMin, yMin), bgPoint(xMax,yMax)), dbValue(tarNet, tarInst))
+                        );
+                    
+               
+                    }
+                }
+            }
+        }
     }
 
+
+    int x, y, ext;
+    for(dbNet* net : block->getNets()) {
+
+        unordered_map<int, vector<pair<bgBox, dbValue>>> accessMetals;
+        
+        dbWire* wire = net->getWire();
+        if( wire && wire->length() ) {
+            int wl = wire->getLength();
+            int wl_ = 0;
+            dbWireDecoder decoder;
+            decoder.begin(wire);
+            vector<odb::Point> points;
+            dbWireDecoder::OpCode opcode = decoder.peek();
+            dbTechLayer* tarLayer;
+            dbTechVia* techVia;
+            while(opcode != dbWireDecoder::END_DECODE) {
+                bool hasPath=false;
+                switch(opcode) {
+                    case dbWireDecoder::PATH:
+                        tarLayer = decoder.getLayer();
+                        //cout << "PATH begin " << endl;
+                        //if(tarLayer != NULL)
+                        //    cout << tarLayer->getName() << endl;
+                        points.clear(); break;
+                    case dbWireDecoder::JUNCTION: 
+                        //cout << "JUNCTION" << endl;
+                        break;
+
+                    case dbWireDecoder::SHORT: 
+                        //cout << "SHORT" << endl;
+                        break;
+                    case dbWireDecoder::TECH_VIA: {
+                        techVia = decoder.getTechVia();
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        //cout << "TECHVIA " << techVia->getName() << " (" << x << " " << y << ")" << endl;
+                        bool isAccessed = false;
+                        dbInst* tarInst;
+                        for(dbBox* tarBox : techVia->getBoxes()) {
+                            int xMin = x + tarBox->xMin();
+                            int yMin = y + tarBox->yMin();
+                            int xMax = x + tarBox->xMax();
+                            int yMax = y + tarBox->yMax();
+                
+                            int routingLevel = tarBox->getTechLayer()->getRoutingLevel();
+
+                            if(routingLevel == 1 || routingLevel == 2) {
+                                //cout << tarBox->getTechLayer()->getName() 
+                                //    << " (" << xMin << " " << yMin << ")"
+                                //    << " (" << xMax << " " << yMax << ")" << endl;
+                            
+                                bgBox tBox(bgPoint(xMin, yMin), bgPoint(xMax, yMax));
+                                if(!isAccessed) {
+                                    vector<pair<bgBox,dbValue>> queryResults;
+                                    rtrees[routingLevel].query(bgi::intersects(tBox), back_inserter(queryResults));
+                                    for(auto it : queryResults) {
+                                        dbValue val = it.second;
+                                        dbNet* curNet = val.first;
+                                        dbInst* curInst = val.second;
+
+                                        if(curNet == net) {
+                                            isAccessed = true;
+                                            tarInst = curInst;
+                                            break;
+                                        }
+                                    }  
+                                }
+                                if(isAccessed) {
+                                    accessMetals[routingLevel].push_back(make_pair(tBox,dbValue(net,tarInst)));
+                                }
+                            }
+                        }
+
+                        hasPath=true;
+                        break;
+                    }
+                    case dbWireDecoder::VIA: 
+                        //cout << "VIA" << endl;                          
+                        break;
+                    case dbWireDecoder::VWIRE: 
+                        //cout << "VWIRE" << endl;
+                        break;
+                    case dbWireDecoder::POINT_EXT:
+                        decoder.getPoint(x,y,ext);
+                        points.push_back(odb::Point(x,y));
+                        //cout << "POINT_EXT (" << x << " " << y << ")" << endl;
+                        hasPath=true;
+                        break;
+                    case dbWireDecoder::BTERM: 
+                        //cout << "BTERM" << endl;
+                        break;
+                    case dbWireDecoder::ITERM: 
+                        //cout << "ITERM" << endl;
+                        break;
+                    case dbWireDecoder::RULE: 
+                        //cout << "RULE" << endl;
+                        break;
+                    case dbWireDecoder::POINT: {
+                        decoder.getPoint(x,y);
+                        points.push_back(odb::Point(x,y));
+                        //cout << "POINT (" << x << " " << y << ")" <<  endl;
+                        hasPath=true;
+
+                        
+                        
+                        break;
+                    }
+                    default: break;
+                }
+                if(points.size() > 1) {
+                    odb::Point pt1 = points[points.size()-2];
+                    odb::Point pt2 = points[points.size()-1];
+                    int xMin = min(pt1.getX(), pt2.getX());// - layerMinWidth[decoder.getLayer()]/2;
+                    int xMax = max(pt1.getX(), pt2.getX());// + layerMinWidth[decoder.getLayer()]/2;
+                    int yMin = min(pt1.getY(), pt2.getY());// - layerMinWidth[decoder.getLayer()]/2;
+                    int yMax = max(pt1.getY(), pt2.getY());// + layerMinWidth[decoder.getLayer()]/2;
+                    int dist = (xMax-xMin) + (yMax-yMin);
+                    int width = tarLayer->getWidth();
+                    xMin -= width/2;
+                    xMax += width/2;
+                    yMin -= width/2;
+                    yMax += width/2;
+                    int routingLevel = tarLayer->getRoutingLevel();
+
+                    if( routingLevel == 1 || routingLevel == 2 ) {
+
+                        //cout << net->getName() << " " << tarLayer->getName() << " (" << xMin <<  " " << yMin << ") (" << xMax << " " << yMax <<")" << endl;
+                        vector<pair<bgBox,dbValue>> queryResults;
+                        bgBox tarBox(bgPoint(xMin, yMin), bgPoint(xMax, yMax));
+                        rtrees[routingLevel].query(bgi::intersects(tarBox), back_inserter(queryResults));
+                        for(auto it : queryResults) {
+                            dbValue val = it.second;
+                            dbNet* curNet = val.first;
+                            dbInst* curInst = val.second;
+                            if(curNet == net) {
+                                accessMetals[routingLevel].push_back(make_pair(tarBox,dbValue(net, curInst)));
+                                break;
+                            }
+                        }
+                    }
+                }
+                /*
+
+                */
+                opcode = decoder.next();
+            }
+
+
+
+            for(int i=1; i<=2; i++)
+                for(auto val : accessMetals[i])
+                    rtrees[i].insert(val);
+        }
+
+        
+
+        /*
+        for(dbSWire* swire : net->getSWires()) {
+            for(dbSBox* sbox : swire->getWires()) {
+                int xMin = sbox->xMin();
+                int yMin = sbox->yMin();
+                int xMax = sbox->xMax();
+                int yMax = sbox->yMax();
+                bgBox wireBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                swireRtree.insert( make_pair( wireBox, net ) );
+            }
+        }
+        */
+    }
+ 
+
+    //cout << "Rtree size (1) : " << rtrees[1].size() << endl;
+    //cout << "Rtree size (2) : " << rtrees[2].size() << endl;
 
 	while(getline(inFile, line)) {
         smatch matStr; 
@@ -205,10 +411,6 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 					toInst = parseInstName(m[0].str());
 					toPrefix = "Blockage of Cell";
 					tokens[1] = regex_replace(tokens[1], objRex1, "");
-					
-                    
-                    
-                    
                     //cout << tokens[1] << endl;
 				} else if(regex_search(tokens[1], m, objRex2)) {
 					toInst = parseInstName(m[0].str());
@@ -238,18 +440,10 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 				exit(0);
             }
 
-            int lx = dbUnitMicron * atof(tokens[0].c_str());
-            int ly = dbUnitMicron * atof(tokens[1].c_str());
-            int ux = dbUnitMicron * atof(tokens[2].c_str());
-            int uy = dbUnitMicron * atof(tokens[3].c_str());
-
-            //cout << typeName << " " << ruleName << " " << lyrName 
-            //    << " " << fromPrefix << " " << fromInst << fromNet 
-            //    << " " << toPrefix << " " << toInst << toNet << endl;
-
-            //cout << "BOUNDS (" << lx << " " << ly << ") (" << ux << " " << uy <<")" << endl;
-
-            
+            int lx = dbu * atof(tokens[0].c_str());
+            int ly = dbu * atof(tokens[1].c_str());
+            int ux = dbu * atof(tokens[2].c_str());
+            int uy = dbu * atof(tokens[3].c_str());
             // TODO
             Marker* mark = grid->createMarker(lx,ly,ux,uy);
             mark->setType(typeName);
@@ -259,19 +453,52 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             dbNet* net2 = block->findNet(toNet.c_str());
             dbInst* inst1 = block->findInst(fromInst.c_str());
             dbInst* inst2 = block->findInst(toInst.c_str());
-            dbTechLayer* tarLayer = db_->getTech()->findLyaer(lyrName.c_str());
-           
+            dbTechLayer* tarLayer = db_->getTech()->findLayer(lyrName.c_str());
             mark->setLayer(tarLayer);
-
-            if(inst1 != NULL) {
-                numDrvs_[inst1]++;
+            set<dbInst*> violateInsts;
+            //if(inst1 != NULL)
+            //    violateInsts.insert(inst1);
+            //if(inst2 != NULL)
+            //    violateInsts.insert(inst2);
+            if( tarLayer != NULL ) {
+                int routingLevel = tarLayer->getRoutingLevel();
+                if( routingLevel ==1 || routingLevel ==2 ) {
+                    //bgBox tarBox(bgPoint(lx-10,ly-10), bgPoint(ux+10, uy+10));
+                    bgBox tarBox(bgPoint(lx,ly), bgPoint(ux, uy));
+                    vector<pair<bgBox,dbValue>> queryResults;
+                    rtrees[routingLevel].query(bgi::intersects(tarBox), back_inserter(queryResults));
+                    for(auto it : queryResults) {
+                        dbValue val = it.second;
+                        dbNet* tarNet = val.first;
+                        dbInst* tarInst = val.second;
+                        violateInsts.insert(tarInst);
+                    }
+                }
             }
+            //cout << typeName << " " << ruleName << " " << lyrName 
+            //    << " " << fromPrefix << " " << fromInst << fromNet 
+            //    << " " << toPrefix << " " << toInst << toNet << endl;
+            //cout << "BOUNDS (" << 1.0*lx/dbu << " " << 1.0*ly/dbu << ") (" << 1.0*ux/dbu << " " << 1.0*uy/dbu <<")" << endl;
 
-            if(inst2 != NULL) {
-                numDrvs_[inst2]++;
+
+            for(dbInst* tarInst : violateInsts) {
+                //cout << "   - " << tarInst->getName() << endl;
+                numDrvs_[tarInst]++;
             }
 
             
+            //if(inst1 != NULL) {
+            //    numDrvs_[inst1]++;
+            //}
+
+            //if(inst2 != NULL) {
+            //    numDrvs_[inst2]++;
+            //}
+
+           
+
+
+
 
 
 
@@ -368,6 +595,16 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             gcell->print();
     
     }
+    //int total = 0;
+    //for(auto it : numDrvs_) {
+    //    dbInst* tarInst = it.first;
+    //    int count = it.second;
+    //    cout << tarInst->getName() << " -> " << count << endl;
+    //    total += count;
+    //}
+
+    //cout << "# of total DRVs : " << total << endl;
+    
 }
 
 
