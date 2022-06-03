@@ -60,7 +60,6 @@ class ClipGraphExtractor {
     void saveInstFeatures(const char* dirPath);
     void saveInstLabels(const char* dirPath);
 
-
     GraphModel getGraphModel() { return graphModel_; }
     EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
 
@@ -104,6 +103,7 @@ class ClipGraphExtractor {
     std::unordered_map<odb::dbInst*, int> instAccPoints_;
     std::unordered_map<odb::dbInst*, int> instBlkPoints_;
     std::unordered_map<odb::dbInst*, int> instBndPoints_;
+    std::unordered_map<odb::dbInst*, double> powerViaDistance_;
     std::unordered_map<odb::dbInst*, double> whiteSpaceL_;
     std::unordered_map<odb::dbInst*, double> whiteSpaceR_;
     std::unordered_map<odb::dbInst*, double> whiteSpaceT_;

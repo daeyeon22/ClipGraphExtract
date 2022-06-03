@@ -16,8 +16,6 @@ using namespace ClipGraphExtract;
 using namespace ClipGraphExtract;
 
 
-
-
 namespace ClipGraphExtract {
 
 void Grid::init() {

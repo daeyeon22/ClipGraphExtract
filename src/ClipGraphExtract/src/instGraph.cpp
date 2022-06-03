@@ -430,6 +430,13 @@ void Graph::setNumPoints(   std::unordered_map<dbInst*, int> &numAccPoints,
 }
 
 
+void Graph::setViaFeature( std::unordered_map<dbInst*, double> &powerViaDistance) {
+    for(auto& val : vertexMap_) {
+        Vertex* tarVertex = val.second;
+        dbInst* tarInst = val.first;
+        tarVertex->setViaFeature(powerViaDistance[tarInst]);
+    }
+}
 void Graph::setWhiteSpace(  std::unordered_map<dbInst*,double> &whiteSpaceL,
                             std::unordered_map<dbInst*,double> &whiteSpaceR,
                             std::unordered_map<dbInst*,double> &whiteSpaceT,

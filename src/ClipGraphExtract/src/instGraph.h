@@ -50,6 +50,7 @@ public:
     void setNumAccPoints(int numAccPoints);
     void setNumBlkPoints(int numBlkPoints);
     void setNumBndPoints(int numBndPoints);
+    void setViaFeature(double powerViaDistance);
     void setWhiteSpaceL(double whiteSpace);
     void setWhiteSpaceR(double whiteSpace);
     void setWhiteSpaceT(double whiteSpace);
@@ -112,6 +113,7 @@ private:
     bool isCrit_;
     double bboxSize_;
     double sWireOverlap_;
+    double powerViaDistance_;
     double whiteSpaceL_;
     double whiteSpaceR_;
     double whiteSpaceD_;
@@ -178,6 +180,7 @@ class Graph {
         std::unordered_map<odb::dbInst*, int> &numBndPoints
     );
 
+    void setViaFeature(std::unordered_map<odb::dbInst*, double> &powerViaDistance);
     void setWhiteSpace(
         std::unordered_map<odb::dbInst*, double> &whiteSpaceL,
         std::unordered_map<odb::dbInst*, double> &whiteSpaceR,
