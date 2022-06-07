@@ -80,7 +80,7 @@ class Gcell {
     odb::Rect bbox_;
 
     //Resource rmEGR_; // using GR results
-    Resource rmDR_; // using DR results
+    Resource rmDR_; // using DR results -> 얘를 어레이로
     Resource rmPL_; // using PLACE results
 
     // using placement, RSMT results
