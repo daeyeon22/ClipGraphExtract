@@ -24,14 +24,10 @@
 #include <vector>
 #include <cassert>
 
-
-
-
 namespace ClipGraphExtract {
 
 using namespace odb;
 using namespace std;
-
 
 void initInstRtree(odb::dbDatabase* db, BoxRtree<dbInst*> &instRtree) {
     dbBlock* block = db->getChip()->getBlock();
@@ -44,14 +40,16 @@ void initInstRtree(odb::dbDatabase* db, BoxRtree<dbInst*> &instRtree) {
     }
 }
 
-
-
-void initWireRtree(odb::dbDatabase* db, SegRtree<dbNet*> &rwireRtree, BoxRtree<dbNet*> &swireRtree, 
-        BoxRtree<dbTechVia*> &rviaRtree, BoxRtree<dbTechVia*> &sviaRtree) {
+void initWireRtree(odb::dbDatabase* db, 
+                    unordered_map<int, SegRtree<dbNet*>> &rwireRtreeMap,
+                    unordered_map<int, BoxRtree<dbNet*>> &swireRtreeMap,
+                    unordered_map<int, BoxRtree<dbTechVia*>> &rviaRtreeMap, 
+                    unordered_map<int, BoxRtree<dbTechVia*>> &sviaRtreeMap) {
 
     // make wireRtree
     int x, y, ext;
     dbBlock* block = db->getChip()->getBlock();
+    
     for(dbNet* net : block->getNets()) {
         dbWire* wire = net->getWire();
         if( wire && wire->length() ) {
@@ -99,11 +97,12 @@ void initWireRtree(odb::dbDatabase* db, SegRtree<dbNet*> &rwireRtree, BoxRtree<d
          
                 // Wire segment
                 if(hasPath && points.size() > 1) {
+                    dbTechLayer* layer = decoder.getLayer();
+                    int routingLevel = layer->getRoutingLevel();
+
                     odb::Point pt1 = points[points.size()-2];
                     odb::Point pt2 = points[points.size()-1];
                     
-//                    cout << net->getName() << " Type Check : " << net->getSigType().getString() << endl;
-
                     int xMin = min(pt1.getX(), pt2.getX());
                     int xMax = max(pt1.getX(), pt2.getX());
                     int yMin = min(pt1.getY(), pt2.getY());
@@ -113,15 +112,15 @@ void initWireRtree(odb::dbDatabase* db, SegRtree<dbNet*> &rwireRtree, BoxRtree<d
                     if(dist != 0) {
                         wl_ += dist;
                         bgSeg wireSeg( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                        bgBox wireBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                        if(net->isSpecial()) swireRtree.insert( make_pair( wireBox, net ) );
-                        else rwireRtree.insert( make_pair( wireSeg, net ) );
+                        rwireRtreeMap[routingLevel].insert( make_pair( wireSeg, net ) );
                     }
                 }
                 
                 // Via point
                 if(hasPath && isVia) {
                     dbTechVia* via = decoder.getTechVia();
+                    int routingLevel = via->getBottomLayer()->getRoutingLevel();
+
                     odb::Point pt = points[points.size()-1];
 
                     int xMin = pt.getX() + via->getBBox()->xMin();
@@ -129,23 +128,44 @@ void initWireRtree(odb::dbDatabase* db, SegRtree<dbNet*> &rwireRtree, BoxRtree<d
                     int yMin = pt.getY() + via->getBBox()->yMin();
                     int yMax = pt.getY() + via->getBBox()->yMax();
                 
-//                    cout << xMin << " ";
-//                    cout << xMax << " ";
-//                    cout << yMin << " ";
-//                    cout << yMax << endl;
-                    
                     bgBox viaBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                    if(net->isSpecial()) sviaRtree.insert( make_pair( viaBox, via ) );
-                    else rviaRtree.insert( make_pair( viaBox, via ) );
+                    rviaRtreeMap[routingLevel].insert( make_pair( viaBox, via ) );
                 }
                 opcode = decoder.next();
+            }
+        }
+        dbSet<dbSWire> swires = net->getSWires();
+        for(dbSWire* swire : swires) {
+            dbSet<dbSBox> sboxes = swire->getWires();
+            for(dbSBox* sbox : sboxes){
+                int xMin = sbox->xMin();
+                int xMax = sbox->xMax();
+                int yMin = sbox->yMin();
+                int yMax = sbox->yMax();
+
+                if (sbox->isVia()){
+                    dbTechVia* via = sbox->getTechVia();
+                    int routingLevel = via->getBottomLayer()->getRoutingLevel();
+                    
+                    bgBox viaBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                    sviaRtreeMap[routingLevel].insert( make_pair( viaBox, via ) );
+                }
+                else {
+                    dbTechLayer* layer = sbox->getTechLayer();
+                    int routingLevel = layer->getRoutingLevel();
+
+                    bgBox wireBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
+                    swireRtreeMap[routingLevel].insert( make_pair( wireBox, net ) );
+                }
             }
         }
     } 
 }
 
+
 void initPWireRtree(odb::dbDatabase* db,
-    BoxRtree<dbNet*> &pwireRtree, BoxRtree<dbTechVia*> &pviaRtree) {
+    unordered_map<int, BoxRtree<dbNet*>> &pwireRtreeMap,
+    unordered_map<int, BoxRtree<dbTechVia*>> &pviaRtreeMap) {
     
     dbBlock* block = db->getChip()->getBlock();
     set<dbNet*> findNet;
@@ -165,14 +185,20 @@ void initPWireRtree(odb::dbDatabase* db,
                         int xMax = sbox->xMax();
                         int yMin = sbox->yMin();
                         int yMax = sbox->yMax();
+
                         if (sbox->isVia()){
                             dbTechVia* via = sbox->getTechVia();
+                            int routingLevel = via->getBottomLayer()->getRoutingLevel();
+                            
                             bgBox viaBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            pviaRtree.insert( make_pair( viaBox, via ) );
+                            pviaRtreeMap[routingLevel].insert( make_pair( viaBox, via ) );
                         }
                         else {
+                            dbTechLayer* layer = sbox->getTechLayer();
+                            int routingLevel = layer->getRoutingLevel();
+
                             bgBox wireBox( bgPoint(xMin, yMin), bgPoint(xMax, yMax) );
-                            pwireRtree.insert( make_pair( wireBox, net ) );
+                            pwireRtreeMap[routingLevel].insert( make_pair( wireBox, net ) );
                         }
                     }
                 }
@@ -276,7 +302,7 @@ void ClipGraphExtractor::init() {
     grid_ = (void*) new Grid();
     Grid* grid = (Grid*) grid_;
     dbBlock* block = getDb()->getChip()->getBlock();
-
+    
    // Calculate grid size = rowHeight * numRows_
     dbSite* site = block->getRows().begin()->getSite();
     int gcellWidth = site->getHeight() * numRows_;
@@ -284,9 +310,12 @@ void ClipGraphExtractor::init() {
     // get routing supply / capacity for each gcell
     dbSet<dbTechLayer> techLayers = getDb()->getTech()->getLayers();
     int numLayer=0;
-    int trackSupply=0;
-    int wireCapacity=0;
+    int totalTrackSupply=0;
+    int totalWireCapacity=0;
     int minWidth =INT_MAX;
+    unordered_map<int, int> trackSupply;
+    unordered_map<int, int> wireCapacity;
+
     for(dbTechLayer* layer : techLayers) {
         if(layer->getType() == dbTechLayerType::ROUTING) {
             numLayer++;
@@ -303,8 +332,10 @@ void ClipGraphExtractor::init() {
                 capacity = supply * gcellHeight;
             }
 
-            trackSupply += supply;
-            wireCapacity += capacity;
+            totalTrackSupply += supply;
+            trackSupply[numLayer] += supply;
+            totalWireCapacity += capacity;
+            wireCapacity[numLayer] += capacity;
 
             if(numLayer == maxRouteLayer_)
                 break;
@@ -316,8 +347,8 @@ void ClipGraphExtractor::init() {
     cout << "Die area"
             << " (" << blockArea.xMin() << " " << blockArea.yMin() << ")"
             << " (" << blockArea.xMax() << " " << blockArea.yMax() << ")" << endl;
-    cout << "TrackSupply    : " << trackSupply << endl;
-    cout << "WireCapacity   : " << wireCapacity << endl;
+    cout << "TotalTrackSupply    : " << totalTrackSupply << endl;
+    cout << "TotalWireCapacity   : " << totalWireCapacity << endl;
     // Get core area
 
 
@@ -327,9 +358,11 @@ void ClipGraphExtractor::init() {
     grid->setBoundary(blockArea);
     grid->setGcellWidth(gcellWidth);
     grid->setGcellHeight(gcellHeight);
-    grid->setWireCapacity(wireCapacity);
-    grid->setTrackSupply(trackSupply);
     grid->setNumLayers(numLayer);
+    grid->setTotalWireCapacity(totalWireCapacity);
+    grid->setWireCapacity(wireCapacity);
+    grid->setTotalTrackSupply(totalTrackSupply);
+    grid->setTrackSupply(trackSupply);
     grid->setWireMinWidth(minWidth);
     grid->init();
     //  
@@ -344,27 +377,29 @@ void ClipGraphExtractor::extract() {
 
     dbBlock* block = db_->getChip()->getBlock();
     dbSet<dbTechLayer> techLayers = db_->getTech()->getLayers();
+   
+    int maxTechLayer = db_->getTech()->getRoutingLayerCount();
     double dbu = block->getDbUnitsPerMicron();
 
     set<dbNet*> findNet;
     dbSet<dbITerm> iterms = block->getITerms();
 
     // Init Rtrees
-    SegRtree<dbNet*> rWireRtree;
-    BoxRtree<dbTechVia*> rViaRtree;
+    unordered_map<int, SegRtree<dbNet*>> rWireRtreeMap;
+    unordered_map<int, BoxRtree<dbTechVia*>> rViaRtreeMap;
 
-    BoxRtree<dbNet*> sWireRtree;
-    BoxRtree<dbTechVia*> sViaRtree;
+    unordered_map<int, BoxRtree<dbNet*>> sWireRtreeMap;
+    unordered_map<int, BoxRtree<dbTechVia*>> sViaRtreeMap;
 
-    BoxRtree<dbNet*> pWireRtree;
-    BoxRtree<dbTechVia*> pViaRtree;
+    unordered_map<int, BoxRtree<dbNet*>> pWireRtreeMap;
+    unordered_map<int, BoxRtree<dbTechVia*>> pViaRtreeMap;
     
     BoxRtree<dbInst*> instRtree;
     BoxRtree<Gcell*> gcellRtree;
     SegRtree<RSMT*> rsmtRtree;
     
-    initWireRtree(db_, rWireRtree, sWireRtree, rViaRtree, sViaRtree);
-    initPWireRtree(db_, pWireRtree, pViaRtree);
+    initWireRtree(db_, rWireRtreeMap, sWireRtreeMap, rViaRtreeMap, sViaRtreeMap);
+    initPWireRtree(db_, pWireRtreeMap, pViaRtreeMap);
     initInstRtree(db_, instRtree);
     initGcellRtree((Grid*)grid_, gcellRtree);
     initRsmtRtree((Grid*)grid_, rsmtRtree);
@@ -387,8 +422,8 @@ void ClipGraphExtractor::extract() {
     for( Gcell* gcell : grid->getGcells() ) {
         gcell->extractPlaceFeature(&instRtree);
         gcell->extractPlaceFeature(&rsmtRtree);
-        gcell->extractRouteFeature(&rWireRtree);
-        gcell->extractViaFeature(&rViaRtree, &sViaRtree, &pViaRtree);
+        gcell->extractRouteFeature(&rWireRtreeMap, maxTechLayer, maxRouteLayer_);
+        gcell->extractViaFeature(&rViaRtreeMap, &sViaRtreeMap, &pViaRtreeMap, maxTechLayer, maxRouteLayer_);
         gcell->updateTimingInfo(absSlack_);
     }
 
@@ -496,109 +531,102 @@ void ClipGraphExtractor::extract() {
         yMax = instBBox.yMax();
         set<odb::dbInst*> sourceInsts;
         set<odb::dbInst*> sinkInsts;
-        
-        
 
         cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
         isClocked_[inst] = tarMaster->isSequential();
         
-
-    xCoord_[inst] = 0.5*(xMax+xMin)/dbu;
-    yCoord_[inst] = 0.5*(yMax+yMin)/dbu;
-    for(dbITerm* iterm : inst->getITerms()) {
-        dbMTerm* mTerm = iterm->getMTerm();
-        set<Point> accPoints;
-        for(dbMPin* mPin : mTerm->getMPins()) {
-            for(dbBox* pBox : mPin->getGeometry()) {
-                if(pBox->getTechLayer()->getType() != dbTechLayerType::ROUTING)
-                    continue;
-                dbTechLayer* techLayer = pBox->getTechLayer();
-                Rect pinBBox;
-                pBox->getBox(pinBBox);
-                transform.apply(pinBBox);
-                vector<int>::iterator xMinIter = lower_bound(xGrid[techLayer].begin(), 
-                                                            xGrid[techLayer].end(), pinBBox.xMin());
-                vector<int>::iterator xMaxIter = upper_bound(xGrid[techLayer].begin(),
-                                                            xGrid[techLayer].end(), pinBBox.xMax());
-                vector<int>::iterator yMinIter = lower_bound(yGrid[techLayer].begin(),
-                                                            yGrid[techLayer].end(), pinBBox.yMin());
-                vector<int>::iterator yMaxIter = upper_bound(yGrid[techLayer].begin(),
-                                                            yGrid[techLayer].end(), pinBBox.yMax());
-                for(; xMinIter != xMaxIter; xMinIter++) {
-                    for(; yMinIter != yMaxIter; yMinIter++) {
-                        int x = *xMinIter;
-                        int y = *yMinIter;
-                        Point point(x,y);
-                        accPoints.insert(point);
+        xCoord_[inst] = 0.5*(xMax+xMin)/dbu;
+        yCoord_[inst] = 0.5*(yMax+yMin)/dbu;
+        for(dbITerm* iterm : inst->getITerms()) {
+            dbMTerm* mTerm = iterm->getMTerm();
+            set<Point> accPoints;
+            for(dbMPin* mPin : mTerm->getMPins()) {
+                for(dbBox* pBox : mPin->getGeometry()) {
+                    if(pBox->getTechLayer()->getType() != dbTechLayerType::ROUTING)
+                        continue;
+                    dbTechLayer* techLayer = pBox->getTechLayer();
+                    Rect pinBBox;
+                    pBox->getBox(pinBBox);
+                    transform.apply(pinBBox);
+                    vector<int>::iterator xMinIter = lower_bound(xGrid[techLayer].begin(), 
+                                                                xGrid[techLayer].end(), pinBBox.xMin());
+                    vector<int>::iterator xMaxIter = upper_bound(xGrid[techLayer].begin(),
+                                                                xGrid[techLayer].end(), pinBBox.xMax());
+                    vector<int>::iterator yMinIter = lower_bound(yGrid[techLayer].begin(),
+                                                                yGrid[techLayer].end(), pinBBox.yMin());
+                    vector<int>::iterator yMaxIter = upper_bound(yGrid[techLayer].begin(),
+                                                                yGrid[techLayer].end(), pinBBox.yMax());
+                    for(; xMinIter != xMaxIter; xMinIter++) {
+                        for(; yMinIter != yMaxIter; yMinIter++) {
+                            int x = *xMinIter;
+                            int y = *yMinIter;
+                            Point point(x,y);
+                            accPoints.insert(point);
+                        }
                     }
                 }
             }
-        }
 
-
-        int numPoints = accPoints.size();
-        termAccPoints[iterm] = numPoints;
-        dbNet* tarNet = iterm->getNet();
-        
-        if(tarNet == NULL) {
-            instBlkPoints_[inst] += numPoints;
-        } else {
-            if(iterm->getSigType() == dbSigType::SIGNAL) {
-                instAccPoints_[inst] += numPoints;
-            } else {
+            int numPoints = accPoints.size();
+            termAccPoints[iterm] = numPoints;
+            dbNet* tarNet = iterm->getNet();
+            
+            if(tarNet == NULL) {
                 instBlkPoints_[inst] += numPoints;
-            }
-            // Calculate NetBBox for tarInst
-            if(iterm->getIoType() == dbIoType::OUTPUT) {
-                
-                for(dbITerm* sinkITerm : tarNet->getITerms()) {
-                    dbInst* sinkInst = sinkITerm->getInst();
-                    if(sinkInst != inst) {
-                        sinkInsts.insert(sinkInst);
-                        xMin = min(xMin, sinkInst->getBBox()->xMin());
-                        yMin = min(yMin, sinkInst->getBBox()->yMin());
-                        xMax = min(xMax, sinkInst->getBBox()->xMax());
-                        yMax = min(yMax, sinkInst->getBBox()->yMax());
-                    }
+            } else {
+                if(iterm->getSigType() == dbSigType::SIGNAL) {
+                    instAccPoints_[inst] += numPoints;
+                } else {
+                    instBlkPoints_[inst] += numPoints;
                 }
-            } else if(iterm->getIoType() == dbIoType::INPUT) {
+                // Calculate NetBBox for tarInst
+                if(iterm->getIoType() == dbIoType::OUTPUT) {
+                    
+                    for(dbITerm* sinkITerm : tarNet->getITerms()) {
+                        dbInst* sinkInst = sinkITerm->getInst();
+                        if(sinkInst != inst) {
+                            sinkInsts.insert(sinkInst);
+                            xMin = min(xMin, sinkInst->getBBox()->xMin());
+                            yMin = min(yMin, sinkInst->getBBox()->yMin());
+                            xMax = min(xMax, sinkInst->getBBox()->xMax());
+                            yMax = min(yMax, sinkInst->getBBox()->yMax());
+                        }
+                    }
+                } else if(iterm->getIoType() == dbIoType::INPUT) {
 
-                dbITerm* sourceITerm = tarNet->getFirstOutput();
-                if(sourceITerm!=NULL) {
-                    dbInst* sourceInst = sourceITerm->getInst();
-                    sourceInsts.insert(sourceInst);        
-                    xMin = min(xMin, sourceInst->getBBox()->xMin());
-                    yMin = min(yMin, sourceInst->getBBox()->yMin());
-                    xMax = min(xMax, sourceInst->getBBox()->xMax());
-                    yMax = min(yMax, sourceInst->getBBox()->yMax());
+                    dbITerm* sourceITerm = tarNet->getFirstOutput();
+                    if(sourceITerm!=NULL) {
+                        dbInst* sourceInst = sourceITerm->getInst();
+                        sourceInsts.insert(sourceInst);        
+                        xMin = min(xMin, sourceInst->getBBox()->xMin());
+                        yMin = min(yMin, sourceInst->getBBox()->yMin());
+                        xMax = min(xMax, sourceInst->getBBox()->xMax());
+                        yMax = min(yMax, sourceInst->getBBox()->yMax());
+                    }
                 }
             }
         }
-    }
 
+        numInEdges_[inst] = sourceInsts.size();
+        numOutEdges_[inst] = sinkInsts.size();
+        numEdges_[inst] = sourceInsts.size() + sinkInsts.size();
 
-    numInEdges_[inst] = sourceInsts.size();
-    numOutEdges_[inst] = sinkInsts.size();
-    numEdges_[inst] = sourceInsts.size() + sinkInsts.size();
+        stnBBox_[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
 
-    
-    stnBBox_[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
+        bgBox tarBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
+        vector<pair<bgBox, dbInst*>> queryResults;
+        
+        vector<pair<bgBox, dbTechVia*>> queryViaResults;
+        
+        pViaRtreeMap[1].query(bgi::nearest(tarBox, 1), back_inserter(queryViaResults));
 
-    
-    bgBox tarBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
-    vector<pair<bgBox, dbInst*>> queryResults;
-    
-    vector<pair<bgBox, dbTechVia*>> queryViaResults;
-    
-    pViaRtree.query(bgi::nearest(tarBox, 1), back_inserter(queryViaResults));
-
-    int instXMin = instBBox.xMin(); 
-    int instXMax = instBBox.xMax(); 
-int instYMin = instBBox.yMin(); 
+        int instXMin = instBBox.xMin(); 
+        int instXMax = instBBox.xMax(); 
+        int instYMin = instBBox.yMin(); 
         int instYMax = instBBox.yMax(); 
         
-//        cout << "Inst Box" << " ";
-//        cout << instXMin << " " << instXMax << " " << instYMin << " " << instYMax << endl;
+    //        cout << "Inst Box" << " ";
+    //        cout << instXMin << " " << instXMax << " " << instYMin << " " << instYMax << endl;
 
         for(auto& val : queryViaResults) {
             dbTechVia* via = val.second;
@@ -609,8 +637,8 @@ int instYMin = instBBox.yMin();
             int viaXMax = viaBox.max_corner().get<0>();
             int viaYMax = viaBox.max_corner().get<1>();
 
-//            cout << "Via Box" << " ";
-//            cout << viaXMin << " " << viaYMin << " " << viaXMax << " " << viaYMax << " ";
+    //            cout << "Via Box" << " ";
+    //            cout << viaXMin << " " << viaYMin << " " << viaXMax << " " << viaYMax << " ";
            
             int c = 0;
             if(viaXMax <= instXMin) {
@@ -633,38 +661,28 @@ int instYMin = instBBox.yMin();
             
             switch(c) {
                 case 1:
-                    powerViaDistance_[inst] = (instXMin-viaXMax) + (viaYMin-instYMax);
-                    break;
+                    powerViaDistance_[inst] = (instXMin-viaXMax) + (viaYMin-instYMax); break;
                 case 2:
-                    powerViaDistance_[inst] = viaYMin-instYMax;
-                    break;
+                    powerViaDistance_[inst] = viaYMin-instYMax; break;
                 case 3:
-                    powerViaDistance_[inst] = (viaXMin-instXMax) + (viaYMin-instYMax);
-                    break;
+                    powerViaDistance_[inst] = (viaXMin-instXMax) + (viaYMin-instYMax); break;
                 case 4:
-                    powerViaDistance_[inst] = instXMin-viaXMax;
-                    break;
+                    powerViaDistance_[inst] = instXMin-viaXMax; break;
                 case 5:
-                    powerViaDistance_[inst] = 0;
-                    break;
+                    powerViaDistance_[inst] = 0; break;
                 case 6:
-                    powerViaDistance_[inst] = viaXMin-instXMax;
-                    break;
+                    powerViaDistance_[inst] = viaXMin-instXMax; break;
                 case 7:
-                    powerViaDistance_[inst] = (instXMin-viaXMax) + (instYMin-viaYMax);
-                    break;
+                    powerViaDistance_[inst] = (instXMin-viaXMax) + (instYMin-viaYMax); break;
                 case 8:
-                    powerViaDistance_[inst] = instYMin-viaYMax;
-                    break;
+                    powerViaDistance_[inst] = instYMin-viaYMax; break;
                 case 9:
-                    powerViaDistance_[inst] = (viaXMin-instXMax) + (instYMin-viaYMax);
-                    break;
+                    powerViaDistance_[inst] = (viaXMin-instXMax) + (instYMin-viaYMax); break;
             }
-
             powerViaDistance_[inst] /= gcellHeight;
-//            cout << "powerViaDistance_[inst] : " << powerViaDistance_[inst] << endl;
+    //            cout << "powerViaDistance_[inst] : " << powerViaDistance_[inst] << endl;
         }
-        
+            
         // Calculate white space (horizontal)
         xMin = instBBox.xMin() - gcellWidth;
         xMax = instBBox.xMax() + gcellWidth;
@@ -716,12 +734,12 @@ int instYMin = instBBox.yMin();
         instRtree.query(bgi::intersects(verQueryBox), back_inserter(queryResults));
         whiteSpaceT_[inst] = 1.0;
         whiteSpaceD_[inst] = 1.0;
-         for(auto& val : queryResults) {
+        
+        for(auto& val : queryResults) {
             dbInst* adjInst = val.second;
             bgBox adjBox = val.first;
 
-            if(inst == adjInst)
-                continue;
+            if(inst == adjInst) continue;
 
             double dist = 1.0*bg::distance(tarBox, adjBox)/gcellHeight;
             int adjMinY = adjBox.min_corner().get<1>();
@@ -744,26 +762,31 @@ int instYMin = instBBox.yMin();
                      << bg::get<1,0>(adjBox) << " " << bg::get<1,1>(adjBox) << endl;
                 cout << adjCenY << endl;
                 //exit(0);
-
             }
         }
 
         sWireOverlap_[inst] = 0.0;
         bgBox queryBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
-        for( auto it =sWireRtree.qbegin(bgi::intersects(queryBox)); it != sWireRtree.qend(); it++) {
-            xMin = bg::get<0,0>(it->first);
-            yMin = bg::get<0,1>(it->first);
-            xMax = bg::get<1,0>(it->first);
-            yMax = bg::get<1,1>(it->first);
-            Rect wireBBox(xMin, yMin, xMax, yMax);
 
+        for(int layerNum = 1; layerNum <= maxTechLayer; layerNum++){
+            if(sWireRtreeMap.find(layerNum) == sWireRtreeMap.end()) {
+                for( auto it =sWireRtreeMap[layerNum].qbegin(bgi::intersects(queryBox)); 
+                        it != sWireRtreeMap[layerNum].qend(); it++) {
 
-            Rect overlap = instBBox.intersect(wireBBox);
-            double area1 = overlap.dx() * overlap.dy();
-            double area2 = instBBox.dx() * instBBox.dy();
-            double overlapRatio = area1 / area2;
-            
-            sWireOverlap_[inst] += overlapRatio;
+                    xMin = bg::get<0,0>(it->first);
+                    yMin = bg::get<0,1>(it->first);
+                    xMax = bg::get<1,0>(it->first);
+                    yMax = bg::get<1,1>(it->first);
+                    Rect wireBBox(xMin, yMin, xMax, yMax);
+
+                    Rect overlap = instBBox.intersect(wireBBox);
+                    double area1 = overlap.dx() * overlap.dy();
+                    double area2 = instBBox.dx() * instBBox.dy();
+                    double overlapRatio = area1 / area2;
+                    
+                    sWireOverlap_[inst] += overlapRatio;
+                }
+            }
         }
     }
 
@@ -830,7 +853,6 @@ int instYMin = instBBox.yMin();
                     }
                 }
             }
-//            cout << endl;
         }
         Graph* instGraph = new Graph;
         instGraph->setDb(db_);

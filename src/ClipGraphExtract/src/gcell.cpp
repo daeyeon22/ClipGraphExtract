@@ -17,7 +17,7 @@ using namespace odb;
 
 Gcell::Gcell(int col, int row) :
     col_(col), row_(row),
-    numInsts_(0), numTerms_(0), numVias_(0), numPowerVias_(0),
+    numInsts_(0), numTerms_(0),
     //numLNets_(0), numGNets_(0), 
     wns_(0), tns_(0),
     numLayers_(1), graph_(nullptr),
@@ -30,22 +30,29 @@ void Gcell::setBoundary(Rect rect) {
     bbox_ = rect;
 }
 
-void Gcell::setTrackSupply(int tSup) {
+void Gcell::setTotalTrackSupply(int tSup) {
     //rmEGR_.setTrackSupply((int)tSup);
     rmPL_.setTrackSupply((int)tSup);
-    rmDR_.setTrackSupply((int)tSup);
 }
 
-void Gcell::setWireCapacity(int wCap) {
+void Gcell::setTrackSupply(int tSup, int layerNum) {
+    //rmEGR_.setTrackSupply((int)tSup);
+    rmDR_[layerNum].setTrackSupply((int)tSup);
+}
+
+void Gcell::setTotalWireCapacity(int wCap) {
     //rmEGR_.setWireCapacity((int)wCap);
     rmPL_.setWireCapacity((int)wCap);
-    rmDR_.setWireCapacity((int)wCap);
+}
+
+void Gcell::setWireCapacity(int wCap, int layerNum) {
+    //rmEGR_.setWireCapacity((int)wCap);
+    rmDR_[layerNum].setWireCapacity((int)wCap);
 }
 
 void Gcell::setNumLayers(int nLyr) {
     numLayers_ = nLyr;
 }
-
 
 set<dbInst*> Gcell::getInstSet() {
     set<dbInst*> instSet;
@@ -56,8 +63,6 @@ set<dbInst*> Gcell::getInstSet() {
 void Gcell::setGraph(Graph* graph) {
     graph_ = graph;
 }
-
-
 
 bgBox Gcell::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -99,11 +104,27 @@ int Gcell::getRow() {
     return row_;
 }
 
-
 int Gcell::getTrackDemand(Orient orient, ModelType type) {
     switch(type) {
+        case ModelType::ROUTE: {
+            int sumTrack = 0;
+            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
+                sumTrack += (it->second).getTrackDemand(orient);
+            return sumTrack;
+        }
+        //case ModelType::EGR:
+        //    return rmEGR_.getTrackDemand(orient);
+        case ModelType::TREE:
+            return rmPL_.getTrackDemand(orient);
+        default:
+            return 0; 
+    }
+}
+
+int Gcell::getTrackDemand(Orient orient, int layerNum, ModelType type) {
+    switch(type) {
         case ModelType::ROUTE: 
-            return rmDR_.getTrackDemand(orient);
+            return rmDR_[layerNum].getTrackDemand(orient);
         //case ModelType::EGR:
         //    return rmEGR_.getTrackDemand(orient);
         case ModelType::TREE:
@@ -115,8 +136,25 @@ int Gcell::getTrackDemand(Orient orient, ModelType type) {
 
 int Gcell::getTrackSupply(Orient orient, ModelType type) {
     switch(type) {
+        case ModelType::ROUTE: {
+            int sumTrack = 0;
+            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
+                sumTrack += (it->second).getTrackSupply(orient);
+            return sumTrack;
+        }
+        //case ModelType::EGR:
+        //    return rmEGR_.getTrackSupply(orient);
+        case ModelType::TREE:
+            return rmPL_.getTrackSupply(orient);
+        default:
+            return 0; 
+    }
+}
+
+int Gcell::getTrackSupply(Orient orient, int layerNum, ModelType type) {
+    switch(type) {
         case ModelType::ROUTE: 
-            return rmDR_.getTrackSupply(orient);
+            return rmDR_[layerNum].getTrackSupply(orient);
         //case ModelType::EGR:
         //    return rmEGR_.getTrackSupply(orient);
         case ModelType::TREE:
@@ -128,8 +166,25 @@ int Gcell::getTrackSupply(Orient orient, ModelType type) {
 
 int Gcell::getWireCapacity(ModelType type) {
     switch(type) {
+        case ModelType::ROUTE: {
+            double sumWireCap = 0;
+            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
+                sumWireCap += (it->second).getWireCapacity();
+            return sumWireCap;
+        }
+        //case ModelType::EGR:
+        //    return rmEGR_.getWireCapacity();
+        case ModelType::TREE:
+            return rmPL_.getWireCapacity();
+        default:
+            return 0; 
+    }
+}
+
+int Gcell::getWireCapacity(int layerNum, ModelType type) {
+    switch(type) {
         case ModelType::ROUTE: 
-            return rmDR_.getWireCapacity();
+            return rmDR_[layerNum].getWireCapacity();
         //case ModelType::EGR:
         //    return rmEGR_.getWireCapacity();
         case ModelType::TREE:
@@ -141,6 +196,21 @@ int Gcell::getWireCapacity(ModelType type) {
 
 int Gcell::getNumInsts() {
     return numInsts_;
+}
+
+double Gcell::getViaUtil() {
+    double totalViaUtil = 0;
+    for(int layer = 1; layer < numLayers_; layer++)
+        totalViaUtil += rViaUtil_[layer] + sViaUtil_[layer] + pViaUtil_[layer];
+    
+    return totalViaUtil/(numLayers_-1);
+}
+
+double Gcell::getViaUtil(int layerNum) {
+    double totalViaUtil = rViaUtil_[layerNum] + sViaUtil_[layerNum] + pViaUtil_[layerNum];
+    if(totalViaUtil > 1) totalViaUtil = 1;
+    
+    return totalViaUtil;
 }
 
 int Gcell::getNumTerms() {
@@ -210,8 +280,31 @@ void Gcell::getNumMarkers(int &lnet, int &gnet, int &inst) {
 
 double Gcell::getWireUtil(ModelType type) {
      switch(type) {
-        case ModelType::ROUTE: 
-            return rmDR_.getWireUtil();
+        case ModelType::ROUTE:  {
+            double sumWireUtil = 0;
+            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
+                sumWireUtil += (it->second).getWireUtil();
+    
+            return sumWireUtil/numLayers_;
+        }
+        //case ModelType::EGR:
+        //    return rmEGR_.getWireUtil();
+        case ModelType::TREE:
+            return rmPL_.getWireUtil();
+        default:
+            return 0; 
+    }   
+}
+
+
+double Gcell::getWireUtil(int layerNum, ModelType type) {
+     switch(type) {
+        case ModelType::ROUTE:{
+            if(layerNum <= numLayers_)
+                return rmDR_[layerNum].getWireUtil(); 
+            else 
+                return 1;
+        }
         //case ModelType::EGR:
         //    return rmEGR_.getWireUtil();
         case ModelType::TREE:
@@ -233,7 +326,10 @@ double Gcell::getLNetUtil(ModelType type) {
             }
         }
     } else if(type == ModelType::ROUTE) {
-        wireCap = rmDR_.getWireCapacity();
+        double wireCap = 0;
+        for(int layer = 1; layer <= numLayers_; layer++)
+            wireCap += rmDR_[layer].getWireCapacity();
+
         for(RSMT* rsmt : rsmts_) {
             if(rsmt->isLocalNet()) {
                 dbWire* wire = rsmt->getNet()->getWire();
@@ -249,7 +345,6 @@ double Gcell::getLNetUtil(ModelType type) {
 
     double c = min(1.0, 3.0 / numLayers_);
     return 1.0 * wireLen / (c*wireCap);
-
 }
 
 double Gcell::getGNetUtil(ModelType type) {
@@ -266,10 +361,40 @@ double Gcell::getChanUtil(ModelType type) {
     double chanDen = (chanDenL + chanDenU + chanDenR + chanDenB) / 4;
     return chanDen;
 }
+
+double Gcell::getChanUtil(int layerNum, ModelType type) {
+    if(layerNum <= numLayers_) {
+        double chanDenL = getChanUtil(Orient::LEFT, layerNum, type);
+        double chanDenU = getChanUtil(Orient::TOP, layerNum, type);
+        double chanDenR = getChanUtil(Orient::RIGHT, layerNum, type);
+        double chanDenB = getChanUtil(Orient::BOTTOM, layerNum, type);
+        double chanDen = (chanDenL + chanDenU + chanDenR + chanDenB) / 4;
+        return chanDen;
+    } else 
+        return 1;
+}
+
 double Gcell::getChanUtil(Orient orient, ModelType type) {
     switch(type) {
+        case ModelType::ROUTE: {
+            double sumChanUtil = 0;
+            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
+                sumChanUtil += (it->second).getChanUtil(orient);
+            return sumChanUtil/numLayers_;
+        }
+        //case ModelType::EGR:
+        //    return rmEGR_.getChanUtil(orient);
+        case ModelType::TREE:
+            return rmPL_.getChanUtil(orient);
+        default:
+            return 0.0; 
+    }
+}
+
+double Gcell::getChanUtil(Orient orient, int layerNum, ModelType type) {
+    switch(type) {
         case ModelType::ROUTE: 
-            return rmDR_.getChanUtil(orient);
+            return rmDR_[layerNum].getChanUtil(orient);
         //case ModelType::EGR:
         //    return rmEGR_.getChanUtil(orient);
         case ModelType::TREE:
@@ -489,157 +614,164 @@ Gcell::extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree) {
 
 
 void
-Gcell::extractRouteFeature(SegRtree<odb::dbNet*> *rtree) {
-
-    vector<pair<bgSeg, dbNet*>> queryResults;
-
-    // Query
-    rtree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
-
+Gcell::extractRouteFeature(unordered_map<int, SegRtree<odb::dbNet*>> *rRtree, 
+                           int maxTechLayer, int maxRouteLayer) {
     bgSeg lb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMin(), bbox_.yMax()));
     bgSeg rb(bgPoint(bbox_.xMax(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg tb(bgPoint(bbox_.xMin(), bbox_.yMax()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg bb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMin()));
 
+    for(int layerNum = 1; layerNum < maxTechLayer; layerNum++) {
+        vector<pair<bgSeg, dbNet*>> rQueryResults;
+        
+        if(layerNum <= maxRouteLayer) {
+            if(rRtree->find(layerNum) != rRtree->end()) {
+                (*rRtree)[layerNum].query(bgi::intersects(getQueryBox()), back_inserter(rQueryResults));
 
-    //cout << "# of intersections : " << queryResults.size() << endl;
+                for(auto &val : rQueryResults) {
+                    bgSeg wire_seg = val.first;
+                    dbNet* net = val.second;
 
-    for(auto &val : queryResults) {
-        bgSeg wire_seg = val.first;
-        dbNet* net = val.second;
+                    try {
+                        if(bg::intersects(lb, wire_seg)) {
+                            rmDR_[layerNum].incrTrackDemand(Orient::LEFT);
+                        }
+                        if(bg::intersects(rb, wire_seg)) {
+                            rmDR_[layerNum].incrTrackDemand(Orient::RIGHT);
+                        }
+                        if(bg::intersects(tb, wire_seg)) {
+                            rmDR_[layerNum].incrTrackDemand(Orient::TOP);
+                        }
+                        if(bg::intersects(bb, wire_seg)) {
+                            rmDR_[layerNum].incrTrackDemand(Orient::BOTTOM);
+                        }
+                        int x0 = bg::get<0,0>(wire_seg);
+                        int y0 = bg::get<0,1>(wire_seg);
+                        int x1 = bg::get<1,0>(wire_seg);
+                        int y1 = bg::get<1,1>(wire_seg);
+                        
+                        x0 = max(x0, bbox_.xMin());
+                        y0 = max(y0, bbox_.yMin());
+                        x1 = min(x1, bbox_.xMax());
+                        y1 = min(y1, bbox_.yMax());
+                        // intersection wirelength
+                        int wl = (x1-x0) + (y1-y0);
+                        rmDR_[layerNum].addWireLength(wl);
 
-        try {
-            if(bg::intersects(lb, wire_seg)) {
-                rmDR_.incrTrackDemand(Orient::LEFT);
-            }
-            if(bg::intersects(rb, wire_seg)) {
-                rmDR_.incrTrackDemand(Orient::RIGHT);
-            }
-            if(bg::intersects(tb, wire_seg)) {
-                rmDR_.incrTrackDemand(Orient::TOP);
-            }
-            if(bg::intersects(bb, wire_seg)) {
-                rmDR_.incrTrackDemand(Orient::BOTTOM);
-            }
-            int x0 = bg::get<0,0>(wire_seg);
-            int y0 = bg::get<0,1>(wire_seg);
-            int x1 = bg::get<1,0>(wire_seg);
-            int y1 = bg::get<1,1>(wire_seg);
-            x0 = max(x0, bbox_.xMin());
-            y0 = max(y0, bbox_.yMin());
-            x1 = min(x1, bbox_.xMax());
-            y1 = min(y1, bbox_.yMax());
-            // intersection wirelength
-            int wl = (x1-x0) + (y1-y0);
-            rmDR_.addWireLength(wl);
+                    } catch(boost::numeric::negative_overflow &e) {
+                        cout << e.what() << endl;
+                        cout << bg::wkt(rb) << " " << bg::wkt(wire_seg) << endl;
+                    } catch(boost::numeric::positive_overflow &e) {
+                        cout << e.what() << endl;
+                    }
+                }
+                
+                /*
+                cout << "layerNum: m" << layerNum << " ";
+                cout << rmDR_[layerNum].getTrackSupply(Orient::LEFT) << " "
+                     << rmDR_[layerNum].getTrackDemand(Orient::LEFT) << " "
+                     << rmDR_[layerNum].getTrackSupply(Orient::RIGHT) << " "
+                     << rmDR_[layerNum].getTrackDemand(Orient::RIGHT) << " "
+                     << rmDR_[layerNum].getTrackSupply(Orient::TOP) << " "
+                     << rmDR_[layerNum].getTrackDemand(Orient::TOP) << " "
+                     << rmDR_[layerNum].getTrackSupply(Orient::BOTTOM) << " "
+                     << rmDR_[layerNum].getTrackDemand(Orient::BOTTOM) << endl;
+                */
 
-        } catch(boost::numeric::negative_overflow &e) {
-            cout << e.what() << endl;
-            cout << bg::wkt(rb) << " " << bg::wkt(wire_seg) << endl;
-        } catch(boost::numeric::positive_overflow &e) {
-            cout << e.what() << endl;
+            }
         }
-    
     }
 }
 
 void
-Gcell::extractViaFeature(BoxRtree<odb::dbTechVia*> *rViaRtree, 
-        BoxRtree<odb::dbTechVia*> *sViaRtree, BoxRtree<odb::dbTechVia*> *pViaRtree) {
+Gcell::extractViaFeature(std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *rViaRtreeMap, 
+                         std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *sViaRtreeMap,
+                         std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *pViaRtreeMap,
+                         int maxTechLayer, int maxRouteLayer) {
     
-    vector<pair<bgBox, dbTechVia*>> rQueryResults;
-    vector<pair<bgBox, dbTechVia*>> sQueryResults;
-    vector<pair<bgBox, dbTechVia*>> pQueryResults;
-
-    // Query
-    rViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(rQueryResults));
-    sViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(sQueryResults));
-    pViaRtree->query(bgi::intersects(getQueryBox()), back_inserter(pQueryResults));
-    
+   
     bgPoint minCorner = getQueryBox().min_corner();
     bgPoint maxCorner = getQueryBox().max_corner();
 
-//    int minX = minCorner.get<0>();
-//    int minY = minCorner.get<1>();
-//    int maxX = maxCorner.get<0>();
-//    int maxY = maxCorner.get<1>();
-//    
-//    cout << minX/2000.0 << " ";
-//    cout << minY/2000.0 << " ";
-//    cout << maxX/2000.0 << " ";
-//    cout << maxY/2000.0 << endl;
-//
-//    cout << "Signal Vias" << endl;
-    for(auto &val : rQueryResults) {
-        numVias_++;
-//        dbTechVia* via = val.second;
-//        bgBox box = val.first;
-//
-//        bgPoint minCorner = box.min_corner();
-//        bgPoint maxCorner = box.max_corner();
-//
-//        int minX = minCorner.get<0>();
-//        int minY = minCorner.get<1>();
-//        int maxX = maxCorner.get<0>();
-//        int maxY = maxCorner.get<1>();
-//
-//        cout << (minX+maxX)/4000.0 << " ";
-//        cout << (minY+maxY)/4000.0 << " ";
-//
-//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
-    }
-    
-//    cout << endl;
-    
-//    cout << "Special Vias" << endl;
-    for(auto &val : sQueryResults) {
-        numVias_++;
-//        dbTechVia* via = val.second;
-//        bgBox box = val.first;
-//        
-//        bgPoint minCorner = box.min_corner();
-//        bgPoint maxCorner = box.max_corner();
-//
-//        int minX = minCorner.get<0>();
-//        int minY = minCorner.get<1>();
-//        int maxX = maxCorner.get<0>();
-//        int maxY = maxCorner.get<1>();
-//        
-//        cout << (minX+maxX)/4000.0 << " ";
-//        cout << (minY+maxY)/4000.0 << " ";
-//
-//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
-    }
+    // cout << minCorner.get<0>()/2000.0 << " ";
+    // cout << minCorner.get<1>()/2000.0 << " ";
+    // cout << maxCorner.get<0>()/2000.0 << " ";
+    // cout << maxCorner.get<1>()/2000.0 << endl;
 
-//    cout << endl;
-    
-//    cout << "Power Vias" << endl;
-    for(auto &val : pQueryResults) {
-        numVias_++;
-        numPowerVias_++;
-//        dbTechVia* via = val.second;
-//        bgBox box = val.first;
-//        
-//        bgPoint minCorner = box.min_corner();
-//        bgPoint maxCorner = box.max_corner();
-//
-//        int minX = minCorner.get<0>();
-//        int minY = minCorner.get<1>();
-//        int maxX = maxCorner.get<0>();
-//        int maxY = maxCorner.get<1>();
-//        
-//        cout << (minX+maxX)/4000.0 << " ";
-//        cout << (minY+maxY)/4000.0 << " ";
-//
-//        cout << via->getBottomLayer()->getRoutingLevel() << endl;
-    }
+    for(int layerNum = 1; layerNum < maxTechLayer; layerNum++) {
+        vector<pair<bgBox, dbTechVia*>> rQueryResults;
+        vector<pair<bgBox, dbTechVia*>> sQueryResults;
+        vector<pair<bgBox, dbTechVia*>> pQueryResults;
+   
+        // cout << "layerNum : " << layerNum << endl;
 
-//    cout << endl;
-//    cout << "===========================" << endl;
-//    cout << "# of total vias : " << numVias_ << endl;
-//    cout << "# of power vias : " << numPowerVias_ << endl;
-//    cout << "===========================" << endl;
-//    cout << endl;
+        // cout << "Signal Vias" << endl;
+        // Layers that cannot be used are blocked.
+        if(maxRouteLayer <= layerNum) {
+            rViaUtil_[layerNum] = 1;
+            sViaUtil_[layerNum] = 1;
+            pViaUtil_[layerNum] = 1;
+        } else {
+            if(rViaRtreeMap->find(layerNum) != rViaRtreeMap->end()) {
+                (*rViaRtreeMap)[layerNum].query(bgi::intersects(getQueryBox()), back_inserter(rQueryResults));
+                for(auto &val : rQueryResults) {
+                    dbTechVia* via = val.second;
+                    int bottomPitch = via->getBottomLayer()->getPitch();
+                    int topPitch = via->getTopLayer()->getPitch();
+
+                    // The bbox is "square".
+                    int numViaGrid = (bbox_.dx()/bottomPitch) * (bbox_.dy()/topPitch);
+
+                    rViaUtil_[layerNum] += 1.0/numViaGrid;
+                    
+                    // bgBox box = val.first;
+            
+                    // bgPoint minCorner = box.min_corner();
+                    // bgPoint maxCorner = box.max_corner();
+            
+                    // cout << (minCorner.get<0>()+maxCorner.get<0>())/4000.0 << " ";
+                    // cout << (minCorner.get<1>()+maxCorner.get<1>())/4000.0 << " ";
+            
+                    // cout << via->getBottomLayer()->getRoutingLevel() << endl;
+                }
+            } else rViaUtil_[layerNum] = 0;
+            
+            // cout << endl;
+            // cout << "Special Vias" << endl;
+            if(sViaRtreeMap->find(layerNum) != sViaRtreeMap->end()) {
+                (*sViaRtreeMap)[layerNum].query(bgi::intersects(getQueryBox()), back_inserter(sQueryResults));
+                for(auto &val : sQueryResults) {
+                    dbTechVia* via = val.second;
+                    int bottomPitch = via->getBottomLayer()->getPitch();
+                    int topPitch = via->getTopLayer()->getPitch();
+                    
+                    int numViaGrid = (bbox_.dx()/bottomPitch) * (bbox_.dy()/topPitch);
+
+                    sViaUtil_[layerNum] += 1.0/numViaGrid;
+                }
+            } else sViaUtil_[layerNum] = 0;
+            // cout << endl;
+            // cout << "Power Vias" << endl;
+            if(pViaRtreeMap->find(layerNum) != pViaRtreeMap->end()) {
+                (*pViaRtreeMap)[layerNum].query(bgi::intersects(getQueryBox()), back_inserter(pQueryResults));
+                for(auto &val : pQueryResults) {
+                    dbTechVia* via = val.second;
+                    int bottomPitch = via->getBottomLayer()->getPitch();
+                    int topPitch = via->getTopLayer()->getPitch();
+                    
+                    // The bbox is "square".
+                    int numViaGrid = (bbox_.dx()/bottomPitch) * (bbox_.dy()/topPitch);
+
+                    pViaUtil_[layerNum] += 1.0/numViaGrid;
+                }
+            } else pViaUtil_[layerNum] = 0;
+        }
+        
+//        cout << "Routing Via : " << rViaUtil_[layerNum] << endl;
+//        cout << "Special Via : " << sViaUtil_[layerNum] << endl;
+//        cout << "Power Via : " << pViaUtil_[layerNum] << endl;
+//        cout << endl;
+    }
 }
 
 

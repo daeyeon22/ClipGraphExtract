@@ -26,6 +26,7 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
 
     // TODO
     Grid* grid = (Grid*) grid_;
+    int maxTechLayer = db_->getTech()->getRoutingLayerCount(); // Intell22nm = 0~8
     ofstream outFile;
     string attrFileName = string(dirPath) + "/GcellFeature.csv";
     outFile.open(attrFileName, std::ios_base::out);
@@ -51,10 +52,31 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
             << "ChanDen(RSMT)" << ","
             << "ChanDenV(RSMT)" << ","
             << "ChanDenH(RSMT)" << ","
-            << "WireDen(EGR)" << ","
+            << "Wire1Den(EGR)" << ","
+            << "Wire2Den(EGR)" << ","
+            << "Wire3Den(EGR)" << ","
+            << "Wire4Den(EGR)" << ","
+            << "Wire5Den(EGR)" << ","
+            << "Wire6Den(EGR)" << ","
+            << "Wire7Den(EGR)" << ","
+            << "Wire8Den(EGR)" << ","
+            << "Chan1Den(EGR)" << ","
+            << "Chan2Den(EGR)" << ","
+            << "Chan3Den(EGR)" << ","
+            << "Chan4Den(EGR)" << ","
+            << "Chan5Den(EGR)" << ","
+            << "Chan6Den(EGR)" << ","
+            << "Chan7Den(EGR)" << ","
+            << "Chan8Den(EGR)" << ","
+            << "Via12Den(EGR)" << ","
+            << "Via23Den(EGR)" << ","
+            << "Via34Den(EGR)" << ","
+            << "Via45Den(EGR)" << ","
+            << "Via56Den(EGR)" << ","
+            << "Via67Den(EGR)" << ","
+            << "Via78Den(EGR)" << ","
             << "LNetDen(EGR)" << ","
             << "GNetDen(EGR)" << ","
-            << "ChanDen(EGR)" << ","
             << "ChanDenV(EGR)" << ","
             << "ChanDenH(EGR)" << ","
             << "AvgTerms" << ","
@@ -83,11 +105,15 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
                 << tarGcell->getGNetUtil(ModelType::TREE) << ","
                 << tarGcell->getChanUtil(ModelType::TREE) << ","
                 << tarGcell->getChanUtilV(ModelType::TREE) << ","
-                << tarGcell->getChanUtilH(ModelType::TREE) << ","
-                << tarGcell->getWireUtil(ModelType::ROUTE) << ","
-                << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
+                << tarGcell->getChanUtilH(ModelType::TREE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getWireUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getChanUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer-1; layer++)
+            outFile << tarGcell->getViaUtil(layer) << ",";
+        outFile << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
                 << tarGcell->getGNetUtil(ModelType::ROUTE) << ","
-                << tarGcell->getChanUtil(ModelType::ROUTE) << ","
                 << tarGcell->getChanUtilV(ModelType::ROUTE) << ","
                 << tarGcell->getChanUtilH(ModelType::ROUTE) << ","
                 << tarGcell->getAvgTerms() << ","
