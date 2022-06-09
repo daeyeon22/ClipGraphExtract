@@ -39,8 +39,12 @@ void Grid::init() {
             x2 = min(bbox_.xMax(), x1 + gcellWidth_);
             y2 = min(bbox_.yMax(), y1 + gcellHeight_);
             Gcell* gcell = createGcell(col, row, gcellWidth_, gcellHeight_); //x1,y1,x2,y2);
-            gcell->setTrackSupply(trackSupply_);
-            gcell->setWireCapacity(wireCapacity_);
+            gcell->setTotalTrackSupply(totalTrackSupply_);
+            gcell->setTotalWireCapacity(totalWireCapacity_);
+            for(int layer = 1; layer <= numLayers_; layer++){
+                gcell->setTrackSupply(trackSupply_[layer], layer);
+                gcell->setWireCapacity(wireCapacity_[layer], layer);
+            }
             gcell->setNumLayers(numLayers_);
         }
     }
@@ -49,9 +53,6 @@ void Grid::init() {
     for(dbNet* net : db_->getChip()->getBlock()->getNets()) {
         createRSMT(net);
     }
-
-
-
 }
 
 
@@ -86,7 +87,6 @@ Gcell* Grid::createGcell(int col, int row, int width, int height) {
 
 Gcell* Grid::getGcell(int col, int row) {
     // TODO
-    //
     pair<int,int> pos(col,row);
     if(pos2gcell_.find(pos) == pos2gcell_.end())
         return NULL;
@@ -171,12 +171,20 @@ void Grid::setGcellHeight(int height) {
     gcellHeight_ = height;
 }
 
-void Grid::setWireCapacity(int wcap) {
-    wireCapacity_ = wcap;
+void Grid::setTotalWireCapacity(int wcap) {
+    totalWireCapacity_ = wcap;
 }
 
-void Grid::setTrackSupply(int tsup) {
-    trackSupply_ = tsup;
+void Grid::setWireCapacity(std::unordered_map<int, int> wcaps) {
+    wireCapacity_ = wcaps;
+}
+
+void Grid::setTotalTrackSupply(int tsup) {
+    totalTrackSupply_ = tsup;
+}
+
+void Grid::setTrackSupply(std::unordered_map<int, int> tsups) {
+    trackSupply_ = tsups;
 }
 
 void Grid::setNumLayers(int nlyr) {

@@ -63,6 +63,7 @@ class Resource {
     int getWireCapacity() { return wireCapacity_; }
     int getWireLength() { return wireLength_; }
     void incrTrackDemand(Orient type) { trackDemand_[type]++; }
+    void setTrackDemand(Orient type, int tDem) { trackDemand_[type] = tDem; }
     void addTrackDemand(Orient type, int dem) { trackDemand_[type] += dem; }
     void setTrackSupply(int tSup) {  for(int i=0; i < 4; i++) trackSupply_[i] = tSup; }
     void setWireCapacity(int wCap) {  wireCapacity_ = wCap;  }
@@ -80,14 +81,17 @@ class Gcell {
     odb::Rect bbox_;
 
     //Resource rmEGR_; // using GR results
-    Resource rmDR_; // using DR results -> 얘를 어레이로
+    std::unordered_map<int, Resource> rmDR_; // using DR results
     Resource rmPL_; // using PLACE results
 
     // using placement, RSMT results
     int numInsts_;
     int numTerms_;
-    int numVias_;
-    int numPowerVias_;
+   
+    std::unordered_map<int, double> rViaUtil_;
+    std::unordered_map<int, double> sViaUtil_;
+    std::unordered_map<int, double> pViaUtil_;
+    
     //int numLocalNets_;
     //int numGlobalNets_;
 
@@ -128,9 +132,12 @@ class Gcell {
     //
     void extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree);
     void extractPlaceFeature(SegRtree<RSMT*> *rtree);
-    void extractRouteFeature(SegRtree<odb::dbNet*> *rtree);
-    void extractViaFeature(BoxRtree<odb::dbTechVia*> *rViaRtree, BoxRtree<odb::dbTechVia*> *sViaRtree,
-                            BoxRtree<odb::dbTechVia*> *pViaRtree);
+    void extractRouteFeature(std::unordered_map<int, SegRtree<odb::dbNet*>> *rRtree, 
+                             int maxTechLayer, int maxRouteLayer);
+    void extractViaFeature(std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *rViaRtree, 
+                           std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *sViaRtree,
+                           std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *pViaRtree,
+                           int maxTechLayer, int maxRouteLayer);
 
     void updateTimingInfo(std::unordered_map<odb::dbInst*, double> slack);
 
@@ -145,6 +152,8 @@ class Gcell {
     int getCol();
     int getRow();
     int getNumInsts();
+    double getViaUtil();
+    double getViaUtil(int layerNum);
     int getNumTerms();
     int getNumNets();
     int getNumGNets();
@@ -167,10 +176,13 @@ class Gcell {
     double getLNetUtil(ModelType type);
     double getGNetUtil(ModelType type);
     double getWireUtil(ModelType type);
+    double getWireUtil(int layerNum, ModelType type);
     double getChanUtil(ModelType type);
+    double getChanUtil(int layerNum, ModelType type);
     double getChanUtilV(ModelType type);
     double getChanUtilH(ModelType type);
     double getChanUtil(Orient orient, ModelType = ModelType::TREE);
+    double getChanUtil(Orient orient, int layerNum, ModelType = ModelType::TREE);
     double getBufferUtil();
     double getTNS();
     double getWNS();
@@ -178,10 +190,15 @@ class Gcell {
 
 
     int getTrackDemand(Orient orient, ModelType type = ModelType::TREE);
+    int getTrackDemand(Orient orient, int layerNum, ModelType type = ModelType::TREE);
     int getTrackSupply(Orient orient, ModelType type = ModelType::TREE);
+    int getTrackSupply(Orient orient, int layerNum, ModelType type = ModelType::TREE);
     int getWireCapacity(ModelType type = ModelType::TREE);
-    void setTrackSupply(int tSup);
-    void setWireCapacity(int wCap);
+    int getWireCapacity(int layerNum, ModelType type = ModelType::TREE);
+    void setTotalTrackSupply(int tSup);
+    void setTrackSupply(int tSup, int layerNum);
+    void setTotalWireCapacity(int wCap);
+    void setWireCapacity(int wCap, int layerNum);
     void setNumLayers(int nLyr);
     void setBoundary(odb::Rect rect);
     void print();
@@ -210,7 +227,7 @@ class Marker {
     void setToNet(RSMT* rsmt);
     void setFromInst(odb::dbInst* inst);
     void setToInst(odb::dbInst* inst);
-
+    void setLayer(odb::dbTechLayer* layer);
 
     bool isFromNet();
     bool isToNet();
@@ -245,6 +262,7 @@ class Marker {
     RSMT* toNet_;
     odb::dbInst* fromInst_;
     odb::dbInst* toInst_;
+    odb::dbTechLayer* layer_;
 
 
     odb::Rect bbox_;
@@ -295,8 +313,10 @@ class Grid {
     odb::Rect bbox_;
     int numCols_, numRows_;
     int gcellWidth_, gcellHeight_;
-    int wireCapacity_;
-    int trackSupply_;
+    int totalWireCapacity_;
+    std::unordered_map<int, int> wireCapacity_;
+    int totalTrackSupply_;
+    std::unordered_map<int, int> trackSupply_;
     int numLayers_;
     int minWidth_;
     double clockPeriod_;
@@ -341,8 +361,10 @@ class Grid {
     void setBoundary(odb::Rect rect);
     void setGcellWidth(int width);
     void setGcellHeight(int height);
-    void setWireCapacity(int wCap);
-    void setTrackSupply(int tSup);
+    void setTotalWireCapacity(int wCap);
+    void setWireCapacity(std::unordered_map<int, int> wCaps);
+    void setTotalTrackSupply(int tSup);
+    void setTrackSupply(std::unordered_map<int, int> tSups);
     void setNumLayers(int nLyr);
     void saveGridImages(std::string dirPath, std::string prefix="");
 

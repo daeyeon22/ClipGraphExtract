@@ -53,6 +53,11 @@ void Marker::setFromInst(dbInst* inst) {
     fromInst_ = inst;
 }
 
+void Marker::setLayer(dbTechLayer* layer) {
+    layer_ = layer;
+}
+
+
 
 Marker::Tag Marker::getFromTag() {
     return fromTag_;
