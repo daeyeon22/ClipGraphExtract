@@ -108,8 +108,8 @@ int Gcell::getTrackDemand(Orient orient, ModelType type) {
     switch(type) {
         case ModelType::ROUTE: {
             int sumTrack = 0;
-            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
-                sumTrack += (it->second).getTrackDemand(orient);
+            for(int layer = 1; layer <= numLayers_; layer++)
+                sumTrack += rmDR_[layer].getTrackDemand(orient);
             return sumTrack;
         }
         //case ModelType::EGR:
@@ -138,8 +138,8 @@ int Gcell::getTrackSupply(Orient orient, ModelType type) {
     switch(type) {
         case ModelType::ROUTE: {
             int sumTrack = 0;
-            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
-                sumTrack += (it->second).getTrackSupply(orient);
+            for(int layer = 1; layer <= numLayers_; layer++)
+                sumTrack += rmDR_[layer].getTrackSupply(orient);
             return sumTrack;
         }
         //case ModelType::EGR:
@@ -168,8 +168,8 @@ int Gcell::getWireCapacity(ModelType type) {
     switch(type) {
         case ModelType::ROUTE: {
             double sumWireCap = 0;
-            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
-                sumWireCap += (it->second).getWireCapacity();
+            for(int layer = 1; layer <= numLayers_; layer++)
+                sumWireCap += rmDR_[layer].getWireCapacity();
             return sumWireCap;
         }
         //case ModelType::EGR:
@@ -282,8 +282,8 @@ double Gcell::getWireUtil(ModelType type) {
      switch(type) {
         case ModelType::ROUTE:  {
             double sumWireUtil = 0;
-            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
-                sumWireUtil += (it->second).getWireUtil();
+            for(int layer = 1; layer <= numLayers_; layer++)
+                sumWireUtil += rmDR_[layer].getWireUtil();
     
             return sumWireUtil/numLayers_;
         }
@@ -326,10 +326,8 @@ double Gcell::getLNetUtil(ModelType type) {
             }
         }
     } else if(type == ModelType::ROUTE) {
-        double wireCap = 0;
         for(int layer = 1; layer <= numLayers_; layer++)
             wireCap += rmDR_[layer].getWireCapacity();
-
         for(RSMT* rsmt : rsmts_) {
             if(rsmt->isLocalNet()) {
                 dbWire* wire = rsmt->getNet()->getWire();
@@ -378,8 +376,8 @@ double Gcell::getChanUtil(Orient orient, ModelType type) {
     switch(type) {
         case ModelType::ROUTE: {
             double sumChanUtil = 0;
-            for(auto it = rmDR_.begin(); it != rmDR_.end(); it++)
-                sumChanUtil += (it->second).getChanUtil(orient);
+            for(int layer = 1; layer <= numLayers_; layer++)
+                sumChanUtil += rmDR_[layer].getChanUtil(orient);
             return sumChanUtil/numLayers_;
         }
         //case ModelType::EGR:
