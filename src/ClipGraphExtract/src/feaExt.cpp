@@ -498,107 +498,118 @@ void ClipGraphExtractor::extract() {
         set<odb::dbInst*> sinkInsts;
         
         
+        int xCentor = (xMax+xMin)/2;
+        int yCentor = (yMax+yMin)/2;
+
+        bgPoint queryPoint(xCentor, yCentor);
+        for( auto it =gcellRtree.qbegin(bgi::intersects(queryPoint)); it != gcellRtree.qend(); it++) {
+            Gcell* tarGcell = it->second;
+            gcell_[inst] = tarGcell;
+        }
+
+
+
 
         cellSize_[inst] = 1.0 * (yMax-yMin)*(xMax-xMin) / (dbu*dbu);
         isClocked_[inst] = tarMaster->isSequential();
         
 
-    xCoord_[inst] = 0.5*(xMax+xMin)/dbu;
-    yCoord_[inst] = 0.5*(yMax+yMin)/dbu;
-    for(dbITerm* iterm : inst->getITerms()) {
-        dbMTerm* mTerm = iterm->getMTerm();
-        set<Point> accPoints;
-        for(dbMPin* mPin : mTerm->getMPins()) {
-            for(dbBox* pBox : mPin->getGeometry()) {
-                if(pBox->getTechLayer()->getType() != dbTechLayerType::ROUTING)
-                    continue;
-                dbTechLayer* techLayer = pBox->getTechLayer();
-                Rect pinBBox;
-                pBox->getBox(pinBBox);
-                transform.apply(pinBBox);
-                vector<int>::iterator xMinIter = lower_bound(xGrid[techLayer].begin(), 
-                                                            xGrid[techLayer].end(), pinBBox.xMin());
-                vector<int>::iterator xMaxIter = upper_bound(xGrid[techLayer].begin(),
-                                                            xGrid[techLayer].end(), pinBBox.xMax());
-                vector<int>::iterator yMinIter = lower_bound(yGrid[techLayer].begin(),
-                                                            yGrid[techLayer].end(), pinBBox.yMin());
-                vector<int>::iterator yMaxIter = upper_bound(yGrid[techLayer].begin(),
-                                                            yGrid[techLayer].end(), pinBBox.yMax());
-                for(; xMinIter != xMaxIter; xMinIter++) {
-                    for(; yMinIter != yMaxIter; yMinIter++) {
-                        int x = *xMinIter;
-                        int y = *yMinIter;
-                        Point point(x,y);
-                        accPoints.insert(point);
+        xCoord_[inst] = 0.5*(xMax+xMin)/dbu;
+        yCoord_[inst] = 0.5*(yMax+yMin)/dbu;
+        for(dbITerm* iterm : inst->getITerms()) {
+            dbMTerm* mTerm = iterm->getMTerm();
+            set<Point> accPoints;
+            for(dbMPin* mPin : mTerm->getMPins()) {
+                for(dbBox* pBox : mPin->getGeometry()) {
+                    if(pBox->getTechLayer()->getType() != dbTechLayerType::ROUTING)
+                        continue;
+                    dbTechLayer* techLayer = pBox->getTechLayer();
+                    Rect pinBBox;
+                    pBox->getBox(pinBBox);
+                    transform.apply(pinBBox);
+                    vector<int>::iterator xMinIter = lower_bound(xGrid[techLayer].begin(), 
+                            xGrid[techLayer].end(), pinBBox.xMin());
+                    vector<int>::iterator xMaxIter = upper_bound(xGrid[techLayer].begin(),
+                            xGrid[techLayer].end(), pinBBox.xMax());
+                    vector<int>::iterator yMinIter = lower_bound(yGrid[techLayer].begin(),
+                            yGrid[techLayer].end(), pinBBox.yMin());
+                    vector<int>::iterator yMaxIter = upper_bound(yGrid[techLayer].begin(),
+                            yGrid[techLayer].end(), pinBBox.yMax());
+                    for(; xMinIter != xMaxIter; xMinIter++) {
+                        for(; yMinIter != yMaxIter; yMinIter++) {
+                            int x = *xMinIter;
+                            int y = *yMinIter;
+                            Point point(x,y);
+                            accPoints.insert(point);
+                        }
                     }
                 }
             }
-        }
 
 
-        int numPoints = accPoints.size();
-        termAccPoints[iterm] = numPoints;
-        dbNet* tarNet = iterm->getNet();
-        
-        if(tarNet == NULL) {
-            instBlkPoints_[inst] += numPoints;
-        } else {
-            if(iterm->getSigType() == dbSigType::SIGNAL) {
-                instAccPoints_[inst] += numPoints;
-            } else {
+            int numPoints = accPoints.size();
+            termAccPoints[iterm] = numPoints;
+            dbNet* tarNet = iterm->getNet();
+
+            if(tarNet == NULL) {
                 instBlkPoints_[inst] += numPoints;
-            }
-            // Calculate NetBBox for tarInst
-            if(iterm->getIoType() == dbIoType::OUTPUT) {
-                
-                for(dbITerm* sinkITerm : tarNet->getITerms()) {
-                    dbInst* sinkInst = sinkITerm->getInst();
-                    if(sinkInst != inst) {
-                        sinkInsts.insert(sinkInst);
-                        xMin = min(xMin, sinkInst->getBBox()->xMin());
-                        yMin = min(yMin, sinkInst->getBBox()->yMin());
-                        xMax = min(xMax, sinkInst->getBBox()->xMax());
-                        yMax = min(yMax, sinkInst->getBBox()->yMax());
-                    }
+            } else {
+                if(iterm->getSigType() == dbSigType::SIGNAL) {
+                    instAccPoints_[inst] += numPoints;
+                } else {
+                    instBlkPoints_[inst] += numPoints;
                 }
-            } else if(iterm->getIoType() == dbIoType::INPUT) {
+                // Calculate NetBBox for tarInst
+                if(iterm->getIoType() == dbIoType::OUTPUT) {
 
-                dbITerm* sourceITerm = tarNet->getFirstOutput();
-                if(sourceITerm!=NULL) {
-                    dbInst* sourceInst = sourceITerm->getInst();
-                    sourceInsts.insert(sourceInst);        
-                    xMin = min(xMin, sourceInst->getBBox()->xMin());
-                    yMin = min(yMin, sourceInst->getBBox()->yMin());
-                    xMax = min(xMax, sourceInst->getBBox()->xMax());
-                    yMax = min(yMax, sourceInst->getBBox()->yMax());
+                    for(dbITerm* sinkITerm : tarNet->getITerms()) {
+                        dbInst* sinkInst = sinkITerm->getInst();
+                        if(sinkInst != inst) {
+                            sinkInsts.insert(sinkInst);
+                            xMin = min(xMin, sinkInst->getBBox()->xMin());
+                            yMin = min(yMin, sinkInst->getBBox()->yMin());
+                            xMax = min(xMax, sinkInst->getBBox()->xMax());
+                            yMax = min(yMax, sinkInst->getBBox()->yMax());
+                        }
+                    }
+                } else if(iterm->getIoType() == dbIoType::INPUT) {
+
+                    dbITerm* sourceITerm = tarNet->getFirstOutput();
+                    if(sourceITerm!=NULL) {
+                        dbInst* sourceInst = sourceITerm->getInst();
+                        sourceInsts.insert(sourceInst);        
+                        xMin = min(xMin, sourceInst->getBBox()->xMin());
+                        yMin = min(yMin, sourceInst->getBBox()->yMin());
+                        xMax = min(xMax, sourceInst->getBBox()->xMax());
+                        yMax = min(yMax, sourceInst->getBBox()->yMax());
+                    }
                 }
             }
         }
-    }
 
 
-    numInEdges_[inst] = sourceInsts.size();
-    numOutEdges_[inst] = sinkInsts.size();
-    numEdges_[inst] = sourceInsts.size() + sinkInsts.size();
+        numInEdges_[inst] = sourceInsts.size();
+        numOutEdges_[inst] = sinkInsts.size();
+        numEdges_[inst] = sourceInsts.size() + sinkInsts.size();
 
-    
-    stnBBox_[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
 
-    
-    bgBox tarBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
-    vector<pair<bgBox, dbInst*>> queryResults;
-    
-    vector<pair<bgBox, dbTechVia*>> queryViaResults;
-    
-    pViaRtree.query(bgi::nearest(tarBox, 1), back_inserter(queryViaResults));
+        stnBBox_[inst] = 1.0/(gcellWidth)*(xMax-xMin)*(yMax-yMin);
 
-    int instXMin = instBBox.xMin(); 
-    int instXMax = instBBox.xMax(); 
-int instYMin = instBBox.yMin(); 
+
+        bgBox tarBox(bgPoint(instBBox.xMin(), instBBox.yMin()), bgPoint(instBBox.xMax(), instBBox.yMax()));
+        vector<pair<bgBox, dbInst*>> queryResults;
+
+        vector<pair<bgBox, dbTechVia*>> queryViaResults;
+
+        pViaRtree.query(bgi::nearest(tarBox, 1), back_inserter(queryViaResults));
+
+        int instXMin = instBBox.xMin(); 
+        int instXMax = instBBox.xMax(); 
+        int instYMin = instBBox.yMin(); 
         int instYMax = instBBox.yMax(); 
-        
-//        cout << "Inst Box" << " ";
-//        cout << instXMin << " " << instXMax << " " << instYMin << " " << instYMax << endl;
+
+        //        cout << "Inst Box" << " ";
+        //        cout << instXMin << " " << instXMax << " " << instYMin << " " << instYMax << endl;
 
         for(auto& val : queryViaResults) {
             dbTechVia* via = val.second;

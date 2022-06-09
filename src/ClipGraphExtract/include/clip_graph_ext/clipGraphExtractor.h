@@ -16,6 +16,9 @@ class dbSta;
 
 namespace ClipGraphExtract {
 
+
+class Gcell;
+
 enum GraphModel {
   Star, Clique, Hybrid
 };
@@ -54,9 +57,7 @@ class ClipGraphExtractor {
     // defined in writer.cpp
     void saveGraphs(const char* dirPath);
     void saveFeatures(const char* dirPath);
-    void saveFeatures(const char* dirPath, int numHops); // revised 
     void saveLabels(const char* dirPath);
-    
     void saveInstFeatures(const char* dirPath);
     void saveInstLabels(const char* dirPath);
 
@@ -123,7 +124,7 @@ class ClipGraphExtractor {
     std::unordered_map<odb::dbInst*, int> col_;
     std::unordered_map<odb::dbInst*, double> xCoord_;
     std::unordered_map<odb::dbInst*, double> yCoord_;
-
+    std::unordered_map<odb::dbInst*, Gcell*> gcell_;
 
 
 };

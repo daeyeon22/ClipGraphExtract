@@ -113,9 +113,8 @@ proc save_grid_images { args } {
 
 proc save_features { args } {
     sta::parse_key_args "save_features" args \
-        keys { -save_dir -num_hops } flags {}
+        keys { -save_dir } flags {}
     set save_dir "./"
-    set num_hops 1
     if { [info exists keys(-save_dir)] } {
         set save_dir $keys(-save_dir)
         if { ![file isdirectory $save_dir] } {
@@ -123,13 +122,7 @@ proc save_features { args } {
             return
         }       
     }
-
-    if { [info exists keys(-num_hops)] } {
-        set num_hops $keys(-num_hops)
-        save_features_cmd $save_dir $num_hops
-    } else {
-        save_features_cmd $save_dir
-    }
+    save_features_cmd $save_dir
 }
 
 proc save_graphs { args } {

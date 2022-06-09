@@ -98,14 +98,6 @@ graph_extract_cmd()
     graphExt->extract();
 }
 
-
-
-void 
-save_features_cmd(const char* dirPath, int numHops) {
-    ClipGraphExtractor* graphExt = getClipGraphExtractor();
-    graphExt->saveFeatures(dirPath, numHops);
-}
-
 void
 save_features_cmd(const char* dirPath) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
