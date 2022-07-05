@@ -22,13 +22,124 @@ void ClipGraphExtractor::saveGraphs(const char* dirPath) {
     }
 }
 
+void ClipGraphExtractor::saveFeatures(const char* dirPath) {
+
+    // TODO
+
+    Grid* grid = (Grid*) grid_;
+    ofstream outFile;
+    string fileName = "GCELL_x" + to_string(numRows_) + ".csv";
+    string filePath = string(dirPath) + "/" + fileName;
+    outFile.open(filePath, std::ios_base::out);
+    //writeHeader(outFile);
+    //ofstream outFile;
+    //string attrFileName = string(dirPath) + "/GcellFeature.csv";
+    //outFile.open(attrFileName, std::ios_base::out);
+    int numCols=grid->getNumCols();
+    int numRows=grid->getNumRows();
+    int numGcells = numCols*numRows;
+    int maxTechLayer = db_->getTech()->getRoutingLayerCount(); // Intell22nm = 0~8
+    outFile << "col" << ","
+            << "row" << ","
+            << "cell_den" << ","
+            << "pin_den" << ","
+            << "rudy" << ","
+            << "lnet_rudy" << ","
+            << "gnet_rudy" << ","
+            << "snet_rudy" << ","
+            << "wire_den_rsmt" << ","
+            << "lnet_den_rsmt" << ","
+            << "gnet_den_rsmt" << ","
+            << "chan_den_rsmt" << ","
+            << "chan_den_v_rsmt" << ","
+            << "chan_den_h_rsmt" << ",";
+    for(int layer = 1; layer < maxTechLayer; layer++)
+        outFile << "wire_den_egr" + to_string(layer) << ",";
+    for(int layer = 1; layer < maxTechLayer; layer++)
+        outFile << "chan_den_egr" + to_string(layer) << ",";
+    for(int layer = 1; layer < maxTechLayer-1; layer++)
+        outFile << "via_den_egr" + to_string(layer) << ",";
+    outFile << "lnet_den_egr" << ","
+            << "gnet_den_egr" << "," 
+            << "chan_den_egr" << "," 
+            << "chan_den_v_egr" << "," 
+            << "chan_den_h_egr" << ","
+            << "avg_terms" << "," 
+            << "num_insts" << "," 
+            << "num_terms" << "," 
+            << "num_nets" << ","
+            << "num_gnets" << "," 
+            << "num_lnets" << "," 
+            << "clk_ratio" << ","
+            << "wns" << ","
+            << "tns" << endl;
+
+    //vector<string> columns {
+    //    "col", "row", "cell_den" , "pin_den", 
+    //    "rudy", "lnet_rudy", "gnet_rudy", "snet_rudy", 
+    //    "wire_den_rsmt", "lnet_den_rsmt", "gnet_den_rsmt",
+    //    "chan_den_rsmt", "chan_den_v_rsmt", "chan_den_h_rsmt",
+    //    "wire_den_egr1", "wire_den_egr2", "wire_den_egr3", "wire_den_egr4", 
+    //    "wire_den_egr5", "wire_den_egr6", "wire_den_egr7", "wire_den_egr8", 
+    //    "via_den_egr1", "via_den_egr2", "via_den_egr3", 
+    //    "via_den_egr4", "via_den_egr5", "via_den_egr6", "via_den_egr7", 
+    //    "lnet_den_egr", "gnet_den_egr", "chan_den_egr", "chan_den_v_egr", "chan_den_h_egr",
+    //    "avg_terms", "num_insts", "num_terms", "num_nets","num_gnets", "num_lnets", "clk_ratio", 
+    //    "wns", "tns"
+    //};
+    //for(string column : columns)
+    //    outFile << column << ",";
+    //outFile << endl;
+   
+    for(Gcell* tarGcell : grid->getGcells()) {
+        outFile << tarGcell->getCol() << ","
+                << tarGcell->getRow() << ","
+                //<< 1.0 * tarGcell->getCol() / numCols << "," 
+                //<< 1.0 * tarGcell->getRow() / numRows << ","
+                //<< 1.0 / numGcells << ","
+                << tarGcell->getCellUtil() << ","
+                << tarGcell->getPinUtil() << ","
+                << tarGcell->getRUDY() << ","
+                << tarGcell->getLNetRUDY() << ","
+                << tarGcell->getGNetRUDY() << ","
+                << tarGcell->getSNetRUDY() << ","
+                << tarGcell->getWireUtil(ModelType::TREE) << ","
+                << tarGcell->getLNetUtil(ModelType::TREE) << ","
+                << tarGcell->getGNetUtil(ModelType::TREE) << ","
+                << tarGcell->getChanUtil(ModelType::TREE) << ","
+                << tarGcell->getChanUtilV(ModelType::TREE) << ","
+                << tarGcell->getChanUtilH(ModelType::TREE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getWireUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getChanUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer-1; layer++)
+            outFile << tarGcell->getViaUtil(layer) << ",";
+        outFile << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
+                << tarGcell->getGNetUtil(ModelType::ROUTE) << ","
+                << tarGcell->getChanUtil(ModelType::ROUTE) << ","
+                << tarGcell->getChanUtilV(ModelType::ROUTE) << ","
+                << tarGcell->getChanUtilH(ModelType::ROUTE) << ","
+                << tarGcell->getAvgTerms() << ","
+                << tarGcell->getNumInsts() << ","
+                << tarGcell->getNumTerms() << ","
+                << tarGcell->getNumNets() << ","
+                << tarGcell->getNumGNets() << ","
+                << tarGcell->getNumLNets() << ","
+                << tarGcell->getClkRatio() << ","
+                << tarGcell->getWNS() << ","
+                << tarGcell->getTNS() << endl;
+    }
+    outFile.close();
+    cout << "End writing file." << endl;
+}
 
 // USE
 void ClipGraphExtractor::saveLabels(const char* dirPath) {
     // TODO
     Grid* grid = (Grid*) grid_;
     ofstream outFile;
-    string fileName = "x" + to_string(numRows_) + ".csv";
+    string fileName = "GCELL_x" + to_string(numRows_) + ".csv";
     string filePath = string(dirPath) + "/" + fileName;
     outFile.open(filePath, std::ios_base::out);
 
@@ -80,6 +191,7 @@ void ClipGraphExtractor::saveLabels(const char* dirPath) {
 }
 
 
+/*
 void writeHeader(ofstream& outFile) {
 
     vector<string> fieldId { 
@@ -98,13 +210,10 @@ void writeHeader(ofstream& outFile) {
         "wns", "tns"
     };
 
-
-    
     for(int i=0; i < fieldId.size(); i++) {
         string fieldName = fieldId[i];
         outFile << fieldName << ",";
     }
-
 
     for(int i=0; i < fieldData.size(); i++) {
         string fieldName = fieldData[i];
@@ -183,6 +292,8 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
     outFile.close();
     cout << "End writing file." << endl;
 }
+*/
+
 
 // USE
 void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
@@ -219,32 +330,37 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
             << "num_cut_edges" << ","
             << "num_in_edges" << ","
             << "num_out_edges" << ","
-            << "num_edges" << ","
-            // GCELL
-            << "cell_den" << ","
+            << "num_edges" << ",";
+    int maxTechLayer = db_->getTech()->getRoutingLayerCount(); // Intell22nm = 0~8
+    outFile << "cell_den" << ","
             << "pin_den" << ","
-            << "rudy" << "," 
+            << "rudy" << ","
             << "lnet_rudy" << ","
             << "gnet_rudy" << ","
             << "snet_rudy" << ","
-            << "wire_den_rsmt"<< ","
+            << "wire_den_rsmt" << ","
             << "lnet_den_rsmt" << ","
-            << "gnet_den_rsmt"<< ","
-            << "chan_den_rsmt"<< ","
+            << "gnet_den_rsmt" << ","
+            << "chan_den_rsmt" << ","
             << "chan_den_v_rsmt" << ","
-            << "chan_den_h_rsmt"<< ","
-            << "wire_den_egr" << ","
-            << "lnet_den_egr" << ","
-            << "gnet_den_egr"<< ","
-            << "chan_den_egr" << ","
-            << "chan_den_v_egr" << ","
-            << "chan_den_h_egr"<< ","
-            << "avg_terms" << ","
-            << "num_insts" << ","
-            << "num_terms" << ","
-            << "num_nets"<< ","
-            << "num_gnets" << ","
-            << "num_lnets" << ","
+            << "chan_den_h_rsmt" << ",";
+    for(int layer = 1; layer < maxTechLayer; layer++)
+        outFile << "wire_den_egr" + to_string(layer) << ",";
+    for(int layer = 1; layer < maxTechLayer; layer++)
+        outFile << "chan_den_egr" + to_string(layer) << ",";
+    for(int layer = 1; layer < maxTechLayer-1; layer++)
+        outFile << "via_den_egr" + to_string(layer) << ",";
+    outFile << "lnet_den_egr" << ","
+            << "gnet_den_egr" << "," 
+            << "chan_den_egr" << "," 
+            << "chan_den_v_egr" << "," 
+            << "chan_den_h_egr" << ","
+            << "avg_terms" << "," 
+            << "num_insts" << "," 
+            << "num_terms" << "," 
+            << "num_nets" << ","
+            << "num_gnets" << "," 
+            << "num_lnets" << "," 
             << "clk_ratio" << ","
             << "wns" << ","
             << "tns" << endl;
@@ -294,9 +410,14 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
                 << tarGcell->getGNetUtil(ModelType::TREE) << ","
                 << tarGcell->getChanUtil(ModelType::TREE) << ","
                 << tarGcell->getChanUtilV(ModelType::TREE) << ","
-                << tarGcell->getChanUtilH(ModelType::TREE) << ","
-                << tarGcell->getWireUtil(ModelType::ROUTE) << ","
-                << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
+                << tarGcell->getChanUtilH(ModelType::TREE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getWireUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer; layer++)
+            outFile << tarGcell->getChanUtil(layer, ModelType::ROUTE) << ",";
+        for(int layer = 1; layer < maxTechLayer-1; layer++)
+            outFile << tarGcell->getViaUtil(layer) << ",";
+        outFile << tarGcell->getLNetUtil(ModelType::ROUTE) << ","
                 << tarGcell->getGNetUtil(ModelType::ROUTE) << ","
                 << tarGcell->getChanUtil(ModelType::ROUTE) << ","
                 << tarGcell->getChanUtilV(ModelType::ROUTE) << ","
@@ -310,6 +431,33 @@ void ClipGraphExtractor::saveInstFeatures(const char* dirPath) {
                 << tarGcell->getClkRatio() << ","
                 << tarGcell->getWNS() << ","
                 << tarGcell->getTNS() << endl;
+                //<< tarGcell->getCellUtil() << ","
+                //<< tarGcell->getPinUtil() << ","
+                //<< tarGcell->getRUDY() << ","
+                //<< tarGcell->getLNetRUDY() << ","
+                //<< tarGcell->getGNetRUDY() << ","
+                //<< tarGcell->getSNetRUDY() << ","
+                //<< tarGcell->getWireUtil(ModelType::TREE) << ","
+                //<< tarGcell->getLNetUtil(ModelType::TREE) << ","
+                //<< tarGcell->getGNetUtil(ModelType::TREE) << ","
+                //<< tarGcell->getChanUtil(ModelType::TREE) << ","
+                //<< tarGcell->getChanUtilV(ModelType::TREE) << ","
+                //<< tarGcell->getChanUtilH(ModelType::TREE) << ","
+                //<< tarGcell->getWireUtil(ModelType::ROUTE) << ","
+                //<< tarGcell->getLNetUtil(ModelType::ROUTE) << ","
+                //<< tarGcell->getGNetUtil(ModelType::ROUTE) << ","
+                //<< tarGcell->getChanUtil(ModelType::ROUTE) << ","
+                //<< tarGcell->getChanUtilV(ModelType::ROUTE) << ","
+                //<< tarGcell->getChanUtilH(ModelType::ROUTE) << ","
+                //<< tarGcell->getAvgTerms() << ","
+                //<< tarGcell->getNumInsts() << ","
+                //<< tarGcell->getNumTerms() << ","
+                //<< tarGcell->getNumNets() << ","
+                //<< tarGcell->getNumGNets() << ","
+                //<< tarGcell->getNumLNets() << ","
+                //<< tarGcell->getClkRatio() << ","
+                //<< tarGcell->getWNS() << ","
+                //<< tarGcell->getTNS() << endl;
     }
 }
 

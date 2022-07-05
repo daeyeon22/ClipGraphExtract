@@ -14,10 +14,6 @@ RSMT::RSMT() : net_(nullptr), width_(0) {}
 RSMT::RSMT(dbNet* net) :
     net_(net), width_(0) {}
 
-
-
-
-
 Rect RSMT::getBBox() {
     return bbox_;
 }
