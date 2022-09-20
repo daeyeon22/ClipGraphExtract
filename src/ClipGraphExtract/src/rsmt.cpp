@@ -9,10 +9,10 @@ namespace ClipGraphExtract {
 using namespace std;
 using namespace odb;
 
-RSMT::RSMT() : net_(nullptr), width_(0) {}
+RSMT::RSMT() : net_(nullptr), width_(0), wl_(0), hpwl_(0) {}
 
 RSMT::RSMT(dbNet* net) :
-    net_(net), width_(0) {}
+    net_(net), width_(0), wl_(0), hpwl_(0) {}
 
 Rect RSMT::getBBox() {
     return bbox_;
@@ -110,6 +110,7 @@ void RSMT::createTree() {
     if(deg > 1) {
         // RSMT
         rsmt_ = Flute::flute(deg, xs, ys, FLUTE_ACCURACY);
+        wl_ = Flute::wirelength(rsmt_); 
     }
     // BBOX
     bbox_ = Rect(xMin, yMin, xMax, yMax);
@@ -118,23 +119,11 @@ void RSMT::createTree() {
 
 int 
 RSMT::getWireLengthRSMT() {
-
-   
-    //////////////////////////////////////////////////
-    //int wl = 0;
-    //for(Rect& seg : getSegments())  {
-    //    wl += seg.dx() + seg.dy();
-    //}
-
-    //if(wl != Flute::wirelength(rsmt_)) {
-    //    cout << wl << " " << Flute::wirelength(rsmt_) << endl;
-    //    exit(0);
-    //}
-    //////////////////////////////////////////////////
-    if(terminals_.size() > 1) 
-        return Flute::wirelength(rsmt_);   
-    else
-        return 0;
+    return wl_;
+    //if(terminals_.size() > 1) 
+    //    return Flute::wirelength(rsmt_);   
+    //else
+    //    return 0;
 }
 
 

@@ -23,11 +23,19 @@
 #include <fstream>
 #include <vector>
 #include <cassert>
+#include <chrono>
+#include <time.h>
+
+#include "mymeasure.h"
+
+
 
 namespace ClipGraphExtract {
 
 using namespace odb;
 using namespace std;
+
+static CMeasure measure;
 
 void initInstRtree(odb::dbDatabase* db, BoxRtree<dbInst*> &instRtree) {
     dbBlock* block = db->getChip()->getBlock();
@@ -297,6 +305,11 @@ void getTimingInfo(dbDatabase* db_, sta::dbSta* sta_,
 }
 
 void ClipGraphExtractor::init() {
+
+
+    measure.start_clock();
+
+
     Flute::readLUT();
 
     grid_ = (void*) new Grid();
@@ -342,6 +355,7 @@ void ClipGraphExtractor::init() {
         }
     }
 
+
     Rect blockArea;
     block->getDieArea(blockArea);
     cout << "Die area"
@@ -351,6 +365,7 @@ void ClipGraphExtractor::init() {
     cout << "TotalWireCapacity   : " << totalWireCapacity << endl;
     // Get core area
 
+    measure.stop_clock("init phase1");
 
     // Initialize Gcell Grid
     grid->setDb(getDb());
@@ -359,14 +374,21 @@ void ClipGraphExtractor::init() {
     grid->setGcellWidth(gcellWidth);
     grid->setGcellHeight(gcellHeight);
     grid->setNumLayers(numLayer);
+    measure.stop_clock("init phase2");
     grid->setTotalWireCapacity(totalWireCapacity);
+    measure.stop_clock("init phase3");
     grid->setWireCapacity(wireCapacity);
+    measure.stop_clock("init phase4");
     grid->setTotalTrackSupply(totalTrackSupply);
+    measure.stop_clock("init phase5");
     grid->setTrackSupply(trackSupply);
+    measure.stop_clock("init phase6");
     grid->setWireMinWidth(minWidth);
+    measure.stop_clock("init phase7");
     grid->init();
     //  
 
+    measure.stop_clock("init phase8");
 
 }
 
@@ -403,6 +425,9 @@ void ClipGraphExtractor::extract() {
     initInstRtree(db_, instRtree);
     initGcellRtree((Grid*)grid_, gcellRtree);
     initRsmtRtree((Grid*)grid_, rsmtRtree);
+   
+    measure.stop_clock("init rtrees");
+
     // 
     //
     //unordered_map<dbInst*, bool> isCritical_;
@@ -417,6 +442,7 @@ void ClipGraphExtractor::extract() {
         rsmt->searchOverlaps(&gcellRtree);
     }
 
+    measure.stop_clock("calculate overlaps");
 
     // add Instance in gcell 
     for( Gcell* gcell : grid->getGcells() ) {
@@ -426,8 +452,13 @@ void ClipGraphExtractor::extract() {
         gcell->extractViaFeature(&rViaRtreeMap, &sViaRtreeMap, &pViaRtreeMap, maxTechLayer, maxRouteLayer_);
         gcell->updateTimingInfo(absSlack_);
     }
+   
+    measure.stop_clock("extract features");
 
+   
+    measure.print_clock();
 
+    /*
     int gcellWidth = grid->getGcellWidth();
     int gcellHeight = grid->getGcellHeight();
 
@@ -456,23 +487,23 @@ void ClipGraphExtractor::extract() {
     //unordered_map<dbInst*, double> stnBBox_;
     //unordered_map<dbInst*, int> numCutEdges;
     //unordered_map<dbInst*, int> cellType_;
-
     ////// FOR DEBUG
-    double maxWireDenDR = 0;
-    double maxWireDenPL = 0;
-    double avgRUDY = 0;
-    for(Gcell* gcell : grid->getGcells()) {
-       avgRUDY += gcell->getRUDY();
-        maxWireDenPL = max(maxWireDenPL, gcell->getWireUtil(ModelType::TREE));
-        maxWireDenDR = max(maxWireDenDR, gcell->getWireUtil(ModelType::ROUTE));
-    }
-    cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
-    avgRUDY /= grid->getGcells().size();
-    cout << "[REP] Avg RUDY : " << avgRUDY << endl;
-    cout << "[REP] Max WireDen (PL) : " << maxWireDenPL << endl;
-    cout << "[REP] Max WireDen (DR) : " << maxWireDenDR << endl;
-    cout << "Feature extraction finished" << endl;
+    //double maxWireDenDR = 0;
+    //double maxWireDenPL = 0;
+    //double avgRUDY = 0;
+    //for(Gcell* gcell : grid->getGcells()) {
+    //   avgRUDY += gcell->getRUDY();
+    //    maxWireDenPL = max(maxWireDenPL, gcell->getWireUtil(ModelType::TREE));
+    //    maxWireDenDR = max(maxWireDenDR, gcell->getWireUtil(ModelType::ROUTE));
+    //}
+    //cout << "[REP] Max RUDY : " << grid->getMaxRUDY() << endl;
+    //avgRUDY /= grid->getGcells().size();
+    //cout << "[REP] Avg RUDY : " << avgRUDY << endl;
+    //cout << "[REP] Max WireDen (PL) : " << maxWireDenPL << endl;
+    //cout << "[REP] Max WireDen (DR) : " << maxWireDenDR << endl;
+    //cout << "Feature extraction finished" << endl;
 
+    
     // Rtree for M1-M2 via access point
     unordered_map<dbTechLayer*, vector<int>> xGrid;
     unordered_map<dbTechLayer*, vector<int>> yGrid;
@@ -486,8 +517,10 @@ void ClipGraphExtractor::extract() {
             trackGrid->getGridY(yGrid[techLayer]);
         }
     }
+
     cout << "Init trackgrid is done" << endl;
 
+   
     for(dbInst* inst : block->getInsts()) {
 
         dbMaster* tarMaster = inst->getMaster();
@@ -797,16 +830,9 @@ void ClipGraphExtractor::extract() {
         }
     }
 
-    
     cout << "Start to extract clip graphs" << endl; 
     for(Gcell* gcell : grid->getGcells()) {
-//        cout << "Axis : " << gcell->getRow() << " " << gcell->getCol() << endl;
         set<dbInst*> instSet = gcell->getInstSet();
-
-        //unordered_map<dbInst*, double> relPosX_;
-        //unordered_map<dbInst*, double> relPosY_;
-        //unordered_map<dbInst*, int> numCutEdges_;        
-
         Rect boundBox = gcell->getBBox();
 
         for(dbInst* tarInst : instSet) {
@@ -831,8 +857,8 @@ void ClipGraphExtractor::extract() {
 
                 if(tarNet != NULL) {
                     // Calculate numCutEdges_
-//                    cout << "pin net: " << tarInst->getName() << "/" << tarMTerm->getName() << " " << tarNet->getName() << endl;
-//                    cout << "IO type: " << tarITerm->getIoType() << endl;
+                    //cout << "pin net: " << tarInst->getName() << "/" << tarMTerm->getName() << " " << tarNet->getName() << endl;
+                    //cout << "IO type: " << tarITerm->getIoType() << endl;
                     
                     if(tarITerm->getIoType() == dbIoType::OUTPUT) {
                         for(dbITerm* sinkITerm : tarNet->getITerms()) {
@@ -911,6 +937,7 @@ void ClipGraphExtractor::extract() {
 
     
     }
+    */
     cout << "Done!" << endl;
 }
 

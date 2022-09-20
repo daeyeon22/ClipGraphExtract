@@ -497,8 +497,10 @@ double Gcell::getClkRatio() {
     }
 }
 
-void Gcell::updateTimingInfo(unordered_map<dbInst*, double> slack) {
+void Gcell::updateTimingInfo(unordered_map<dbInst*, double> &slack) {
 
+
+    //cout << "# of insts = " << insts_.size() << endl;
     for(dbInst* tarInst : insts_) {
         if(slack.find(tarInst) == slack.end()) {
             cout << "?" << endl;
@@ -618,6 +620,8 @@ Gcell::extractRouteFeature(unordered_map<int, SegRtree<odb::dbNet*>> *rRtree,
     bgSeg rb(bgPoint(bbox_.xMax(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg tb(bgPoint(bbox_.xMin(), bbox_.yMax()), bgPoint(bbox_.xMax(), bbox_.yMax()));
     bgSeg bb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMin()));
+
+
 
     for(int layerNum = 1; layerNum < maxTechLayer; layerNum++) {
         vector<pair<bgSeg, dbNet*>> rQueryResults;
@@ -778,7 +782,12 @@ void
 Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
     //cout << "extract feature rsmt start" << endl;
     vector<pair<bgSeg, RSMT*>> queryResults;
+    clock_t start, end;
+    double runtime;
+    int c =0;
+    runtime = 0;
 
+    start = clock();
     // Query
     rtree->query(bgi::intersects(getQueryBox()), back_inserter(queryResults));
     bgSeg lb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMin(), bbox_.yMax()));
@@ -787,7 +796,8 @@ Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
     bgSeg bb(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMin()));
 
 	//cout << bbox_.xMin() << " " << bbox_.yMin() << " " << bbox_.xMax() << " " << bbox_.yMax() << endl;
-   
+
+  
 	set<RSMT*> RSMTs;
     int wirelength=0;
     for(auto &val : queryResults) {
@@ -831,8 +841,10 @@ Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
 
 
 
+
     //cout << "GCELL (" << bbox_.xMin() << " " << bbox_.yMin() << ") (" << bbox_.xMax() << " " << bbox_.yMax() << ")" << endl;
 
+    
     for(RSMT* myRSMT : RSMTs) {
         // update RUDY
         odb::Rect r1 = bbox_;
@@ -841,19 +853,8 @@ Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
         int area2 = r1.area();
         double dn = myRSMT->getWireUniformUtil();
         double R = 1.0* area1 / area2;
-        //double R = 1.0 * r2.intersect(r1).area() / r1.area();
         double partialRUDY = dn * R;   
-      
-
-        if(dn < 0) {
-
-        cout << "   - "<< myRSMT->getNet()->getName() << " RUDY = " << partialRUDY << " (" << dn << " " << R << ")" << endl;
-        exit(0);
-        }
-
-
         RUDY_ += partialRUDY;
-
         //
         rsmts_.push_back(myRSMT);
 
@@ -866,14 +867,12 @@ Gcell::extractPlaceFeature(SegRtree<RSMT*> *rtree) {
                 gNetRUDY_ += partialRUDY;
             }
         }
-
-
-        //if(myRSMT->isLocalNet())
-        //    numLNets_++;
-        //else
-        //    numGNets_++;
-
     }
+    //end = clock();
+    //runtime = double(end-start); 
+    //cout << "(" << c++ << ") " << runtime << endl;
+    //start = end;
+
 
     RUDY_ /=  numLayers_;
     lNetRUDY_ /= numLayers_;

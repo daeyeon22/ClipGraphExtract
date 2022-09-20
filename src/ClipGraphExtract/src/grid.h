@@ -139,7 +139,7 @@ class Gcell {
                            std::unordered_map<int, BoxRtree<odb::dbTechVia*>> *pViaRtree,
                            int maxTechLayer, int maxRouteLayer);
 
-    void updateTimingInfo(std::unordered_map<odb::dbInst*, double> slack);
+    void updateTimingInfo(std::unordered_map<odb::dbInst*, double> &slack);
 
 
 
@@ -277,7 +277,8 @@ class RSMT {
     std::vector<odb::Point> terminals_;
     Flute::Tree rsmt_;
     int width_;
-
+    int wl_;
+    int hpwl_;
 
     std::vector<Gcell*> rsmtOverlaps_;
     std::vector<Gcell*> bboxOverlaps_;

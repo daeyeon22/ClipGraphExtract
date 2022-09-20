@@ -63,6 +63,7 @@ add_library( ClipGraphExtractor
   src/label.cpp
   src/writer.cpp  
   src/feaExt.cpp
+  src/mymeasure.cpp
   ${GRAPHEXT_WRAP}
   ${GRAPHEXT_TCL_INIT}
 )

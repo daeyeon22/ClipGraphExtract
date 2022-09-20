@@ -9,16 +9,21 @@
 #include <cassert>
 #include <fstream>
 
+#include "mymeasure.h"
 
 using namespace std;
 using namespace odb;
-using namespace ClipGraphExtract;
 using namespace ClipGraphExtract;
 
 
 namespace ClipGraphExtract {
 
 void Grid::init() {
+
+
+    CMeasure measure;
+    measure.start_clock();
+
     assert(gcellWidth_ == 0);
     assert(gcellHeight_ == 0);
     assert(bbox_.dx() * bbox_.dy() == 0);
@@ -49,10 +54,18 @@ void Grid::init() {
         }
     }
 
+    measure.stop_clock("grid init phase1");
+
     // init rsmt
+
+    // Runtime bottleneck! 
+    // Need mp
     for(dbNet* net : db_->getChip()->getBlock()->getNets()) {
         createRSMT(net);
     }
+
+    measure.stop_clock("grid init phase2");
+    measure.print_clock();
 }
 
 
