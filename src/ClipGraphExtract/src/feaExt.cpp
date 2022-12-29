@@ -11,7 +11,7 @@
 
 #include "db_sta/dbSta.hh"
 #include "db_sta/dbNetwork.hh"
-#include "instGraph.h"
+//#include "instGraph.h"
 #include "grid.h"
 #include "opendb/dbTransform.h"
 
@@ -393,6 +393,11 @@ void ClipGraphExtractor::init() {
 }
 
 
+//void ClipGraphExtractor::label() {
+//    parseDrcReport(drcRpt_.c_str());
+//}
+
+
 void ClipGraphExtractor::extract() {
 
     Grid* grid = (Grid*)grid_;
@@ -454,6 +459,10 @@ void ClipGraphExtractor::extract() {
     }
    
     measure.stop_clock("extract features");
+
+
+    parseDrcReport(drcRpt_.c_str());
+    measure.stop_clock("parse drc report");
 
    
     measure.print_clock();
@@ -940,6 +949,7 @@ void ClipGraphExtractor::extract() {
     */
     cout << "Done!" << endl;
 }
+
 
 
 

@@ -10,17 +10,17 @@ namespace ClipGraphExtract {
 using namespace std;
 using namespace odb;
 
-void ClipGraphExtractor::saveGraphs(const char* dirPath) {
-    // TODO
-    Grid* grid = (Grid*) grid_;
-
-    for(Gcell* tarGcell : grid->getGcells()) {
-        int col = tarGcell->getCol();
-        int row = tarGcell->getRow();
-        string fileName = "Col_" + to_string(col) + "_Row_" + to_string(row);
-        tarGcell->saveGraph(string(dirPath), fileName);
-    }
-}
+//void ClipGraphExtractor::saveGraphs(const char* dirPath) {
+//    // TODO
+//    Grid* grid = (Grid*) grid_;
+//
+//    for(Gcell* tarGcell : grid->getGcells()) {
+//        int col = tarGcell->getCol();
+//        int row = tarGcell->getRow();
+//        string fileName = "Col_" + to_string(col) + "_Row_" + to_string(row);
+//        tarGcell->saveGraph(string(dirPath), fileName);
+//    }
+//}
 
 void ClipGraphExtractor::saveFeatures(const char* dirPath) {
 
@@ -72,7 +72,8 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
             << "num_lnets" << "," 
             << "clk_ratio" << ","
             << "wns" << ","
-            << "tns" << endl;
+            << "tns" << "," 
+            << "num_drvs" << endl;
 
     //vector<string> columns {
     //    "col", "row", "cell_den" , "pin_den", 
@@ -128,7 +129,8 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
                 << tarGcell->getNumLNets() << ","
                 << tarGcell->getClkRatio() << ","
                 << tarGcell->getWNS() << ","
-                << tarGcell->getTNS() << endl;
+                << tarGcell->getTNS() << "," 
+                << tarGcell->getNumMarkers() << endl;
     }
     outFile.close();
     cout << "End writing file." << endl;
@@ -292,7 +294,6 @@ void ClipGraphExtractor::saveFeatures(const char* dirPath) {
     outFile.close();
     cout << "End writing file." << endl;
 }
-*/
 
 
 // USE
@@ -480,7 +481,7 @@ void ClipGraphExtractor::saveInstLabels(const char* dirPath) {
     }
 
 }
-
+*/
 
 
 };

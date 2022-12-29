@@ -494,14 +494,6 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
             //if(inst2 != NULL) {
             //    numDrvs_[inst2]++;
             //}
-
-           
-
-
-
-
-
-
             ///////////////////////////////////////////////////////////
             if(fromNet != "") {
                 if(net1 == NULL) {
@@ -590,9 +582,9 @@ void ClipGraphExtractor::parseDrcReport(const char* fileName) {
     // labeling
     for(Gcell* gcell : grid->getGcells()) {
         gcell->annotateLabel(rtree);
-        gcell->getGraph()->setNumDrvs(numDrvs_);
-        if(gcell->getNumMarkers() > 0)
-            gcell->print();
+        //gcell->getGraph()->setNumDrvs(numDrvs_);
+        //if(gcell->getNumMarkers() > 0)
+        //    gcell->print();
     
     }
     //int total = 0;

@@ -11,7 +11,7 @@
 
 #include "db_sta/dbSta.hh"
 #include "db_sta/dbNetwork.hh"
-#include "instGraph.h"
+//#include "instGraph.h"
 #include "grid.h"
 #include "opendb/dbTransform.h"
 
@@ -40,8 +40,7 @@ using std::set;
 namespace ClipGraphExtract {
 ClipGraphExtractor::ClipGraphExtractor() : db_(nullptr), sta_(nullptr),
     numRows_(5), maxRouteLayer_(7),
-    grid_(nullptr),
-    graphModel_(Star), edgeWeightModel_(A), fileName_("") {};
+    grid_(nullptr), fileName_(""), drcRpt_("") {};
 
 ClipGraphExtractor::~ClipGraphExtractor() {
   clear(); 
@@ -53,9 +52,8 @@ ClipGraphExtractor::clear() {
   sta_ = nullptr;
   numRows_ =5;          // default: x5
   maxRouteLayer_ = 7;  // default: Metal7
-  graphModel_ = Star;
-  edgeWeightModel_ = A;
   fileName_ = "";
+  drcRpt_ = "";
 }
 
 
@@ -79,18 +77,6 @@ void ClipGraphExtractor::setMaxRouteLayer(int maxRouteLayer) {
     maxRouteLayer_ = maxRouteLayer;
 }
 
-
-
-void
-ClipGraphExtractor::setGraphModel(const char* graphModel) {
-  if( strcmp(graphModel, "star") == 0 ) {
-    graphModel_ = Star; 
-  }
-  else if( strcmp(graphModel, "clique") == 0 ) {
-    graphModel_ = Clique;
-  }
-}
-
 void
 ClipGraphExtractor::setSaveFileName(const char* fileName) {
   fileName_ = fileName;
@@ -101,29 +87,12 @@ ClipGraphExtractor::setSaveFilePrefix(const char* prefix) {
     prefix_ = prefix;
 }
 
-
-void
-ClipGraphExtractor::setEdgeWeightModel( const char* edgeWeightModel ) {
-  if( strcmp(edgeWeightModel, "a") == 0 ) {
-    edgeWeightModel_ = A;
-  }
-  else if( strcmp(edgeWeightModel, "b") == 0 ) {
-    edgeWeightModel_ = B;
-  }
-  else if( strcmp(edgeWeightModel, "c") == 0 ) {
-    edgeWeightModel_ = C;
-  }
-  else if( strcmp(edgeWeightModel, "d") == 0 ) {
-    edgeWeightModel_ = D;
-  }
-  else if( strcmp(edgeWeightModel, "e") == 0 ) {
-    edgeWeightModel_ = E;
-  }
-  else {
-    cout << "ERROR: edgeWeight is wrong: " << edgeWeightModel << endl;
-    exit(1);
-  }
+void 
+ClipGraphExtractor::setDrcReport(const char* fileName) {
+    drcRpt_= fileName;
 }
+
+
 
 }
 /*

@@ -8,7 +8,7 @@
 #include "opendb/db.h"
 #include "opendb/geom.h"
 
-#include "instGraph.h"
+//#include "instGraph.h"
 
 
 // Typedef for boost geometry
@@ -109,7 +109,7 @@ class Gcell {
     double wns_;
 
 
-    Graph* graph_;
+    //Graph* graph_;
 
     std::vector<odb::dbInst*> insts_;
     std::vector<Marker*> markers_;
@@ -205,9 +205,9 @@ class Gcell {
 
     // initGraph() in ClipGraphExtractor
 
-    Graph* getGraph() { return graph_; }
-    void setGraph(Graph* graph);
-    void saveGraph(std::string dirPath, std::string fileName);
+    //Graph* getGraph() { return graph_; }
+    //void setGraph(Graph* graph);
+    //void saveGraph(std::string dirPath, std::string fileName);
 };
 
 class Marker {

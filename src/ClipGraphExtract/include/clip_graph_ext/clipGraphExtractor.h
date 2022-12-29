@@ -19,14 +19,6 @@ namespace ClipGraphExtract {
 
 class Gcell;
 
-enum GraphModel {
-  Star, Clique, Hybrid
-};
-
-enum EdgeWeightModel {
-  A, B, C, D, E
-};
-
 class ClipGraphExtractor {
   public:
     void setDb(odb::dbDatabase* db);
@@ -36,33 +28,31 @@ class ClipGraphExtractor {
 
     void clear();
     void extract();
+    //void label();
     void extract(int lx, int ly, int ux, int uy);
     void setSaveFileName (const char* fileName);
     void setSaveFilePrefix(const char* prefix);
 
-    
+    void setDrcReport(const char* fileName);
 
 
     // 
     void setGcellSize(int numRows);
     void setMaxRouteLayer(int maxLayer);
 
-    void setGraphModel(const char* graphModel);
-    void setEdgeWeightModel(const char* edgeWeightModel);
+    //void setGraphModel(const char* graphModel);
+    //void setEdgeWeightModel(const char* edgeWeightModel);
 
     // defined in label.cpp
     void parseDrcReport(const char* fileName);
     // defined in plot.cpp
     void saveGridImages(const char* dirPath, const char* prefix);
     // defined in writer.cpp
-    void saveGraphs(const char* dirPath);
+    //void saveGraphs(const char* dirPath);
     void saveFeatures(const char* dirPath);
     void saveLabels(const char* dirPath);
-    void saveInstFeatures(const char* dirPath);
-    void saveInstLabels(const char* dirPath);
-
-    GraphModel getGraphModel() { return graphModel_; }
-    EdgeWeightModel getEdgeWeightModel() { return edgeWeightModel_; }
+    //void saveInstFeatures(const char* dirPath);
+    //void saveInstLabels(const char* dirPath);
 
     ClipGraphExtractor();
     ~ClipGraphExtractor();
@@ -71,11 +61,13 @@ class ClipGraphExtractor {
   private:
     odb::dbDatabase* db_;
     sta::dbSta* sta_;
-    GraphModel graphModel_;
-    EdgeWeightModel edgeWeightModel_;
+    //GraphModel graphModel_;
+    //EdgeWeightModel edgeWeightModel_;
     std::string fileName_;
     std::string prefix_;
-    
+    std::string drcRpt_;
+
+
     int numRows_;       // GCELL SIZE (= n * height of site row)
     int maxRouteLayer_; // MAX ROUTE LAYER (need to figure out routing capacity)
 

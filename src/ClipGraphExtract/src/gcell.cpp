@@ -20,7 +20,7 @@ Gcell::Gcell(int col, int row) :
     numInsts_(0), numTerms_(0),
     //numLNets_(0), numGNets_(0), 
     wns_(0), tns_(0),
-    numLayers_(1), graph_(nullptr),
+    numLayers_(1), //graph_(nullptr),
     totalCellArea_(0), totalPinArea_(0),
     cellUtil_(0), pinUtil_(0), RUDY_(0),
     lNetRUDY_(0), gNetRUDY_(0), sNetRUDY_(0) {}
@@ -60,9 +60,9 @@ set<dbInst*> Gcell::getInstSet() {
     return instSet;
 }
 
-void Gcell::setGraph(Graph* graph) {
-    graph_ = graph;
-}
+//void Gcell::setGraph(Graph* graph) {
+//    graph_ = graph;
+//}
 
 bgBox Gcell::getQueryBox() {
     return bgBox(bgPoint(bbox_.xMin(), bbox_.yMin()), bgPoint(bbox_.xMax(), bbox_.yMax()));
@@ -513,15 +513,15 @@ void Gcell::updateTimingInfo(unordered_map<dbInst*, double> &slack) {
 
 
 
-void Gcell::saveGraph(string dirPath, string fileName) {
-    string vertFeaFile = dirPath + "/" + fileName + ".x";
-    string edgeIdxFile = dirPath + "/" + fileName + ".edge_index";
-    string edgeAttFile = dirPath + "/" + fileName + ".edge_attr";
-
-    graph_->saveNodeFeaFile(vertFeaFile);
-    graph_->saveEdgeIdxFile(edgeIdxFile);
-    graph_->saveEdgeAttFile(edgeAttFile);
-}
+//void Gcell::saveGraph(string dirPath, string fileName) {
+//    string vertFeaFile = dirPath + "/" + fileName + ".x";
+//    string edgeIdxFile = dirPath + "/" + fileName + ".edge_index";
+//    string edgeAttFile = dirPath + "/" + fileName + ".edge_attr";
+//
+//    graph_->saveNodeFeaFile(vertFeaFile);
+//    graph_->saveEdgeIdxFile(edgeIdxFile);
+//    graph_->saveEdgeAttFile(edgeAttFile);
+//}
 
 void
 Gcell::extractPlaceFeature(BoxRtree<odb::dbInst*> *rtree) {

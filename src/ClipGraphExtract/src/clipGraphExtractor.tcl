@@ -64,7 +64,7 @@ proc parse_drc_report { args } {
 
 proc graph_extract_init { args } {
     sta::parse_key_args "graph_extract_init" args \
-        keys { -num_rows -max_route_layer -graph_model -edge_weight_model } flags {}
+        keys { -num_rows -max_route_layer -drc_report } flags {}
 
     
     if { [info exists keys(-num_rows)] } {
@@ -75,17 +75,10 @@ proc graph_extract_init { args } {
         set max_route_layer $keys(-max_route_layer)
         set_max_route_layer_cmd $max_route_layer
     }
-
-    if { [info exists keys(-graph_model)] } {
-        set graph_model $keys(-graph_model)
-        set_graph_model_cmd $graph_model
+    if { [info exists keys(-drc_report)] } {
+        set drc_report $keys(-drc_report)
+        set_drc_report_cmd $drc_report
     }
-
-    if { [info exists keys(-edge_weight_model)] } {
-        set edge_weight_model $keys(-edge_weight_model)
-        set_edge_weight_model_cmd $edge_weight_model
-    }
-
 
     graph_extract_init_cmd
 }
@@ -125,19 +118,19 @@ proc save_features { args } {
     save_features_cmd $save_dir
 }
 
-proc save_graphs { args } {
-    sta::parse_key_args "save_graphs" args \
-        keys { -save_dir } flags {}
-    set save_dir "./"
-    if { [info exists keys(-save_dir)] } {
-        set save_dir $keys(-save_dir)
-        if { ![file isdirectory $save_dir] } {
-            puts "ERROR: -save_dir ${save_dir} does not exist"
-            return
-        }       
-    }
-    save_graphs_cmd $save_dir
-}
+#proc save_graphs { args } {
+#    sta::parse_key_args "save_graphs" args \
+#        keys { -save_dir } flags {}
+#    set save_dir "./"
+#    if { [info exists keys(-save_dir)] } {
+#        set save_dir $keys(-save_dir)
+#        if { ![file isdirectory $save_dir] } {
+#            puts "ERROR: -save_dir ${save_dir} does not exist"
+#            return
+#        }       
+#    }
+#    save_graphs_cmd $save_dir
+#}
 
 proc save_labels { args } {
     sta::parse_key_args "save_labels" args \
@@ -153,30 +146,30 @@ proc save_labels { args } {
     save_labels_cmd $save_dir
 }
 
-proc save_inst_features { args } {
-    sta::parse_key_args "save_inst_features" args \
-        keys { -save_dir } flags {}
-    set save_dir "./"
-    if { [info exists keys(-save_dir)] } {
-        set save_dir $keys(-save_dir)
-        if { ![file isdirectory $save_dir] } {
-            puts "ERROR: -save_dir ${save_dir} does not exist"
-            return
-        }       
-    }
-    save_inst_features_cmd $save_dir
-}
-
-proc save_inst_labels { args } {
-    sta::parse_key_args "save_inst_labels" args \
-        keys { -save_dir } flags {}
-    set save_dir "./"
-    if { [info exists keys(-save_dir)] } {
-        set save_dir $keys(-save_dir)
-        if { ![file isdirectory $save_dir] } {
-            puts "ERROR: -save_dir ${save_dir} does not exist"
-            return
-        }       
-    }
-    save_inst_labels_cmd $save_dir
-}
+#proc save_inst_features { args } {
+#    sta::parse_key_args "save_inst_features" args \
+#        keys { -save_dir } flags {}
+#    set save_dir "./"
+#    if { [info exists keys(-save_dir)] } {
+#        set save_dir $keys(-save_dir)
+#        if { ![file isdirectory $save_dir] } {
+#            puts "ERROR: -save_dir ${save_dir} does not exist"
+#            return
+#        }       
+#    }
+#    save_inst_features_cmd $save_dir
+#}
+#
+#proc save_inst_labels { args } {
+#    sta::parse_key_args "save_inst_labels" args \
+#        keys { -save_dir } flags {}
+#    set save_dir "./"
+#    if { [info exists keys(-save_dir)] } {
+#        set save_dir $keys(-save_dir)
+#        if { ![file isdirectory $save_dir] } {
+#            puts "ERROR: -save_dir ${save_dir} does not exist"
+#            return
+#        }       
+#    }
+#    save_inst_labels_cmd $save_dir
+#}

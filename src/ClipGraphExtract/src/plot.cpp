@@ -1,5 +1,6 @@
 #include "grid.h"
 #include "CImg.h"
+#include "clip_graph_ext/clipGraphExtractor.h"
 #include <iostream>
 #include <fstream>
 #include <tinycolormap.hpp>

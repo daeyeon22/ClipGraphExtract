@@ -14,17 +14,11 @@ getSta();
 }
 
 
-namespace ClipGraphExtract { 
-enum GraphModel;
-enum EdgeWeightModel;
-}
 
 using ord::getClipGraphExtractor;
 using ord::getDb;
 using ord::getSta;
 using ClipGraphExtract::ClipGraphExtractor;
-using ClipGraphExtract::GraphModel;
-using ClipGraphExtract::EdgeWeightModel;
 
 %}
 
@@ -52,20 +46,6 @@ set_max_route_layer_cmd(int maxRouteLayer) {
 
 
 void
-set_graph_model_cmd(const char* model) 
-{
-  ClipGraphExtractor* graphExt = getClipGraphExtractor();
-  graphExt->setGraphModel(model);
-}
-
-void
-set_edge_weight_model_cmd(const char* model)
-{
-  ClipGraphExtractor* graphExt = getClipGraphExtractor();
-  graphExt->setEdgeWeightModel(model);
-}
-
-void
 set_graph_extract_save_file_name_cmd(const char* file)
 {
   ClipGraphExtractor* graphExt = getClipGraphExtractor();
@@ -77,6 +57,12 @@ set_graph_extract_save_file_prefix_cmd(const char* prefix)
 {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
     graphExt->setSaveFilePrefix(prefix);
+}
+
+void
+set_drc_report_cmd(const char* fileName) {
+    ClipGraphExtractor* graphExt = getClipGraphExtractor();
+    graphExt->setDrcReport(fileName);
 }
 
 
@@ -96,6 +82,7 @@ graph_extract_cmd()
 {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
     graphExt->extract();
+
 }
 
 void
@@ -105,6 +92,7 @@ save_features_cmd(const char* dirPath) {
 }
 
 
+/*
 void 
 save_inst_features_cmd(const char* dirPath) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
@@ -118,12 +106,12 @@ save_inst_labels_cmd(const char* dirPath) {
 }
 
 
-
 void
 save_graphs_cmd(const char* dirPath) {
     ClipGraphExtractor* graphExt = getClipGraphExtractor();
     graphExt->saveGraphs(dirPath);
 }
+*/
 
 void
 save_labels_cmd(const char* dirPath) {

@@ -53,8 +53,8 @@ endif()
 add_library( ClipGraphExtractor
   src/clipGraphExtractor.cpp
   src/MakeClipGraphExtractor.cpp
-  src/instGraph.cpp
-  src/vertex.cpp
+#src/instGraph.cpp
+#src/vertex.cpp
   src/grid.cpp
   src/gcell.cpp
   src/rsmt.cpp
