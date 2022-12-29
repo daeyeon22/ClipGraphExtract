@@ -461,7 +461,9 @@ void ClipGraphExtractor::extract() {
     measure.stop_clock("extract features");
 
 
-    parseDrcReport(drcRpt_.c_str());
+
+    // 
+    parseDrcReport_(drcRpt_.c_str());
     measure.stop_clock("parse drc report");
 
    

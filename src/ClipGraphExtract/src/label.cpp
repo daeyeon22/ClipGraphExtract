@@ -87,6 +87,53 @@ string parseLayerName(string substr) {
 
 
 
+
+
+void ClipGraphExtractor::parseDrcReport_(const char* fileName) {
+    cout << "Start to read routing report (" << fileName << ")" << endl;
+    ifstream inFile(fileName);
+    const std::regex colon(":");
+    string line;
+	dbBlock* block = db_->getChip()->getBlock();
+    int dbu = block->getDbUnitsPerMicron();
+
+
+    BoxRtree<Marker*> rtree;
+    regex ex("Bounds \\([0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+\\) \\([0-9]+\\.[0-9]+, [0-9]+\\.[0-9]+\\)");
+    
+    int numDrvs = 0;
+	Grid* grid = (Grid*)grid_;
+    
+    while(getline(inFile, line)) {
+        //cout << line << endl;    
+        smatch m;
+        if(regex_search(line, m, ex)) {
+            cout << m[0] << endl;
+            numDrvs++;
+            string delim = " (),";
+            vector<string> tokens = splitAsTokens(m[0].str(), delim);
+            int lx = dbu * atof(tokens[0].c_str());
+            int ly = dbu * atof(tokens[1].c_str());
+            int ux = dbu * atof(tokens[2].c_str());
+            int uy = dbu * atof(tokens[3].c_str());
+            // TODO
+            Marker* mark = grid->createMarker(lx,ly,ux,uy);
+            rtree.insert(make_pair(mark->getQueryBox(), mark));
+        }
+    }
+
+    cout << "num drvs  = " << numDrvs << endl;
+    for(Gcell* gcell : grid->getGcells()) {
+        gcell->annotateLabel(rtree);
+    }
+}
+
+
+
+
+
+
+
 void ClipGraphExtractor::parseDrcReport(const char* fileName) {
 
     cout << "Start to read routing report (" << fileName << ")" << endl;

@@ -45,6 +45,7 @@ class ClipGraphExtractor {
 
     // defined in label.cpp
     void parseDrcReport(const char* fileName);
+    void parseDrcReport_(const char* fileName);
     // defined in plot.cpp
     void saveGridImages(const char* dirPath, const char* prefix);
     // defined in writer.cpp
